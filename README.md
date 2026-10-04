@@ -2,4 +2,5 @@
 
 Juego de fútbol arcade estilo Clash Royale + Mario Strikers.
 
-- `index.html`: el juego completo (se abre en cualquier navegador).
+- `index.html`: el juego.
+- `assets/`: modelos 3D, animaciones, imágenes y efectos.
