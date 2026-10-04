@@ -2136,11 +2136,15 @@ function render(dt){
   // cámara vertical: detrás de tu portería mirando hacia el ataque
   if(gkCam&&state==='play'){const k=keeperOf(0);if(k){const d=dirOf(0);const tx=k.x+d*7.5,tz=k.z*.6+3.2;gcx+=(tx-gcx)*Math.min(1,dt*4);gcz+=(tz-gcz)*Math.min(1,dt*4);camera.position.set(gcx,3.3,gcz);camera.lookAt(k.x,1.1,k.z);
     if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
-  // cámara fija que muestra la cancha completa (se ajusta a cada pantalla)
-  if(!camFit||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitCamera();
-  const zoom=goalCam>0?.94:1,sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom;
-  camera.position.set(camFit.off-Math.cos(CAM_EL)*dd+sy,Math.sin(CAM_EL)*dd+sy,sx);
-  camera.lookAt(camFit.off,0,0);
+  // cámara que sigue al balón (donde está la jugada)
+  const asp=cvs.clientWidth/Math.max(1,cvs.clientHeight);
+  const far=asp<.7?1:asp<1.1?.85:.7;
+  const fx=ball?ball.x:0,fz=ball?ball.z:0;
+  camX+=(clamp(fx,-L+9,L-11)-camX)*Math.min(1,dt*3);camZ+=(clamp(fz*.75,-HW+8,HW-8)-camZ)*Math.min(1,dt*2.5);
+  const zoom=goalCam>0?.82:1;
+  const sx=shakeAmt?rand(-shakeAmt,shakeAmt):0,sy=shakeAmt?rand(-shakeAmt,shakeAmt):0;
+  camera.position.set(camX-21*far*zoom+sy,36*far*zoom+sy,camZ+sx);
+  camera.lookAt(camX+4,0,camZ);
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
   drawAim();if(useBloom())composer.render();else renderer.render(scene,camera);
 }
@@ -2157,7 +2161,7 @@ function fitCamera(){
   for(let off=-10;off<=10;off+=1){let lo=10,hi=220;if(!fits(off,hi))continue;for(let k=0;k<22;k++){const mid=(lo+hi)/2;if(fits(off,mid))hi=mid;else lo=mid;}if(hi<best.dist)best={off,dist:hi};}
   camFit={w,h,off:best.off,dist:best.dist};
 }
-function resize(){if(!renderer)return;const w=cvs.clientWidth,h=cvs.clientHeight;renderer.setSize(w,h,false);if(composer){composer.setPixelRatio&&composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);bloomPass.resolution.set(Math.max(64,w/2),Math.max(64,h/2));}camera.aspect=w/Math.max(1,h);camera.fov=camera.aspect<1?50:40;camera.updateProjectionMatrix();camFit=null;}
+function resize(){if(!renderer)return;const w=cvs.clientWidth,h=cvs.clientHeight;renderer.setSize(w,h,false);if(composer){composer.setPixelRatio&&composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);bloomPass.resolution.set(Math.max(64,w/2),Math.max(64,h/2));}camera.aspect=w/Math.max(1,h);camera.fov=camera.aspect<1?56:42;camera.updateProjectionMatrix();camFit=null;}
 window.addEventListener('resize',resize);
 
 // ================== HUD / CONTROLES ==================
