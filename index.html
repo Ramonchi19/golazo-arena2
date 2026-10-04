@@ -939,8 +939,16 @@ function applyKit(mat,info,K){
   mat.customProgramCacheKey=()=>'kitproj';
   return mat;
 }
+
+// ================== ESTILO CARICATURA: SOMBREADO Y CONTORNO ==================
+let TOONGRAD=null,OUTLINE_MAT=null;
+function toonGrad(){if(TOONGRAD)return TOONGRAD;const c=document.createElement('canvas');c.width=4;c.height=1;const x=c.getContext('2d');['#7a7a7a','#b8b8b8','#e6e6e6','#ffffff'].forEach((col,i)=>{x.fillStyle=col;x.fillRect(i,0,1,1);});
+  TOONGRAD=new THREE.CanvasTexture(c);TOONGRAD.minFilter=TOONGRAD.magFilter=THREE.NearestFilter;TOONGRAD.generateMipmaps=false;return TOONGRAD;}
+function toonize(mat){if(!mat||!mat.isMeshStandardMaterial)return mat;const t=new THREE.MeshToonMaterial({map:mat.map,color:mat.color.clone(),gradientMap:toonGrad(),side:mat.side});t.name=mat.name;t.skinning=!!mat.skinning;return t;}
+function outlineMat(){if(OUTLINE_MAT)return OUTLINE_MAT;OUTLINE_MAT=new THREE.MeshBasicMaterial({color:0x14101e,side:THREE.BackSide});OUTLINE_MAT.skinning=true;
+  OUTLINE_MAT.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed=vec3(position)+normalize(normal)*0.014;');};OUTLINE_MAT.customProgramCacheKey=()=>'outline';return OUTLINE_MAT;}
 function selfLit(mat){if(!mat||mat.userData.selfLit)return mat;mat.userData.selfLit=true;const prev=mat.onBeforeCompile;
-  mat.onBeforeCompile=(sh,r)=>{if(prev&&prev!==THREE.Material.prototype.onBeforeCompile)prev(sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.34;');};
+  mat.onBeforeCompile=(sh,r)=>{if(prev&&prev!==THREE.Material.prototype.onBeforeCompile)prev(sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2;');};
   mat.customProgramCacheKey=()=>(mat.userData.kit?'kitproj':'std')+'-self';if('roughness' in mat)mat.roughness=.62;mat.needsUpdate=true;return mat;}
 function makeGLBChar(team,id){
   const M0=MODELS[id],root=new THREE.Group(),tilt=new THREE.Group();root.add(tilt);
@@ -957,7 +965,9 @@ function makeGLBChar(team,id){
   const s=M0.height/((hi-lo)||1);model.scale.setScalar(s);model.position.y=-lo*s+.01;root.updateMatrixWorld(true);
   const mats=[],byName={};
   const K=TEAMKIT[team]||TEAMKIT[0];
-  model.traverse(o=>{if(o.isMesh||o.isSkinnedMesh){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
+  const skinned=[];model.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o);});
+  for(const o of skinned){const ol=o.clone();ol.material=outlineMat();ol.castShadow=false;ol.receiveShadow=false;ol.frustumCulled=false;ol.userData.outline=true;o.parent.add(ol);}
+  model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
   // detectar hacia dónde mira y de qué lado está cada brazo
   root.updateMatrixWorld(true);
   const lp=b=>{const w=new THREE.Vector3();b.getWorldPosition(w);return model.worldToLocal(w);};
@@ -970,8 +980,10 @@ function makeGLBChar(team,id){
   const sx=b=>b?(Math.sign(lp(b).x)||1):1;
   const bones={fwd,all,feet:[byName.LeftFoot,byName.RightFoot].filter(Boolean),
     lul:ctrl(byName.LeftUpLeg),rul:ctrl(byName.RightUpLeg),ll:ctrl(byName.LeftLeg),rl:ctrl(byName.RightLeg),
-    hips:byName.Hips?{b:byName.Hips,p0:byName.Hips.position.clone()}:null,hd:ctrl(byName.Head),sp2:ctrl(byName.Spine02||byName.Spine01),la:ctrl(byName.LeftArm),ra:ctrl(byName.RightArm),lfa:ctrl(byName.LeftForeArm),rfa:ctrl(byName.RightForeArm),sp:ctrl(byName.Spine01||byName.Spine),
+    model,hips:byName.Hips?{b:byName.Hips,p0:byName.Hips.position.clone()}:null,toes:[byName.LeftToeBase,byName.RightToeBase,byName.LeftFoot,byName.RightFoot].filter(Boolean),hd:ctrl(byName.Head),sp2:ctrl(byName.Spine02||byName.Spine01),la:ctrl(byName.LeftArm),ra:ctrl(byName.RightArm),lfa:ctrl(byName.LeftForeArm),rfa:ctrl(byName.RightForeArm),sp:ctrl(byName.Spine01||byName.Spine),
     lsx:sx(byName.LeftForeArm||byName.LeftArm),rsx:sx(byName.RightForeArm||byName.RightArm),hipsH:byName.Hips?lp(byName.Hips).y:1};
+  {const v=new THREE.Vector3();let mn=1e9;for(const b of [byName.LeftToeBase,byName.RightToeBase,byName.LeftFoot,byName.RightFoot].filter(Boolean)){b.getWorldPosition(v);model.worldToLocal(v);mn=Math.min(mn,v.y);}bones.restFootY=mn;
+   const hv=new THREE.Vector3();if(byName.Hips){byName.Hips.getWorldPosition(hv);root.worldToLocal(hv);}bones.hipsWorldH=hv.y;bones.armOut=({gigante:.26,sangre:.24,perro:.22,pausa:.2})[id]||.14;}
   const mixer=new THREE.AnimationMixer(model),A={};
   for(const c of (M0.anims||[])){const n=/^gk/.test(c.name)?c.name:/kick/i.test(c.name)?'kick':/run/i.test(c.name)?'run':/idle/i.test(c.name)?'idle':null;if(n&&!A[n])A[n]=mixer.clipAction(c);}
   for(const n of ['gkthrow','gkblock'])if(A[n]){A[n].setLoop(THREE.LoopOnce,1);A[n].clampWhenFinished=true;}
@@ -991,7 +1003,8 @@ function makeGLBChar(team,id){
 const _q1=typeof THREE!=='undefined'?new THREE.Quaternion():null,_q2=typeof THREE!=='undefined'?new THREE.Quaternion():null;
 
 // ================== ANIMACIONES DE CAPTURA (MIXAMO) ==================
-let ANIMLIB=null,ANIMMETA={};
+let ANIMLIB=null,ANIMMETA={},_fv=null;
+const AIRCLIPS=new Set(['header','bicycle','gk_dive_l','gk_dive_r','gk_catch_high','fly_back','knocked','getup','getup_slow','gk_block_l','gk_block_r','tackle1','tackle2','tackle3','trip','gk_scoop','electro']);
 async function loadAnimLib(){
   if(!window.ANIMURL||typeof THREE==='undefined'||!THREE.GLTFLoader)return;
   try{const [buf,meta]=await Promise.all([fetch(ANIMURL).then(r=>r.arrayBuffer()),fetch(ANIMMETAURL).then(r=>r.json())]);ANIMMETA=meta;
@@ -1052,7 +1065,8 @@ function libLoco(p,m,sp){
     else n=sp>4.5?'sprint':sp>1.2?'jog':'gk_idle';}
   else if(sp<.7)n=ball.owner===p?'idle_ball':'idle';
   else if(sp<4.6)n='jog';else n='sprint';
-  if(n==='jog')ts=clamp(sp/3.4,.7,1.45);if(n==='sprint')ts=clamp(sp/7.6,.8,1.4);
+  const nat=k=>{const mt=ANIMMETA[k];if(!mt||!mt.dur||!m.bones||!ANIMMETA._hips)return k==='jog'?3.4:7.6;const r=(m.bones.hipsWorldH||.9)/(ANIMMETA._hips[1]*.01);return Math.max(.5,Math.hypot(mt.root[0],mt.root[1])/mt.dur*r);};
+  if(n==='jog')ts=clamp(sp/nat('jog'),.6,1.6);if(n==='sprint')ts=clamp(sp/nat('sprint'),.7,1.5);
   if(n==='idle'){if(m.curA!=='idle'&&m.A&&m.A.idle){const prev=m.curA&&m.L&&m.L[m.curA];m.A.idle.reset().play();if(prev)m.A.idle.crossFadeFrom(prev,.25,false);m.curA='idle';}return;}
   goA(m,n,{fade:.22});const a=m.L&&m.L[n];if(a)a.setEffectiveTimeScale(ts);
 }
@@ -1064,6 +1078,12 @@ function animLib(m,p,dt){
   // altura de cadera adaptada a cada personaje
   if(Bz&&Bz.hips&&ANIMMETA._hips&&m.curA&&m.L&&m.L[m.curA]){const h=Bz.hips.b,r=Bz.hips.p0,c=ANIMMETA._hips;h.position.set(r.x,h.position.y*(r.y/c[1]),r.z);}
   Bz&&Bz.feet.forEach(f=>f.scale.setScalar(m.foot));
+  // brazos un poco separados del cuerpo (personajes anchos)
+  if(Bz&&Bz.la&&Bz.ra&&Bz.armOut){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
+  // pies pegados al piso: corregir la altura según el pie más bajo
+  m.footAdj=0;
+  if(Bz&&Bz.toes.length&&Bz.restFootY!=null&&!AIRCLIPS.has(m.curA)&&!(p.flyY>0)){const v=_fv||(_fv=new THREE.Vector3());let mn=1e9;for(const b of Bz.toes){b.getWorldPosition(v);Bz.model.worldToLocal(v);mn=Math.min(mn,v.y);}
+    const want=(Bz.restFootY-mn)*Bz.model.scale.y;p._fadj=(p._fadj||0)+(clamp(want,-.5,.5)-(p._fadj||0))*Math.min(1,dt*12);m.footAdj=p._fadj;}else p._fadj=(p._fadj||0)*.9;
   if(!m.lockUntil||T>=m.lockUntil){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
 }
 function crossTo(m,name,t){t=t||.22;const a=m.A[name];if(!a||m.cur===name)return;
@@ -2094,7 +2114,7 @@ function syncPlayer(p,dt){
   if(false){m.arms[0].rotation.z=-2.4*k;m.arms[1].rotation.z=2.4*k;}
   else if(p.gk){m.arms[0].rotation.z=-.15;m.arms[1].rotation.z=.15;if(!(ANIMLIB&&m.glb))gkPose(p,m,sp);}
   if(p.stun>0&&p.slip<=0){m.tilt.rotation.z=Math.sin(T*18)*.3;}
-  lifePose(p,m,sp,dt);fxPose(p,m,dt);
+  lifePose(p,m,sp,dt);fxPose(p,m,dt);if(m.footAdj)m.tilt.position.y+=m.footAdj;
   if(m.glb){m.tilt.rotation.x*=.25;let df=p.face-(p._pf===undefined?p.face:p._pf);while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p._pf=p.face;
     const tgt=clamp(-df/Math.max(dt,.001)*.05,-.28,.28)*Math.min(1,sp/5);p._lean=(p._lean||0)+(tgt-(p._lean||0))*Math.min(1,dt*7);
     if(!p.act&&p.stun<=0&&!(p.gk&&p.dive>0))m.tilt.rotation.z=p._lean;}
