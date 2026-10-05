@@ -442,6 +442,23 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 .offmk i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-7px 0 0 -5px;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid #fff;transform-origin:5px 7px}
 @keyframes offp{50%{box-shadow:0 0 0 6px rgba(255,204,51,.35),0 2px 8px rgba(0,0,0,.45)}}
 @media (prefers-reduced-motion:reduce){.offmk.me{animation:none}}
+
+/* v42: marco de carta propio */
+.card.art{border-radius:12px;border:4px solid var(--rc,#9fb4d8);box-shadow:0 0 0 2px #0a1636,0 4px 0 2px #0a1636,0 0 14px var(--rg,rgba(159,180,216,.45))}
+.card.art.r-comun{--rc:#a9bde0;--rg:rgba(169,189,224,.35)}
+.card.art.r-rara{--rc:#ff9c3a;--rg:rgba(255,156,58,.55)}
+.card.art.r-epica{--rc:#b56cff;--rg:rgba(181,108,255,.6)}
+.card.art.r-legendaria{--rc:#ffd34a;--rg:rgba(255,211,74,.65)}
+.card.art .c-img{border-radius:8px}
+.card.art::before{content:'';position:absolute;inset:0;border-radius:8px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),inset 0 -26px 22px -14px rgba(10,22,54,.75);z-index:1;pointer-events:none}
+.card.art.r-legendaria::before{inset:-4px;border-radius:12px;padding:4px;box-shadow:none}
+.card.art .c-gem{top:-4px;width:30px;height:16px;margin-left:-15px;transform:none;border-radius:0 0 9px 9px;border:2px solid #0a1636;border-top:0;
+  background:linear-gradient(#2a3a6a,#16214a);box-shadow:0 2px 0 #0a1636}
+.card.art .c-gem::after{content:'';position:absolute;left:50%;top:2px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border:1.5px solid #0a1636;
+  background:linear-gradient(135deg,#fff,var(--rc,#a9bde0) 55%);box-shadow:0 0 6px var(--rc,#a9bde0)}
+.card.art .c-ovr{font-size:17px;top:3px;left:6px}
+.card.art .c-pos{top:4px;right:5px;border:1.5px solid rgba(255,255,255,.35)}
+.card.art .c-lvl{background:linear-gradient(90deg,transparent,rgba(10,22,54,.88) 20%,rgba(10,22,54,.88) 80%,transparent)}
 </style>
 </head>
 <body>
@@ -530,13 +547,14 @@ const FORMS={
  muro:{n:'Muro',t:'3-1',s:[{x:-16,z:-8,r:'DEF'},{x:-17,z:0,r:'DEF'},{x:-16,z:8,r:'DEF'},{x:-3,z:0,r:'DEL'}]},
 };
 const ARENAS=[
- {n:'Llanera',sky:0x9fd0ff,g1:'#9db150',g2:'#89a444',line:'rgba(240,234,214,.9)',dirt:true,outer:0x8a6b45,step:0x8a6a45,wall:0x6b4f33,seats:[0x9bbf4a,0xd9b26a,0xa0703f],fence:0x59e3ff,deco:['🌳','🐄','🌻','🌳']},
- {n:'Barrio',sky:0xf2a46b,g1:'#8e939d',g2:'#858a94',line:'#ffd43b',outer:0x45484f,step:0x5c6170,wall:0x3c4048,seats:[0xff4f9a,0x3fd0ff,0xffd43b,0x7cff6b],fence:0xff9a3c,deco:['🏚️','🛢️','💡','🛹']},
- {n:'Municipal',sky:0x7fb2ff,g1:'#98b24e',g2:'#85a142',line:'rgba(255,255,255,.92)',outer:0x1f4a2a,step:0x5a6b8a,wall:0x3a4a6a,seats:[0x2f7bff,0xffffff],fence:0x59e3ff,deco:['🚩','🌲','💡','🚩']},
- {n:'Estatal',sky:0x2a2f6a,g1:'#96b04d',g2:'#839f41',line:'rgba(255,255,255,.92)',outer:0x1b3322,step:0x3a2f6a,wall:0x231d44,seats:[0x9b4dff,0xffffff,0x6b2fd0],fence:0xc07bff,deco:['💡','🚩','💡','🎺']},
- {n:'Nacional',sky:0x0e1838,g1:'#9ab350',g2:'#87a243',line:'rgba(255,255,255,.92)',outer:0x14261a,step:0x34406a,wall:0x222a4a,seats:[0xff3b4e,0xffffff,0xd62a3c],fence:0x59e3ff,deco:['📺','💡','🎆','💡']},
- {n:'Continental',sky:0x0a2a33,g1:'#97b452',g2:'#84a145',line:'rgba(255,255,255,.95)',outer:0x0f2a24,step:0x1d4a4f,wall:0x0f2f33,seats:[0x16c7b0,0xffffff,0x0e8f80],fence:0x6bffe0,deco:['🌎','💡','🎆','💡']},
- {n:'Leyendas',sky:0x1a1030,g1:'#a2b44c',g2:'#8ea341',line:'#ffd84d',outer:0x231a10,step:0x3a2a10,wall:0x2a1d08,seats:[0xffcc33,0x1a1a1a,0xc98a00],fence:0xffcc33,deco:['🏆','👑','✨','🏆']},
+ {n:'Campo de Entrenamiento',sky:0x9fd0ff,g1:'#9db150',g2:'#89a444',line:'rgba(240,234,214,.9)',dirt:true,outer:0x8a6b45,step:0x8a6a45,wall:0x6b4f33,seats:[0x9bbf4a,0xd9b26a,0xa0703f],fence:0x59e3ff,deco:['🌳','🎯','🧺','🌳']},
+ {n:'Bosque Encantado',sky:0xf2a46b,g1:'#86a64a',g2:'#76983f',line:'#ffd43b',outer:0x45484f,step:0x5c6170,wall:0x3c4048,seats:[0xff4f9a,0x3fd0ff,0xffd43b,0x7cff6b],fence:0xff9a3c,deco:['🍄','🌲','🐸','🌲']},
+ {n:'Pueblo',sky:0x7fb2ff,g1:'#a4b552',g2:'#91a847',line:'rgba(255,255,255,.92)',outer:0x1f4a2a,step:0x5a6b8a,wall:0x3a4a6a,seats:[0x2f7bff,0xffffff],fence:0x59e3ff,deco:['🏠','⛲','🐦','🏠']},
+ {n:'Playa Pirata',sky:0x2a2f6a,g1:'#cebe9e',g2:'#c2b090',line:'rgba(255,255,255,.92)',outer:0x1b3322,step:0x3a2f6a,wall:0x231d44,seats:[0x9b4dff,0xffffff,0x6b2fd0],fence:0xc07bff,deco:['🏴‍☠️','🌴','⚓','🌴']},
+ {n:'Templo del Desierto',sky:0x0e1838,g1:'#c4a674',g2:'#bc9e6c',line:'rgba(255,255,255,.92)',outer:0x14261a,step:0x34406a,wall:0x222a4a,seats:[0xff3b4e,0xffffff,0xd62a3c],fence:0x59e3ff,deco:['🏛️','🌵','🔺','🌵']},
+ {n:'Tundra de Hielo',sky:0x0a2a33,g1:'#7cd0e2',g2:'#6cc4d9',line:'rgba(255,255,255,.95)',outer:0x0f2a24,step:0x1d4a4f,wall:0x0f2f33,seats:[0x16c7b0,0xffffff,0x0e8f80],fence:0x6bffe0,deco:['❄️','⛄','🧊','❄️']},
+ {n:'Volcán',sky:0x0a2a33,g1:'#a8988e',g2:'#9a8a80',line:'rgba(255,255,255,.95)',outer:0x0f2a24,step:0x1d4a4f,wall:0x0f2f33,seats:[0x16c7b0,0xffffff,0x0e8f80],fence:0x6bffe0,deco:['🌋','🔥','🪨','🔥']},
+ {n:'Coliseo de Leyendas',sky:0x1a1030,g1:'#80869a',g2:'#757b8f',line:'#ffd84d',outer:0x231a10,step:0x3a2a10,wall:0x2a1d08,seats:[0xffcc33,0x1a1a1a,0xc98a00],fence:0xffcc33,deco:['🏆','👑','✨','🏆']}
 ];
 let ARENA=ARENAS[0];
 let TEAMKIT=[{j:0x2f7bff,d:0x173f99,s:0xffffff,b:0x151515},{j:0xff3b4e,d:0x99202e,s:0xffffff,b:0x151515}];
@@ -651,6 +669,7 @@ const ARENA_CFG=[
  {sky:0x8fb4f0,night:0,sides:6,ends:0,standCol:0x4a3a8a,towers:1,banners:[0x9b4dff,0xffffff]},
  {sky:0x0b1430,night:1,sides:8,ends:8,standCol:0x34406a,towers:1,screens:1},
  {sky:0x061a22,night:1,sides:10,ends:10,standCol:0x1d4a4f,ring:0x2ef0d8},
+ {sky:0x2a0a06,night:1,sides:10,ends:10,standCol:0x3a1a10,ring:0xff7a1a},
  {sky:0x120a22,night:1,sides:10,ends:10,standCol:0x3a2a10,ring:0xffcc33,obelisks:1,trophy:1},
 ];
 function lmat(c,e){return new THREE.MeshLambertMaterial({color:c,emissive:e||0});}
@@ -803,6 +822,21 @@ function updateStandFX(dt){if(!scene)return;initStandFX();
       if(d.life<=0){_cm.makeScale(0,0,0);confMesh.setMatrixAt(i,_cm);}}
     if(any)confMesh.instanceMatrix.needsUpdate=true;}
 }
+
+// ================== v43: ARENAS NUEVAS (módulos en assets/arenas) ==================
+const ARENA_MOD_MAP=[1,2,3,5,6,7,4,8];let ARENA_MOD=null,ARENA_ROOT=null;const _arenaJS={};
+function loadArenaJS(n){if(window.GZ_ARENAS&&window.GZ_ARENAS[n])return Promise.resolve();if(_arenaJS[n])return _arenaJS[n];
+  _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=43';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
+function hideOldStadium(){if(fieldMesh)fieldMesh.visible=false;if(outerMesh)outerMesh.visible=false;if(fenceGroup)fenceGroup.visible=false;
+  if(arenaGroup){scene.remove(arenaGroup);arenaGroup=new THREE.Group();scene.add(arenaGroup);}seatList=[];boards=[];try{rebuildCrowd();}catch(e){}
+  if(hemiL)hemiL.visible=false;if(sun)sun.visible=false;}
+async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
+  if(ARENA_MOD&&ARENA_MOD._n===n){hideOldStadium();return;}
+  try{await loadArenaJS(n);}catch(e){console.warn('no se pudo cargar la arena',n,e);return;}
+  if(ARENA_ROOT){scene.remove(ARENA_ROOT);ARENA_ROOT=null;ARENA_MOD=null;}
+  const root=new THREE.Group();scene.add(root);
+  try{const mod=window.GZ_ARENAS[n]({scene,renderer,camera,root});mod._n=n;ARENA_ROOT=root;ARENA_MOD=mod;hideOldStadium();}
+  catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}}
 function applyArena(i){
   ARENA=ARENAS[Math.max(0,Math.min(ARENAS.length-1,i))];
   if(!scene)return;const cfg=ARENA_CFG[ARENAS.indexOf(ARENA)]||{};
@@ -812,6 +846,7 @@ function applyArena(i){
   for(const fl of flareList)scene.remove(fl.sp);flareList=[];for(const d of confData)d.life=0;
   buildFence();
   if(arenaGroup){scene.remove(arenaGroup);}arenaGroup=new THREE.Group();scene.add(arenaGroup);buildArenaProps();applyLights();rebuildCrowd();
+  mountArena(ARENAS.indexOf(ARENA));
 }
 function buildGoals(){
   // v41: porterías con red hexagonal de verdad, soportes traseros y física de red
@@ -2145,7 +2180,7 @@ function aiCards(dt){
 // ================== GOL / FLUJO ==================
 function goal(team){
   if(pause>0)return;
-  score[team]++;crowdShot('goal',team===0?.55:.38);
+  score[team]++;crowdShot('goal',team===0?.55:.38);if(ARENA_MOD&&ARENA_MOD.onGoal)ARENA_MOD.onGoal();
   showBig(team===0?'¡GOOOOL!':'Gol rival',team===0?'#ffcc33':'#ff7b88');
   const gx=team===0?L:-L;
   for(let i=0;i<90;i++)part(gx,rand(.5,3),rand(-GW,GW),rand(-6,6)-dirOf(team)*rand(2,8),rand(4,12),rand(-6,6),[0xffcc33,0x2f7bff,0xff3b4e,0xffffff,0x16c79a][i%5],rand(1.2,2.2),9,rand(.8,1.4));
@@ -2256,7 +2291,7 @@ function render(dt){
   camera.position.set(tx-Math.cos(CAM_EL2)*dd+sy,Math.sin(CAM_EL2)*dd+sy,camZ+sx);
   camera.lookAt(tx,0,camZ);
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
-  netStep(dt);drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
+  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
 }
 
 // ================== CÁMARA: CANCHA COMPLETA ==================
@@ -2401,7 +2436,7 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 </script>
-<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp", "s": "assets/cards/zurdito_s.webp"}, "cazador": {"c": "assets/cards/cazador_c.webp", "s": "assets/cards/cazador_s.webp"}, "perro": {"c": "assets/cards/perro_c.webp", "s": "assets/cards/perro_s.webp"}, "sangre": {"c": "assets/cards/sangre_c.webp", "s": "assets/cards/sangre_s.webp"}, "coletazo": {"c": "assets/cards/coletazo_c.webp", "s": "assets/cards/coletazo_s.webp"}, "expreso": {"c": "assets/cards/expreso_c.webp", "s": "assets/cards/expreso_s.webp"}, "pausa": {"c": "assets/cards/pausa_c.webp", "s": "assets/cards/pausa_s.webp"}, "gigante": {"c": "assets/cards/gigante_c.webp", "s": "assets/cards/gigante_s.webp"}, "rey": {"c": "assets/cards/rey_c.webp", "s": "assets/cards/rey_s.webp"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=["assets/arenas/a0.webp", "assets/arenas/a1.webp", "assets/arenas/a2.webp", "assets/arenas/a3.webp", "assets/arenas/a4.webp", "assets/arenas/a5.webp", "assets/arenas/a6.webp"];window.ANIMURL='assets/anims.glb';window.ANIMMETAURL='assets/anims.json';</script>
+<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=42", "s": "assets/cards/zurdito_s.webp"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=42", "s": "assets/cards/cazador_s.webp"}, "perro": {"c": "assets/cards/perro_c.webp?v=42", "s": "assets/cards/perro_s.webp"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=42", "s": "assets/cards/sangre_s.webp"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=42", "s": "assets/cards/coletazo_s.webp"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=42", "s": "assets/cards/expreso_s.webp"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=42", "s": "assets/cards/pausa_s.webp"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=42", "s": "assets/cards/gigante_s.webp"}, "rey": {"c": "assets/cards/rey_c.webp?v=42", "s": "assets/cards/rey_s.webp"}, "gato": {"c": "assets/cards/gato_c.webp?v=42", "s": "assets/cards/gato_c.webp?v=42"}, "toro": {"c": "assets/cards/toro_c.webp?v=42", "s": "assets/cards/toro_c.webp?v=42"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=42", "s": "assets/cards/vikingo_c.webp?v=42"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=42", "s": "assets/cards/muralla_c.webp?v=42"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=42", "s": "assets/cards/ciclon_c.webp?v=42"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=42", "s": "assets/cards/malabares_c.webp?v=42"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=42", "s": "assets/cards/ruleta_c.webp?v=42"}, "leon": {"c": "assets/cards/leon_c.webp?v=42", "s": "assets/cards/leon_c.webp?v=42"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=42", "s": "assets/cards/turbo_c.webp?v=42"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; // v43: miniaturas nuevas pendientes; mientras, se usa el diorama con los colores de cada arenawindow.ANIMURL='assets/anims.glb';window.ANIMMETAURL='assets/anims.json';</script>
 <script>
 // ================== DATOS ==================
 const RARS={comun:{n:'Común',c:'#cfe0ff'},rara:{n:'Rara',c:'#ffb347'},epica:{n:'Épica',c:'#d68bff'},legendaria:{n:'Legendaria',c:'#ffe066'}};
@@ -2445,6 +2480,8 @@ P('leon','León Sueco','Rey león','DEL','epica',{vel:70,tir:90,pas:66,reg:78,de
 P('turbo','Turbo Francés','Velocista','DEL','legendaria',{vel:97,tir:86,pas:68,reg:86,def:32,fis:64},'Arranca y ya nadie lo alcanza.','Velocidad y definición','Juego aéreo',{skin:2,hair:'#111111',style:'rapado'}),
 ];
 const PBY=Object.fromEntries(PLAYERS.map(p=>[p.id,p]));
+// v42: jugadores listos. Los demás siguen definidos arriba pero no aparecen todavía (colección, sobres, tienda, rivales)
+const READY=new Set(["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"]);const PLAYERS_ALL=PLAYERS.slice();PLAYERS.splice(0,PLAYERS.length,...PLAYERS_ALL.filter(p=>READY.has(p.id)));
 Object.assign(CARDS.bomba,{rar:'comun',desc:'Cae del cielo y manda a volar a los rivales del área.'});
 Object.assign(CARDS.cascara,{rar:'comun',desc:'El primer rival que la pisa se resbala y suelta el balón.'});
 Object.assign(CARDS.rayo,{rar:'rara',desc:'Aturde a todos los rivales del área por unos segundos.'});
@@ -2462,7 +2499,7 @@ const LEAGUES=[
  {n:'Liga Llanera',min:0,ic:'🌱',c1:'#4caf50',c2:'#1f5a2a'},{n:'Liga de Barrio',min:300,ic:'🏘️',c1:'#e08a3a',c2:'#6a3510'},
  {n:'Liga Municipal',min:700,ic:'🏟️',c1:'#3d8bff',c2:'#163c8a'},{n:'Liga Estatal',min:1200,ic:'🛡️',c1:'#9b4dff',c2:'#3a1a7a'},
  {n:'Liga Nacional',min:1800,ic:'🏆',c1:'#ff4d5e',c2:'#6a1020'},{n:'Liga Continental',min:2600,ic:'🌎',c1:'#16c7b0',c2:'#0a4a42'},
- {n:'Liga de Leyendas',min:3500,ic:'👑',c1:'#ffcc33',c2:'#7a5200'}];
+ {n:'Liga Mundial',min:3500,ic:'🌋',c1:'#ff7a1a',c2:'#5a1a08'},{n:'Liga de Leyendas',min:4500,ic:'👑',c1:'#ffcc33',c2:'#7a5200'}];
 const KITS={
  clasico:{n:'Azul Clásico',rar:'comun',j:'#2f7bff',d:'#173f99',s:'#ffffff',pat:'franja',cost:0},
  blanco:{n:'Blanco Real',rar:'comun',j:'#f2f4f8',d:'#b9c0cc',s:'#d4af37',pat:'liso',cost:300},
@@ -2503,6 +2540,7 @@ function defSave(){return{v:2,name:'Jugador',avatar:'⚽',color:'#2f7bff',countr
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
   packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},equip:{kit:'clasico',boots:'negro'},seen:{},
   settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
+const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"];
 function migrate(s){
   const d=defSave();
   if(s.v===1){
@@ -2511,6 +2549,9 @@ function migrate(s){
     s.squad={form:'diamante',gk:s.squad.gk,f};s.v=2;
   }
   const o=Object.assign(d,s,{settings:Object.assign(d.settings,s.settings||{})});
+  // v42: si la plantilla guardada tenía jugadores ocultos, se cambian por jugadores listos
+  if(!READY.has(o.squad.gk))o.squad.gk='coletazo';o.squad.f=o.squad.f.filter(id=>READY.has(id));
+  while(o.squad.f.length<4){const ex=R18.find(id=>PBY[id].pos!=='POR'&&!o.squad.f.includes(id));if(!ex)break;o.squad.f.push(ex);}
   if(o.squad.f.length<4){const ex=Object.keys(o.players).find(id=>PBY[id].pos!=='POR'&&!o.squad.f.includes(id));o.squad.f.push(ex||'toro');}
   if(!o.players.zurdito)o.players.zurdito={lvl:1,copies:0};
   if(!s.todos18){for(const id of ['zurdito','cazador','perro','sangre','coletazo','expreso','pausa','gigante','rey','gato','toro','vikingo','muralla','ciclon','malabares','ruleta','leon','turbo'])if(!o.players[id])o.players[id]={lvl:1,copies:0};o.todos18=true;}
@@ -2830,7 +2871,7 @@ function openLeagues(){const li=leagueIdx(save.trophies);
   const ta=$('#taAuto');if(ta)ta.onclick=()=>{save.testArena=null;persist();toast('Estadio automático');openLeagues();renderTab();};}
 function winGold(i){return 20+i*10;}
 function openProfile(){const li=leagueIdx(save.trophies),tot=save.wins+save.losses+save.draws;
-  const col=Object.keys(save.players).length+Object.keys(save.powers).length,colT=PLAYERS.length+Object.keys(CARDS).length;
+  const col=Object.keys(save.players).filter(id=>READY.has(id)).length+Object.keys(save.powers).length,colT=PLAYERS.length+Object.keys(CARDS).length;
   const pfs=(i,l,v)=>`<div class="pfs"><span>${i}</span><b class="ct">${v}</b><small>${l}</small></div>`;
   showModal(`<div class="mpanel"><button class="mclose ct" id="mx">✕</button>
    <div class="banner" style="--bc:${save.color};pointer-events:none"><div class="bn-art"><span class="bn-av">${save.avatar}</span></div><div class="bn-info"><div><b class="ct">${esc(save.name)}</b><small>${COUNTRIES[save.country]} · Nivel ${save.lvl}</small></div><span class="bn-tro ct">🏆 ${save.trophies}</span></div></div>
