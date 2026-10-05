@@ -1,0 +1,6 @@
+{
+  "appId": "com.ramonchi19.golazoarena",
+  "appName": "Golazo Arena",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0b1530" }
+}

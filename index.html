@@ -639,8 +639,8 @@ function drawFieldTex(th){
   const tex=new THREE.CanvasTexture(c);tex.anisotropy=8;FIELDTEX[i]=tex;return tex;
 }
 function buildField(){
-  fieldMesh=M(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:drawFieldTex(ARENA)}));fieldMesh.rotation.x=-Math.PI/2;fieldMesh.receiveShadow=true;scene.add(fieldMesh);
-  outerMesh=M(new THREE.PlaneGeometry(260,260),new THREE.MeshLambertMaterial({color:ARENA.outer}));outerMesh.rotation.x=-Math.PI/2;outerMesh.position.y=-.03;outerMesh.receiveShadow=true;scene.add(outerMesh);
+  fieldMesh=M(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:drawFieldTex(ARENA),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));fieldMesh.rotation.x=-Math.PI/2;fieldMesh.receiveShadow=true;scene.add(fieldMesh);
+  outerMesh=M(new THREE.PlaneGeometry(260,260),new THREE.MeshLambertMaterial({color:ARENA.outer}));outerMesh.rotation.x=-Math.PI/2;outerMesh.position.y=-.15;outerMesh.receiveShadow=true;scene.add(outerMesh);
 }
 function addA(m,x,y,z){m.position.set(x,y,z);arenaGroup.add(m);return m;}
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.userData.cv=c;return t;}
@@ -812,7 +812,7 @@ function buildFence(){
 const SKINS=[0xf1c08f,0xc98b5e,0x8d5a3b];
 let TOON=null;function toonGrad(){if(TOON)return TOON;const c=document.createElement('canvas');c.width=4;c.height=1;const g=c.getContext('2d');['#8c8c8c','#c2c2c2','#ececec','#fff'].forEach((col,i)=>{g.fillStyle=col;g.fillRect(i,0,1,1);});TOON=new THREE.CanvasTexture(c);TOON.minFilter=TOON.magFilter=THREE.NearestFilter;return TOON;}
 function tm(col){return new THREE.MeshToonMaterial({color:col,gradientMap:toonGrad()});}
-function outline(mesh,k){const o=new THREE.Mesh(mesh.geometry,new THREE.MeshBasicMaterial({color:0x10142a,side:THREE.BackSide}));o.scale.setScalar(k||1.08);mesh.add(o);}
+function outline(mesh,k){return;const o=new THREE.Mesh(mesh.geometry,new THREE.MeshBasicMaterial({color:0x10142a,side:THREE.BackSide}));o.scale.setScalar(k||1.08);mesh.add(o);}
 function makeChar(team,gk,idx,look,cardId){
   if(cardId&&MODELS[cardId]){try{return makeGLBChar(team,cardId);}catch(e){MSTATUS[cardId]='error al crear: '+(e&&e.message||e);console.warn(e);}}
   look=look||{skin:idx%3,hair:'#2b1a10',style:'corto'};
@@ -969,7 +969,7 @@ function makeGLBChar(team,id){
   const mats=[],byName={};
   const K=TEAMKIT[team]||TEAMKIT[0];
   const skinned=[];model.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o);});
-  for(const o of skinned){smoothNormals(o.geometry);const ol=o.clone();ol.material=outlineMat();ol.castShadow=false;ol.receiveShadow=false;ol.frustumCulled=false;ol.userData.outline=true;o.parent.add(ol);}
+  // v12: sin contorno negro en los personajes
   model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
   // detectar hacia dónde mira y de qué lado está cada brazo
   root.updateMatrixWorld(true);
