@@ -70,8 +70,8 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;
   // v34: losas color crema dentro de la cancha y banda de piedra malva por fuera (como la referencia)
-  g.fillStyle='#cbbc9e';g.fillRect(0,0,W,H);
-  const tile=(x0,y0,w,h,inside)=>{const v=(Math.random()-.5)*14;const base=inside?(Math.random()<.5?[239,230,211]:[230,218,195]):[150,140,156];
+  g.fillStyle='#a8987c';g.fillRect(0,0,W,H);
+  const tile=(x0,y0,w,h,inside)=>{const v=(Math.random()-.5)*14;const base=inside?(Math.random()<.5?[206,190,160]:[196,180,150]):[128,118,134];
     g.fillStyle=`rgb(${base[0]+v|0},${base[1]+v|0},${base[2]+v|0})`;g.beginPath();if(g.roundRect)g.roundRect(x0,y0,w,h,4);else g.rect(x0,y0,w,h);g.fill();
     g.strokeStyle='rgba(255,255,255,.18)';g.lineWidth=2;g.beginPath();g.moveTo(x0+3,y0+h-3);g.lineTo(x0+3,y0+3);g.lineTo(x0+w-3,y0+3);g.stroke();
     g.strokeStyle='rgba(90,70,50,.14)';g.beginPath();g.moveTo(x0+3,y0+h-2);g.lineTo(x0+w-2,y0+h-2);g.lineTo(x0+w-2,y0+3);g.stroke();
