@@ -69,15 +69,20 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 // ===== cancha: verde más profundo con musgo y hojas caídas =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;
-  // arena compacta con ondas suaves (sin cuadros)
-  g.fillStyle='#e0c98f';g.fillRect(0,0,W,H);
-  for(let k=0;k<160;k++){const x=Math.random()*W,y=Math.random()*H,r=40+Math.random()*160,gr=g.createRadialGradient(x,y,0,x,y,r);
-    gr.addColorStop(0,Math.random()<.5?'rgba(250,236,196,.35)':'rgba(196,166,108,.25)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
-  for(let y=0;y<H;y+=PX*.55){g.strokeStyle='rgba(170,140,90,.16)';g.lineWidth=2;g.beginPath();g.moveTo(0,y);for(let x=0;x<=W;x+=24)g.lineTo(x,y+Math.sin(x*.012+y*.05)*6+Math.sin(x*.05)*2);g.stroke();}
-  const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*10;d[k]+=n;d[k+1]+=n;d[k+2]+=n*.8;}g.putImageData(id,0,0);
+  // v34: losas color crema dentro de la cancha y banda de piedra malva por fuera (como la referencia)
+  g.fillStyle='#cbbc9e';g.fillRect(0,0,W,H);
+  const tile=(x0,y0,w,h,inside)=>{const v=(Math.random()-.5)*14;const base=inside?(Math.random()<.5?[239,230,211]:[230,218,195]):[150,140,156];
+    g.fillStyle=`rgb(${base[0]+v|0},${base[1]+v|0},${base[2]+v|0})`;g.beginPath();if(g.roundRect)g.roundRect(x0,y0,w,h,4);else g.rect(x0,y0,w,h);g.fill();
+    g.strokeStyle='rgba(255,255,255,.18)';g.lineWidth=2;g.beginPath();g.moveTo(x0+3,y0+h-3);g.lineTo(x0+3,y0+3);g.lineTo(x0+w-3,y0+3);g.stroke();
+    g.strokeStyle='rgba(90,70,50,.14)';g.beginPath();g.moveTo(x0+3,y0+h-2);g.lineTo(x0+w-2,y0+h-2);g.lineTo(x0+w-2,y0+3);g.stroke();
+    for(let k=0;k<4;k++){g.fillStyle=Math.random()<.5?'rgba(120,100,70,.06)':'rgba(255,255,255,.07)';g.beginPath();g.arc(x0+Math.random()*w,y0+Math.random()*h,3+Math.random()*9,0,7);g.fill();}};
+  let y=0;while(y<H){const rh=(1.7+Math.random()*.6)*PX;let x=-Math.random()*PX;
+    while(x<W){const rw=(1.7+Math.random()*.8)*PX;const cx=(x+rw/2)/PX-36,cz=(y+rh/2)/PX-24;const inside=Math.abs(cx)<L+.6&&Math.abs(cz)<HW+.6;tile(x+3,y+3,rw-6,rh-6,inside);x+=rw;}
+    y+=rh;}
+  for(let k=0;k<60;k++){const x=Math.random()*W,yy=Math.random()*H,r=30+Math.random()*90,gr=g.createRadialGradient(x,yy,0,x,yy,r);gr.addColorStop(0,'rgba(200,175,130,.10)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,yy-r,r*2,r*2);}
   const line=(w,col)=>{g.strokeStyle=col;g.lineWidth=PX*w;g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
     g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}};
-  line(.34,'rgba(150,115,60,.35)');line(.22,'rgba(255,255,250,.95)');
+  line(.36,'rgba(120,95,70,.35)');line(.22,'rgba(255,255,255,.97)');
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex(),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
@@ -216,6 +221,7 @@ async function build(){
     for(const e of [-1,1]){pp('tower-complete-large',e*(E+2.6),s*(B+1.4),1,0,0);
       for(let z=GW+7.2;z<=B-.5;z+=2*WS)pp('castle-wall',e*(E+1.9),s*z,WS*.75,Math.PI/2,0);}
     for(const x of [-22,-8,8,22]){const cn=pp('cannon',x,s*(B+1.6),.9,s>0?0:Math.PI,3.74);if(cn)cannons.push({o:cn,x,y:4.4,z:s*(B+.6)});}}
+  wallDetails(WS);
   // detrás de las murallas: playa con palmeras, rocas y botes; mar con barcos
   for(const s of [-1,1]){
     for(let x=-E-10;x<=E+10;x+=4.5+Math.random()*3)palm(pickC(['palm-detailed-straight','palm-detailed-bend','palm-straight','palm-bend']),x,s*(B+5.5+Math.random()*3),1.1+Math.random()*.4,Math.random()*6);
@@ -240,6 +246,39 @@ async function build(){
   scene.background=new THREE.Color('#9fd8f2');scene.fog.color.set('#a8dcf2');
   document.getElementById('msg').remove();
 }
+// v34: murallas con más detalle (almenas, contrafuertes, estandartes, salvavidas, redes, musgo, pasarela, atalaya, conchas)
+function wallDetails(WS){const top=4.4*WS,FACE=B+.06,stone=['#9a9488','#8f897d','#a59f93'];
+  const NET=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.strokeStyle='rgba(120,95,60,.95)';g.lineWidth=3;
+    for(let i=-64;i<128;i+=16){g.beginPath();g.moveTo(i,0);g.lineTo(i+64,64);g.stroke();g.beginPath();g.moveTo(i+64,0);g.lineTo(i,64);g.stroke();}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;})();
+  const stain=(x,y,z,s,w,h,col)=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');for(let i=0;i<14;i++){g.fillStyle=col;g.globalAlpha=.25;g.beginPath();g.arc(32+(Math.random()-.5)*36,20+Math.random()*40,6+Math.random()*12,0,7);g.fill();}
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));m.position.set(x,y,z);m.rotation.y=s>0?Math.PI:0;scene.add(m);};
+  for(const s of [-1,1]){const zf=s*FACE;
+    // almenas y pasarela de madera arriba
+    for(let x=-E-1.5;x<=E+1.5;x+=1.25){const mer=mesh(new THREE.BoxGeometry(.7,.7,.5),pickC(stone));mer.position.set(x,top+.35,s*(B+.32));scene.add(mer);}
+    const walk=mesh(new THREE.BoxGeometry(2*(E+1.8),.12,1.1),'#8a6040');walk.position.set(0,top+.06,s*(B+1.4));scene.add(walk);
+    // contrafuertes (salen poco, nunca pasan la línea) y entre ellos estandartes
+    const bx=[-27,-18,-9,0,9,18,27];
+    for(const x of bx){const bt=mesh(new THREE.BoxGeometry(1.1,top-.3,.9),pickC(stone));bt.position.set(x,(top-.3)/2,s*(FACE+.0));scene.add(bt);
+      const cap=mesh(new THREE.BoxGeometry(1.3,.25,1.05),'#7e786c');cap.position.set(x,top-.18,s*FACE);scene.add(cap);}
+    for(let i=0;i<bx.length-1;i++){const x=(bx[i]+bx[i+1])/2,cols=i%2?['#1f1f24','#e8e0cc']:['#a8302a','#f2c14e'];
+      const bn=new THREE.Mesh(new THREE.PlaneGeometry(1.4,2.3,6,8),clothMat(cols[0],cols[1]));bn.position.set(x,top-1.45,s*(FACE-.04));bn.rotation.y=s>0?Math.PI:0;bn.castShadow=true;scene.add(bn);
+      const rod=mesh(new THREE.CylinderGeometry(.04,.04,1.6,5),'#5a3a28');rod.rotation.z=Math.PI/2;rod.position.set(x,top-.28,s*(FACE-.05));scene.add(rod);}
+    // salvavidas y redes con flotadores, alternados
+    for(let i=0;i<bx.length-1;i++){const x=(bx[i]+bx[i+1])/2+(i%2?3:-3);
+      if(i%2===0){const g=new THREE.Group();for(let k=0;k<4;k++){const t=new THREE.Mesh(new THREE.TorusGeometry(.36,.11,6,10,Math.PI/2),flat(k%2?'#f4efe4':'#d9483f'));t.rotation.z=k*Math.PI/2;g.add(t);}
+        g.position.set(x,1.7,s*(FACE-.08));g.rotation.y=s>0?Math.PI:0;g.traverse(o=>{if(o.isMesh)o.castShadow=true;});scene.add(g);}
+      else{const n=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.6),new THREE.MeshLambertMaterial({map:NET,transparent:true,alphaTest:.3,side:THREE.DoubleSide}));n.position.set(x,2.3,s*(FACE-.05));n.rotation.y=s>0?Math.PI:0;scene.add(n);
+        for(let k=0;k<4;k++){const f=mesh(new THREE.SphereGeometry(.12,6,4),k%2?'#f2c14e':'#e8853a');f.position.set(x-.9+k*.6,1.55,s*(FACE-.12));scene.add(f);}}}
+    // musgo y manchas de humedad en la pared
+    for(let x=-E;x<=E;x+=4+Math.random()*3)stain(x,.7+Math.random()*1.2,s*(FACE-.02),s,1.6+Math.random()*1.4,1.2+Math.random()*.8,Math.random()<.6?'#5f7a3a':'#6a5a48');
+    // atalaya al centro de cada muralla
+    pp('tower-watch',0,s*(B+1.3),.85,0,top+.12);
+    // pie de la muralla: arena acumulada, conchas y estrellas de mar (fuera de la línea)
+    const drift=mesh(new THREE.CylinderGeometry(.55,.55,2*(E+1.5),8,1,false,0,Math.PI),'#e3cd96');drift.rotation.z=Math.PI/2;drift.rotation.y=s>0?0:Math.PI;drift.position.set(0,0,s*(FACE-.05));drift.scale.set(1,.45,1);scene.add(drift);
+    for(let x=-E;x<=E;x+=2.2+Math.random()*2){const sh=mesh(new THREE.IcosahedronGeometry(.16,0),pickC(['#f4efe4','#f2c8b0','#e8d8c0']));sh.scale.y=.4;sh.position.set(x,.08,s*(FACE-.45));scene.add(sh);}
+    for(let x=-E+3;x<=E-3;x+=12){const st=new THREE.Shape();for(let k=0;k<10;k++){const a=k/10*Math.PI*2,r=k%2?.12:.3;k?st.lineTo(Math.cos(a)*r,Math.sin(a)*r):st.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
+      const m=new THREE.Mesh(new THREE.ShapeGeometry(st),new THREE.MeshLambertMaterial({color:'#e8853a',side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(x,.06,s*(FACE-.4));scene.add(m);}
+  }}
 function cannonFire(){for(const c of cannons){if(Math.random()<.6)continue;for(let k=0;k<4;k++){const p=puffs.find(q=>q.life<=0);if(!p)break;p.life=1.4;p.sp.position.set(c.x,c.y,c.z);p.v=new THREE.Vector3((Math.random()-.5)*1.2,1.4+Math.random(),(Math.random()-.5)*1.2);p.flash=k===0;}}}
 function gyH(){return 7+Math.random()*3;}
 
