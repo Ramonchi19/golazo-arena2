@@ -67,13 +67,22 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 
 // ===== cancha: verde más profundo con musgo y hojas caídas =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
-  const X=x=>(x+36)*PX,Z=z=>(z+24)*PX,q=2;
-  g.fillStyle='#2a2220';g.fillRect(0,0,W,H);
-  for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){const base=(i+j)%2?[118,98,88]:[106,88,80];const v=(Math.random()-.5)*10;
-    g.fillStyle=`rgb(${base[0]+v|0},${base[1]+v|0},${base[2]+v|0})`;g.fillRect(X(x)+2,Z(z)+2,q*PX-4,q*PX-4);}
-  for(let k=0;k<90;k++){let x=Math.random()*W,y=Math.random()<.5?Math.random()*PX*7:H-Math.random()*PX*7;g.strokeStyle='rgba(255,120,40,.5)';g.lineWidth=2;g.beginPath();g.moveTo(x,y);
-    for(let s=0;s<5;s++){x+=(Math.random()-.5)*40;y+=(Math.random()-.5)*40;g.lineTo(x,y);}g.stroke();}
-  const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*8;d[k]+=n;d[k+1]+=n;d[k+2]+=n;}g.putImageData(id,0,0);
+  const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;
+  // v31: losas de piedra irregulares (no cuadros), juntas oscuras, bisel de luz y sombra
+  g.fillStyle='#564a44';g.fillRect(0,0,W,H);
+  let y=0;while(y<H){const rh=(1.1+Math.random()*1.1)*PX;let x=-Math.random()*1.5*PX;
+    while(x<W){const rw=(1.1+Math.random()*1.9)*PX,gap=3+Math.random()*2,x0=x+gap,y0=y+gap,w=rw-gap*2,h=rh-gap*2;
+      const b=132+Math.random()*28,r=b+16+Math.random()*6,gg=b+2+Math.random()*4,bb=b-12;
+      g.fillStyle=`rgb(${r|0},${gg|0},${bb|0})`;g.beginPath();if(g.roundRect)g.roundRect(x0,y0,w,h,5+Math.random()*6);else g.rect(x0,y0,w,h);g.fill();
+      g.strokeStyle='rgba(255,240,220,.10)';g.lineWidth=3;g.beginPath();g.moveTo(x0+4,y0+h-4);g.lineTo(x0+4,y0+4);g.lineTo(x0+w-4,y0+4);g.stroke();
+      g.strokeStyle='rgba(0,0,0,.22)';g.beginPath();g.moveTo(x0+4,y0+h-3);g.lineTo(x0+w-3,y0+h-3);g.lineTo(x0+w-3,y0+4);g.stroke();
+      for(let k=0;k<6;k++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.08)':'rgba(255,255,255,.05)';g.beginPath();g.arc(x0+Math.random()*w,y0+Math.random()*h,2+Math.random()*7,0,7);g.fill();}
+      if(Math.random()<.12){g.strokeStyle='rgba(30,22,20,.45)';g.lineWidth=1.5;g.beginPath();let cx=x0+Math.random()*w,cy=y0+Math.random()*h;g.moveTo(cx,cy);for(let s=0;s<3;s++){cx+=(Math.random()-.5)*30;cy+=(Math.random()-.5)*30;g.lineTo(cx,cy);}g.stroke();}
+      x+=rw;}
+    y+=rh;}
+  // grietas con brillo de lava solo cerca de las orillas
+  for(let k=0;k<70;k++){let x=Math.random()*W,yy=Math.random()<.5?Math.random()*PX*6.5:H-Math.random()*PX*6.5;g.strokeStyle='rgba(255,130,40,.55)';g.lineWidth=2;g.beginPath();g.moveTo(x,yy);
+    for(let s=0;s<5;s++){x+=(Math.random()-.5)*40;yy+=(Math.random()-.5)*40;g.lineTo(x,yy);}g.stroke();}
   g.strokeStyle='rgba(246,232,206,.92)';g.lineWidth=PX*.22;
   g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
