@@ -214,9 +214,7 @@ async function build(){
   for(const s of [-1,1])for(let x=-L;x<=L;x+=16)mist(x+8,s*(B-.2),16,0);
   mist(RX,0,22,Math.PI/2);
   addDetails();
-  await Promise.all(['Deer','Stag','Fox'].map(loadA));
-  beast('Deer',L+14,-1.5,.42,-Math.PI/2,'deer');beast('Stag',L+17,6,.46,-Math.PI/2-.4,'deer');
-  beast('Fox',-E-7.8,-6,.22,0,'fox');beast('Fox',12,-(B+2.2),.22,Math.PI/2,'fox');
+
   for(let i=0;i<60;i++)makeFirefly();for(let i=0;i<16;i++)makeLeaf();
   document.getElementById('msg').remove();
 }
@@ -285,15 +283,15 @@ function addDetails(){
   const RX=L+7.5;
   // arriba, entre la portería y el río
   logBench(L+4.2,-9.2,Math.PI/2);flagPole(L+3.2,-GW-1.6,'#2f6b3a','#e8c25a');flagPole(L+3.2,GW+1.6,'#2f6b3a','#e8c25a');
-  squirrel(L+4.2,-9.2,.62);
+  
   frog(RX+.3,-6.5);frog(RX-.4,7.5);
-  kenney('stump_oldTall',3.4,L+10.5,-9.5,null,{});owl(L+10.5,-9.5,heightAt(L+10.5,-9.5)+2.25);
+  kenney('stump_oldTall',3.4,L+10.5,-9.5,null,{});
   signpost(L+4.6,10.6,'◀ ACADEMIA','PUEBLO ▶');kenney('mushroom_tanGroup',3.2,L+5.2,10,null,{});
   for(let i=0;i<7;i++){const a=i/7*6.28;kenney('mushroom_redTall',3,L+16+Math.cos(a)*1.6,-9+Math.sin(a)*1.6,null,{y:0});}
   addGlow(new THREE.Vector3(L+16,.6,-9),2.2);fairyHouse(L+15.5,9.5);
   // abajo, detrás de la portería de la cámara
   logBench(-E-6.6,-2.6,Math.PI/2);logBench(-E-6.6,2.6,Math.PI/2);flagPole(-E-2.6,-GW-1.6,'#7a2d2a','#e8c25a');flagPole(-E-2.6,GW+1.6,'#7a2d2a','#e8c25a');
-  squirrel(-E-4.2,-8.2,2.28);snail(-E-4.4,-10.6,2.26);
+  
   fairyHouse(-E-9.5,7.5);signpost(-E-2.4,-14.2,'BOSQUE','▲ GOL');
   for(let i=0;i<6;i++){const a=i/6*6.28;kenney('mushroom_redTall',2.6,-E-9.5+Math.cos(a)*1.3,-1+Math.sin(a)*1.3+0,null,{y:0});}addGlow(new THREE.Vector3(-E-9.5,.5,-1),1.8);
 }
