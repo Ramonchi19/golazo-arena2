@@ -436,6 +436,12 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 .rpack{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:12px}.rpack .pack{width:70px}.rpack small,.full{color:var(--muted)}
 .newl{margin-top:12px;font-size:18px;color:#8af0a8}
 #end .btn{margin-top:16px}
+.offmk{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45);pointer-events:none;display:none;z-index:7;color:#fff;font:15px/28px 'Lilita One',sans-serif;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.offmk.me{width:42px;height:42px;margin:-21px 0 0 -21px;line-height:36px;color:#3a2500;text-shadow:none;animation:offp 1s ease-in-out infinite}
+.offmk b{font-weight:400;font-size:13px}.offmk.me b{font-size:15px}
+.offmk i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-7px 0 0 -5px;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid #fff;transform-origin:5px 7px}
+@keyframes offp{50%{box-shadow:0 0 0 6px rgba(255,204,51,.35),0 2px 8px rgba(0,0,0,.45)}}
+@media (prefers-reduced-motion:reduce){.offmk.me{animation:none}}
 </style>
 </head>
 <body>
@@ -1148,7 +1154,7 @@ function animGLB(m,p,dt){
     if(A.run)A.run.timeScale=clamp(sp/5.6,.6,1.7);
     if(p.gk)gkGLBActions(p,m);
     const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);if(Bz.sp2)Bz.sp2.b.quaternion.copy(Bz.sp2.q0);}
-    m.mixer.update(dt);m.bones.feet.forEach(f=>f.scale.setScalar(m.foot));if(p.gk||p.demoGK)gkGLBPose(p,m,dt);else{if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}return;
+    m.mixer.update(dt);m.bones.feet.forEach(f=>f.scale.setScalar(m.foot));if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);return; // v17: sin pose procedural del portero (rebote tipo resorte)
   }
   // respaldo: solo patada + movimiento por código
   if(p.kickT>0&&!p._k&&m.kick){m.kick.reset();m.kick.timeScale=1+(1-(p.kickPow||1))*.9;m.kick.play();}p._k=p.kickT>0;
@@ -2190,12 +2196,15 @@ function render(dt){
     if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
   // cámara que sigue al balón (donde está la jugada)
   if(!camFit||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitWidthCam();
-  const fx=ball?ball.x:0;camX+=(clamp(fx,-L+camFit.edge,L-camFit.edge)-camX)*Math.min(1,dt*3);camZ=0;
-  const zoom=goalCam>0?.93:1,sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom;
-  camera.position.set(camX+camFit.off-Math.cos(CAM_EL2)*dd+sy,Math.sin(CAM_EL2)*dd+sy,sx);
-  camera.lookAt(camX+camFit.off,0,0);
+  // sigue al balón con un poco de anticipación; nunca deja de ver la portería cuando el balón se acerca
+  const bx=ball?ball.x+clamp(ball.vx||0,-14,14)*.18:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.12:0;
+  const xLim=Math.max(0,L+4-camFit.span/2),zLim=Math.max(0,HW+2.5-camFit.hwVis);
+  camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*3.2);camZ+=(clamp(bz*.75,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
+  const zoom=goalCam>0?.93:1,sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom,tx=camX-camFit.cOff*zoom;
+  camera.position.set(tx-Math.cos(CAM_EL2)*dd+sy,Math.sin(CAM_EL2)*dd+sy,camZ+sx);
+  camera.lookAt(tx,0,camZ);
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
-  drawAim();if(useBloom())composer.render();else renderer.render(scene,camera);
+  drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
 }
 
 // ================== CÁMARA: CANCHA COMPLETA ==================
@@ -2214,17 +2223,37 @@ function fitCamera(){
 // ancho fijo: las bandas de la cancha quedan a un margen constante de los bordes de la pantalla
 const CAM_EL2=1.0;
 function fitWidthCam(){
-  const w=cvs.clientWidth||360,h=cvs.clientHeight||640,asp=w/Math.max(1,h),tab=asp>.62;
-  // en tablets se abre un poco más (se ve algo de tribuna a los lados)
-  const margin=tab?1.2+Math.min(4,(asp-.62)*12):1.2;
-  const cam=new THREE.PerspectiveCamera(camera.fov,asp,.5,600);const yMin=-1+Math.min(.42,170/h*2);
-  const fits=d=>{cam.position.set(-Math.cos(CAM_EL2)*d,Math.sin(CAM_EL2)*d,0);cam.lookAt(0,0,0);cam.updateMatrixWorld();cam.updateProjectionMatrix();
-    for(let x=-40;x<=40;x+=1.5)for(const s of [-1,1]){const v=new THREE.Vector3(x,0,s*(HW+margin)).project(cam);if(v.z<1&&v.y>=yMin&&v.y<=1&&Math.abs(v.x)>.985)return false;}return true;};
-  let lo=15,hi=260;for(let k=0;k<24;k++){const mid=(lo+hi)/2;if(fits(mid))hi=mid;else lo=mid;}
-  // cuánto se ve hacia adelante y hacia atrás para no salirse de la cancha a lo largo
-  cam.position.set(-Math.cos(CAM_EL2)*hi,Math.sin(CAM_EL2)*hi,0);cam.lookAt(0,0,0);cam.updateMatrixWorld();
-  let back=0;for(let x=0;x>-80;x-=.5){const v=new THREE.Vector3(x,0,0).project(cam);if(v.y<yMin){back=-x;break;}}
-  camFit={w,h,dist:hi,off:4,edge:Math.max(6,Math.min(L-2,back*.55))};
+  // v17: cámara cercana. Se ve ~3/4 del largo de la cancha y sigue al balón.
+  const w=cvs.clientWidth||360,h=cvs.clientHeight||640,asp=w/Math.max(1,h);
+  const cam=new THREE.PerspectiveCamera(camera.fov,asp,.5,600),yMin=-1+Math.min(.42,170/h*2),yTop=.9;
+  const ground=(sx,sy)=>{const v=new THREE.Vector3(sx,sy,.5).unproject(cam).sub(cam.position);const t=-cam.position.y/v.y;return cam.position.clone().add(v.multiplyScalar(t));};
+  const view=d=>{cam.position.set(-Math.cos(CAM_EL2)*d,Math.sin(CAM_EL2)*d,0);cam.lookAt(0,0,0);cam.updateMatrixWorld();cam.updateProjectionMatrix();
+    const b=ground(0,yMin),f=ground(0,yTop);return {b:b.x,f:f.x};};
+  const want=2*L*.75;let lo=8,hi=200;
+  for(let k=0;k<26;k++){const mid=(lo+hi)/2,v=view(mid);if(v.f-v.b>want)hi=mid;else lo=mid;}
+  const v=view(hi),cOff=(v.b+v.f)/2,span=v.f-v.b;
+  const mid=ground(1,(yMin+yTop)/2),hwVis=Math.abs(mid.z);
+  camFit={w,h,dist:hi,cOff,span,hwVis,yMin,yTop};
+}
+
+// v17: flechita en el borde para mis jugadores que no se ven en pantalla
+let offEls=null;const _ov=new THREE.Vector3();
+function offMarkers(){
+  if(!offEls){const host=cvs.parentNode;offEls=[];for(let i=0;i<6;i++){const d=document.createElement('div');d.className='offmk';d.innerHTML='<b></b><i></i>';host.appendChild(d);offEls.push(d);}}
+  let n=0;
+  if(state==='play'&&camFit){const W=cvs.clientWidth,H=cvs.clientHeight,top=70,bot=Math.min(H-30,(1-camFit.yMin)/2*H-12),lft=28,rgt=W-28,cx=W/2,cy=(top+bot)/2;
+    const col='#'+new THREE.Color((TEAMKIT[0]&&TEAMKIT[0].j)||0x2f7bff).getHexString();
+    for(const p of players){if(p.team!==0||n>=offEls.length)continue;
+      _ov.set(p.x,1,p.z).project(camera);let sx=(_ov.x+1)/2*W,sy=(1-_ov.y)/2*H;const behind=_ov.z>1;
+      if(!behind&&sx>=lft&&sx<=rgt&&sy>=top&&sy<=bot)continue;
+      if(behind){sx=W-sx;sy=H-sy;}
+      const dx=sx-cx,dy=sy-cy;let k=Infinity;if(dx>0)k=Math.min(k,(rgt-cx)/dx);if(dx<0)k=Math.min(k,(lft-cx)/dx);if(dy>0)k=Math.min(k,(bot-cy)/dy);if(dy<0)k=Math.min(k,(top-cy)/dy);
+      const px=cx+dx*k,py=cy+dy*k,el=offEls[n++],me=p===user;
+      el.style.display='block';el.style.transform=`translate(${px}px,${py}px)`;el.classList.toggle('me',me);el.style.background=me?'#ffcc33':col;
+      el.firstChild.textContent=p.gk?'POR':((p.card&&(p.card.nick||p.card.name)||'?').slice(0,1).toUpperCase());
+      el.lastChild.style.transform=`rotate(${Math.atan2(dy,dx)}rad) translateX(${me?27:24}px)`;}
+  }
+  for(let i=n;i<(offEls?offEls.length:0);i++)offEls[i].style.display='none';
 }
 function resize(){if(!renderer)return;const w=cvs.clientWidth,h=cvs.clientHeight;renderer.setSize(w,h,false);if(composer){composer.setPixelRatio&&composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);bloomPass.resolution.set(Math.max(64,w/2),Math.max(64,h/2));}camera.aspect=w/Math.max(1,h);camera.fov=camera.aspect<1?40:34;camera.updateProjectionMatrix();camFit=null;}
 window.addEventListener('resize',resize);
