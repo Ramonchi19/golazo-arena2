@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Golazo Arena · Probador de colores</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+:root{--panel:#16213f;--panel2:#1f2d55;--ink:#f3f6ff;--muted:#9fb0d8;--acc:#ffcf3a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0d1530;color:var(--ink);font:15px/1.35 system-ui,sans-serif}
+#wrap{display:flex;height:100%}
+#view{flex:1;position:relative;min-height:45vh}
+#c{width:100%;height:100%;display:block}
+#hud{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
+#hud button{font-family:'Lilita One',sans-serif;font-size:15px}
+#side{width:360px;max-width:100%;background:var(--panel);overflow:auto;padding:12px 14px 40px}
+h1{font-family:'Lilita One',sans-serif;font-weight:400;font-size:22px;margin:2px 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+details{background:var(--panel2);border-radius:12px;margin:8px 0;padding:6px 10px}
+summary{font-family:'Lilita One',sans-serif;font-size:17px;cursor:pointer;padding:4px 0}
+.row{display:flex;align-items:center;gap:8px;margin:7px 0}
+.row label{flex:1;font-size:14px}
+.row input[type=range]{flex:1.3}
+.row output{width:40px;text-align:right;color:var(--acc);font-variant-numeric:tabular-nums}
+.row input[type=color]{width:46px;height:30px;border:0;background:none;padding:0}
+.row select{flex:1.3;background:#0d1530;color:var(--ink);border:1px solid #3a4a7a;border-radius:8px;padding:5px}
+button{background:var(--acc);color:#2a1d00;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+button.alt{background:#2f3f73;color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#presets{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+textarea{width:100%;height:150px;background:#0d1530;color:#cfe0ff;border:1px solid #3a4a7a;border-radius:10px;font:12px/1.3 ui-monospace,monospace;padding:8px}
+#msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(13,21,48,.85);padding:14px 18px;border-radius:12px;font-family:'Lilita One',sans-serif;font-size:18px;text-align:center}
+@media (max-width:820px),(orientation:portrait){#wrap{flex-direction:column}#side{width:100%;height:55vh}}
+</style>
+</head><body>
+<div id="wrap">
+  <div id="view"><canvas id="c"></canvas>
+    <div id="hud">
+      <button class="alt" id="bCam">Vista cercana</button>
+      <button class="alt" id="bAnim">Animación: quietos</button>
+    </div>
+    <div id="msg">Cargando personajes…</div>
+  </div>
+  <div id="side">
+    <h1>Probador de colores</h1>
+    <p class="sub">Mueve los controles hasta que te guste. Al final copia los valores y pásamelos.</p>
+    <div id="presets">
+      <button class="alt" data-p="actual">Como el juego ahora</button>
+      <button data-p="clash">Estilo Clash</button>
+      <button class="alt" data-p="calido">Clash más cálido</button>
+    </div>
+    <div id="ctl"></div>
+    <details open><summary>Valores para el juego</summary>
+      <textarea id="out" readonly></textarea>
+      <div class="row"><button id="bCopy">Copiar valores</button><span id="copied" class="sub"></span></div>
+    </details>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/GammaCorrectionShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+// ---------- controles ----------
+const L=32,HW=16,GW=4.5,GH=2.9;
+const DEF=[
+ ['Cancha',[
+  ['pat','Patrón del pasto','sel',['franjas','cuadros','liso']],
+  ['g1','Pasto tono 1','col'],['g2','Pasto tono 2','col'],
+  ['tam','Tamaño de franja/cuadro (m)','rng',1,8,.5],
+  ['var','Variación natural','rng',0,1,.05],
+  ['lin','Color de líneas','col'],['lina','Fuerza de líneas','rng',.2,1,.05],
+  ['bor','Suelo alrededor','col'],['cielo','Cielo','col']]],
+ ['Luz',[
+  ['sol','Sol (fuerza)','rng',0,2.5,.05],['solc','Color del sol','col'],
+  ['amb','Luz ambiente (fuerza)','rng',0,1.5,.05],['ambc','Ambiente arriba','col'],['ambs','Ambiente abajo','col'],
+  ['som','Oscuridad de sombras','rng',0,1,.05],
+  ['tm','Corrección de color','sel',['ninguna','ACES (suave)','Reinhard']],['exp','Exposición','rng',.5,2,.05],
+  ['srgb','Colores reales (sRGB)','sel',['sí','no']]]],
+ ['Personajes',[
+  ['shd','Sombreado','sel',['caricatura','suave','realista']],
+  ['sat','Saturación','rng',.5,2,.05],['con','Contraste','rng',.6,1.6,.02],['bri','Brillo','rng',.6,1.5,.02],
+  ['eqa','Uniforme equipo A','col'],['eqb','Uniforme equipo B','col']]],
+ ['Cerco y efectos',[
+  ['cer','Color del cerco','col'],['cerb','Cerco brillante','sel',['no','sí']],
+  ['grs','Grosor del cerco','rng',1,3,.1],
+  ['blo','Brillo general (bloom)','rng',0,1.2,.05]]]
+];
+const PRE={
+ actual:{pat:'franjas',g1:'#5fd23c',g2:'#4cbf2e',tam:4.6,var:.4,lin:'#ffffff',lina:.8,bor:'#8a6b45',cielo:'#9fd0ff',
+  sol:.95,solc:'#ffffff',amb:.8,ambc:'#d6e4ff',ambs:'#24451f',som:.55,tm:'ninguna',exp:1,srgb:'no',
+  shd:'caricatura',sat:1,con:1,bri:1,eqa:'#2f6bff',eqb:'#ff4040',cer:'#59e3ff',cerb:'sí',grs:1,blo:.6},
+ clash:{pat:'cuadros',g1:'#9ec24a',g2:'#a9ca52',tam:2,var:.25,lin:'#fff6dc',lina:.55,bor:'#7cae31',cielo:'#bfe6ff',
+  sol:1.35,solc:'#fff0d2',amb:.5,ambc:'#fff4e0',ambs:'#6b5a3a',som:.45,tm:'ACES (suave)',exp:1.15,srgb:'sí',
+  shd:'suave',sat:1.25,con:1.08,bri:1.05,eqa:'#2f7bff',eqb:'#ff3d4f',cer:'#8a5a2b',cerb:'no',grs:2,blo:0},
+ calido:{pat:'cuadros',g1:'#a3c043',g2:'#b0ca4b',tam:2,var:.3,lin:'#fff1cf',lina:.6,bor:'#6fa22c',cielo:'#ffe2b8',
+  sol:1.5,solc:'#ffe2b0',amb:.42,ambc:'#ffe9c9',ambs:'#5a4527',som:.4,tm:'ACES (suave)',exp:1.2,srgb:'sí',
+  shd:'suave',sat:1.35,con:1.12,bri:1.08,eqa:'#2a7dff',eqb:'#ff3a3a',cer:'#7a4f26',cerb:'no',grs:2.2,blo:.08}
+};
+const V=Object.assign({},PRE.clash);
+const ctl=document.getElementById('ctl'),inputs={};
+for(const [title,list] of DEF){
+  const d=document.createElement('details');if(title==='Cancha'||title==='Personajes')d.open=true;
+  d.innerHTML='<summary>'+title+'</summary>';ctl.appendChild(d);
+  for(const [k,lab,t,a,b,s] of list){
+    const r=document.createElement('div');r.className='row';const id='i_'+k;
+    let h='<label for="'+id+'">'+lab+'</label>';
+    if(t==='col')h+='<input type="color" id="'+id+'">';
+    else if(t==='rng')h+='<input type="range" id="'+id+'" min="'+a+'" max="'+b+'" step="'+s+'"><output id="o_'+k+'"></output>';
+    else h+='<select id="'+id+'">'+a.map(o=>'<option>'+o+'</option>').join('')+'</select>';
+    r.innerHTML=h;d.appendChild(r);
+    const el=r.querySelector('#'+id);inputs[k]=el;
+    el.addEventListener('input',()=>{V[k]=t==='rng'?parseFloat(el.value):el.value;syncOut(k);apply(k);});
+  }
+}
+function syncOut(k){const o=document.getElementById('o_'+k);if(o)o.textContent=(+V[k]).toFixed(2);
+  document.getElementById('out').value=JSON.stringify(V,null,1);}
+function loadPreset(p){Object.assign(V,PRE[p]);for(const k in inputs){inputs[k].value=V[k];syncOut(k);}apply('*');}
+document.querySelectorAll('#presets button').forEach(b=>b.onclick=()=>loadPreset(b.dataset.p));
+document.getElementById('bCopy').onclick=async()=>{const t=document.getElementById('out');t.select();
+  try{await navigator.clipboard.writeText(t.value);}catch(e){document.execCommand('copy');}
+  document.getElementById('copied').textContent='Copiado. Pégalo en el chat.';};
+
+// ---------- escena ----------
+const cvs=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,.5,300);
+const hemi=new THREE.HemisphereLight(0xffffff,0x444444,.8);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffffff,1);sun.position.set(-16,42,22);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-40,right:40,top:26,bottom:-26,near:8,far:95});
+sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;scene.add(sun);
+const shadeFill=new THREE.AmbientLight(0xffffff,0);scene.add(shadeFill);
+
+const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
+field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
+const outer=new THREE.Mesh(new THREE.PlaneGeometry(260,260),new THREE.MeshLambertMaterial());
+outer.rotation.x=-Math.PI/2;outer.position.y=-.15;outer.receiveShadow=true;scene.add(outer);
+
+let fieldTex=null;
+function drawField(){
+  const PX=26,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;g.fillStyle=V.g2;g.fillRect(0,0,W,H);
+  const s=V.tam;
+  if(V.pat==='franjas'){const n=Math.round(2*L/s);for(let k=0;k<n;k++){g.fillStyle=k%2?V.g1:V.g2;g.fillRect(X(-L+k*(2*L/n)),0,(2*L/n)*PX+1,H);}}
+  else if(V.pat==='cuadros'){for(let x=-36,i=0;x<36;x+=s,i++)for(let z=-24,j=0;z<24;z+=s,j++){g.fillStyle=(i+j)%2?V.g1:V.g2;g.fillRect(X(x),Z(z),s*PX+1,s*PX+1);}}
+  else{g.fillStyle=V.g1;g.fillRect(0,0,W,H);}
+  for(let k=0;k<380;k++){const x=Math.random()*W,y=Math.random()*H,r=30+Math.random()*120,gr=g.createRadialGradient(x,y,0,x,y,r),lt=Math.random()<.5;
+    gr.addColorStop(0,lt?'rgba(255,255,200,'+(.07*V.var)+')':'rgba(0,50,0,'+(.07*V.var)+')');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
+  for(let k=0;k<Math.round(22000*V.var);k++){const x=Math.random()*W,y=Math.random()*H,l=3+Math.random()*5;g.strokeStyle=Math.random()<.5?'rgba(255,255,210,.09)':'rgba(0,40,0,.11)';g.lineWidth=1;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.random()*3-1.5,y-l);g.stroke();}
+  g.globalAlpha=V.lina;g.strokeStyle=V.lin;g.fillStyle=V.lin;g.lineWidth=PX*.2;
+  g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
+  g.beginPath();g.arc(X(0),Z(0),5*PX,0,Math.PI*2);g.stroke();
+  for(const sd of [-1,1]){g.strokeRect(X(sd>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(sd>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
+  g.globalAlpha=1;
+  if(fieldTex)fieldTex.dispose();fieldTex=new THREE.CanvasTexture(c);fieldTex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  fieldTex.encoding=V.srgb==='sí'?THREE.sRGBEncoding:THREE.LinearEncoding;field.material.map=fieldTex;field.material.needsUpdate=true;
+}
+
+// porterías simples
+const postM=new THREE.MeshLambertMaterial({color:0xf4f6fb});
+for(const s of [-1,1]){for(const z of [-GW,GW]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,GH,10),postM);p.position.set(s*L,GH/2,z);p.castShadow=true;scene.add(p);}
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,GW*2+.24,10),postM);b.rotation.x=Math.PI/2;b.position.set(s*L,GH,0);b.castShadow=true;scene.add(b);}
+
+// cerco grueso (sin piezas de menos de un píxel)
+let fence=new THREE.Group();scene.add(fence);
+const fenceM=new THREE.MeshLambertMaterial(),postFM=new THREE.MeshLambertMaterial({color:0x3a2a1a});
+function buildFence(){
+  scene.remove(fence);fence=new THREE.Group();scene.add(fence);const k=V.grs;
+  const segs=[[-L-.6,-HW-.6,L+.6,-HW-.6],[-L-.6,HW+.6,L+.6,HW+.6]];
+  for(const s of [-1,1])segs.push([s*(L+.6),-HW-.6,s*(L+.6),-GW-.3],[s*(L+.6),GW+.3,s*(L+.6),HW+.6]);
+  for(const [x1,z1,x2,z2] of segs){const len=Math.hypot(x2-x1,z2-z1),ang=-Math.atan2(z2-z1,x2-x1);
+    for(const y of [.45,.95]){const b=new THREE.Mesh(new THREE.BoxGeometry(len,.12*k,.12*k),fenceM);b.position.set((x1+x2)/2,y,(z1+z2)/2);b.rotation.y=ang;b.castShadow=true;fence.add(b);}
+    const n=Math.max(1,Math.round(len/4));for(let i=0;i<=n;i++){const t=i/n,p=new THREE.Mesh(new THREE.BoxGeometry(.16*k,1.2,.16*k),postFM);p.position.set(x1+(x2-x1)*t,.6,z1+(z2-z1)*t);p.castShadow=true;fence.add(p);}}
+}
+
+// ---------- personajes ----------
+const U={uSat:{value:1},uCon:{value:1},uBri:{value:1},uSRGB:{value:0}};
+const TEAMS=[{value:new THREE.Color()},{value:new THREE.Color()}];
+let toonGrad=null;
+function grad(){if(toonGrad)return toonGrad;const d=new Uint8Array([90,170,255]);toonGrad=new THREE.DataTexture(d,3,1,THREE.LuminanceFormat);
+  toonGrad.minFilter=toonGrad.magFilter=THREE.NearestFilter;toonGrad.needsUpdate=true;return toonGrad;}
+const GLSL=`
+uniform float uSat,uCon,uBri,uSRGB;uniform vec3 uKit;
+vec3 rgb2hsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);float e=1.0e-10;return vec3(abs(q.z+(q.w-q.y)/(6.*d+e)),d/(q.x+e),q.x);}
+vec3 hsv2rgb(vec3 c){vec4 K=vec4(1.,2./3.,1./3.,3.);vec3 p=abs(fract(c.xxx+K.xyz)*6.-K.www);return c.z*mix(K.xxx,clamp(p-K.xxx,0.,1.),c.y);}
+vec3 golazoColor(vec3 c){
+  if(uSRGB>.5)c=pow(max(c,0.),vec3(1./2.2));
+  vec3 h=rgb2hsv(c);float m=smoothstep(.12,.06,abs(h.x-.64))*smoothstep(.3,.45,h.y);
+  vec3 k=rgb2hsv(uKit);c=mix(c,hsv2rgb(vec3(k.x,clamp(k.y*(.7+.3*h.y),0.,1.),clamp(h.z*(.55+.6*k.z),0.,1.))),m);
+  float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,uSat);c=(c-.5)*uCon+.5;c*=uBri;c=clamp(c,0.,1.);
+  if(uSRGB>.5)c=pow(c,vec3(2.2));return c;}
+`;
+function charMat(src,team){
+  const p={map:src.map,skinning:true};let m;
+  if(V.shd==='caricatura')m=new THREE.MeshToonMaterial(Object.assign(p,{gradientMap:grad()}));
+  else if(V.shd==='suave')m=new THREE.MeshLambertMaterial(p);
+  else m=new THREE.MeshStandardMaterial(Object.assign(p,{roughness:.75,metalness:0}));
+  m.onBeforeCompile=sh=>{Object.assign(sh.uniforms,U);sh.uniforms.uKit=TEAMS[team];
+    sh.fragmentShader=GLSL+sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n diffuseColor.rgb=golazoColor(diffuseColor.rgb);');};
+  m.customProgramCacheKey=()=>'golazo-'+V.shd;return m;
+}
+const ROSTER=[['zurdito',0,-6,-3],['leon',0,-9,4],['coletazo',0,-14,0],['turbo',1,6,3],['muralla',1,9,-4],['gato',1,14,0]];
+const players=[];let baseIdle=null,clips={};
+const loader=new THREE.GLTFLoader();
+const loadG=u=>new Promise((res,rej)=>loader.load(u,res,undefined,rej));
+async function loadAll(){
+  try{const b=await loadG('assets/base_anims.glb');for(const c of b.animations)clips[c.name]=c;}catch(e){console.warn(e);}
+  try{const a=await loadG('assets/anims.glb');for(const c of a.animations){c.tracks=c.tracks.filter(t=>!/\.position$/.test(t.name));clips[c.name]=c;}}catch(e){console.warn(e);}
+  let ok=0;
+  await Promise.all(ROSTER.map(async([id,team,x,z])=>{
+    try{const g=await loadG('assets/models/'+id+'.glb');const m=g.scene;
+      m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;o.userData.src=o.material;o.material=charMat(o.material,team);}});
+      m.scale.multiplyScalar(2.4/1.7); // los modelos miden 1.70 m; en el juego ~2.4
+      const holder=new THREE.Group();holder.add(m);holder.position.set(x,0,z);holder.rotation.y=team===0?Math.PI/2:-Math.PI/2;scene.add(holder);
+      const mix=new THREE.AnimationMixer(m);players.push({id,team,m,mix,holder});ok++;
+    }catch(e){console.warn('modelo',id,e);}
+  }));
+  playAnim();
+  const msg=document.getElementById('msg');msg.textContent=ok?'':'No se pudieron cargar los personajes. Abre esta página desde GitHub Pages.';if(ok)msg.remove();
+}
+const ANIMS=[['quietos','idle'],['trotando','jog'],['festejando','cheer']];let animIx=0;
+function playAnim(){const [lab,name]=ANIMS[animIx];document.getElementById('bAnim').textContent='Animación: '+lab;
+  for(const p of players){p.mix.stopAllAction();const c=clips[name]||clips.idle;if(c){const a=p.mix.clipAction(c);a.time=Math.random()*c.duration;a.play();}}}
+document.getElementById('bAnim').onclick=()=>{animIx=(animIx+1)%ANIMS.length;playAnim();};
+function rebuildChars(){for(const p of players)p.m.traverse(o=>{if(o.isMesh&&o.userData.src){o.material.dispose();o.material=charMat(o.userData.src,p.team);}});}
+
+// ---------- bloom ----------
+let composer=null,bloom=null,gammaPass=null;
+function setupBloom(){try{composer=new THREE.EffectComposer(renderer);composer.addPass(new THREE.RenderPass(scene,camera));
+  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(256,256),.6,.35,.86);composer.addPass(bloom);
+  gammaPass=new THREE.ShaderPass(THREE.GammaCorrectionShader);composer.addPass(gammaPass);}catch(e){composer=null;}}
+
+// ---------- aplicar ----------
+const C=h=>new THREE.Color(h);
+function apply(k){
+  const all=k==='*';
+  if(all||['g1','g2','pat','tam','var','lin','lina','srgb'].includes(k))drawField();
+  if(all||k==='bor')outer.material.color=C(V.bor);
+  if(all||k==='cielo'){scene.background=C(V.cielo);}
+  sun.intensity=V.sol;sun.color=C(V.solc);hemi.intensity=V.amb;hemi.color=C(V.ambc);hemi.groundColor=C(V.ambs);
+  shadeFill.intensity=(1-V.som)*.35;
+  renderer.toneMapping=V.tm==='ACES (suave)'?THREE.ACESFilmicToneMapping:V.tm==='Reinhard'?THREE.ReinhardToneMapping:THREE.NoToneMapping;
+  renderer.toneMappingExposure=V.exp;
+  renderer.outputEncoding=V.srgb==='sí'?THREE.sRGBEncoding:THREE.LinearEncoding;
+  U.uSat.value=V.sat;U.uCon.value=V.con;U.uBri.value=V.bri;U.uSRGB.value=V.srgb==='sí'?1:0;
+  TEAMS[0].value.set(V.eqa);TEAMS[1].value.set(V.eqb);
+  fenceM.color=C(V.cer);fenceM.emissive=V.cerb==='sí'?C(V.cer):C('#000000');fenceM.emissiveIntensity=V.cerb==='sí'?.9:0;
+  if(all||k==='grs')buildFence();
+  if(all||k==='shd')rebuildChars();
+  if(all||['srgb','tm'].includes(k)){for(const p of players)p.m.traverse(o=>{if(o.isMesh&&o.material.map){o.material.map.encoding=V.srgb==='sí'?THREE.sRGBEncoding:THREE.LinearEncoding;o.material.map.needsUpdate=true;o.material.needsUpdate=true;}});
+    field.material.needsUpdate=true;outer.material.needsUpdate=true;fenceM.needsUpdate=true;postM.needsUpdate=true;}
+  if(bloom)bloom.strength=V.blo;
+  if(gammaPass)gammaPass.enabled=V.srgb==='sí';
+}
+
+// ---------- cámara ----------
+let close=false;
+document.getElementById('bCam').onclick=()=>{close=!close;document.getElementById('bCam').textContent=close?'Vista de partido':'Vista cercana';};
+function resize(){const w=cvs.clientWidth,h=cvs.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();
+  if(composer){composer.setSize(w,h);bloom.resolution.set(Math.max(128,w/2),Math.max(128,h/2));}}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();let t=0;
+function loop(){requestAnimationFrame(loop);const dt=Math.min(.05,clock.getDelta());t+=dt;
+  for(const p of players)p.mix.update(dt);
+  if(close){camera.position.set(-17+Math.sin(t*.25)*1.5,5.2,9);camera.lookAt(-9,1.3,0);}
+  else{const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*camera.aspect),d=Math.max(30,(2*HW+8)/2/Math.tan(hf/2)/Math.cos(.2));
+    camera.position.set(-Math.cos(1)*d,Math.sin(1)*d,0);camera.lookAt(0,0,0);}
+  if(composer&&V.blo>0.01)composer.render();else renderer.render(scene,camera);}
+setupBloom();
+for(const k in inputs){inputs[k].value=V[k];syncOut(k);}
+apply('*');resize();loop();loadAll();
+</script>
+</body></html>
