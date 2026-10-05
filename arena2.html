@@ -25,6 +25,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 const L=32,HW=16,GW=4.5,GH=2.9,B=HW+1.0,E=L+1.2;
 // ===== paleta del bosque: verdes profundos, troncos oscuros, hongos rojos, faroles ámbar =====
@@ -194,7 +195,7 @@ async function build(){
   }
   // arriba: riachuelo, puente y hongo gigante (la identidad del bosque)
   const RX=L+7.5;stream(RX,-GW-8,GW+8,3.2);
-  kenney('bridge_wood',3.4,RX,0,Math.PI/2,{y:0});
+  kenney('bridge_wood',3.4,RX,0,0,{y:0}); // v25: girado para cruzar el río
   for(let z=-GW-7;z<=GW+7;z+=1.8){if(Math.abs(z)<2.2)continue;kenney(pickC(['rock_smallA','gy-rocks']),1,RX+(Math.random()<.5?-1.9:1.9),z,null,{h:.45+Math.random()*.3,y:0});}
   for(let i=0;i<5;i++)kenney('lily_large',3,RX+(Math.random()-.5)*1.6,(Math.random()<.5?-1:1)*(3+Math.random()*7),null,{y:.05,noShadow:true});
   giantMushroom(L+12.5,-5.5,1.15);giantMushroom(L+11,6.5,.75);giantMushroom(L+15,1.5,.55);
@@ -213,6 +214,9 @@ async function build(){
   for(const s of [-1,1])for(let x=-L;x<=L;x+=16)mist(x+8,s*(B-.2),16,0);
   mist(RX,0,22,Math.PI/2);
   addDetails();
+  await Promise.all(['Deer','Stag','Fox'].map(loadA));
+  beast('Deer',L+14,-1.5,.42,-Math.PI/2,'deer');beast('Stag',L+17,6,.46,-Math.PI/2-.4,'deer');
+  beast('Fox',-E-7.8,-6,.22,0,'fox');beast('Fox',12,-(B+2.2),.22,Math.PI/2,'fox');
   for(let i=0;i<60;i++)makeFirefly();for(let i=0;i<16;i++)makeLeaf();
   document.getElementById('msg').remove();
 }
@@ -281,7 +285,7 @@ function addDetails(){
   const RX=L+7.5;
   // arriba, entre la portería y el río
   logBench(L+4.2,-9.2,Math.PI/2);flagPole(L+3.2,-GW-1.6,'#2f6b3a','#e8c25a');flagPole(L+3.2,GW+1.6,'#2f6b3a','#e8c25a');
-  rabbit(L+5,-6.6);rabbit(L+4.6,8.4,'#a8a29a');squirrel(L+4.2,-9.2,.62);
+  squirrel(L+4.2,-9.2,.62);
   frog(RX+.3,-6.5);frog(RX-.4,7.5);
   kenney('stump_oldTall',3.4,L+10.5,-9.5,null,{});owl(L+10.5,-9.5,heightAt(L+10.5,-9.5)+2.25);
   signpost(L+4.6,10.6,'◀ ACADEMIA','PUEBLO ▶');kenney('mushroom_tanGroup',3.2,L+5.2,10,null,{});
@@ -289,10 +293,31 @@ function addDetails(){
   addGlow(new THREE.Vector3(L+16,.6,-9),2.2);fairyHouse(L+15.5,9.5);
   // abajo, detrás de la portería de la cámara
   logBench(-E-6.6,-2.6,Math.PI/2);logBench(-E-6.6,2.6,Math.PI/2);flagPole(-E-2.6,-GW-1.6,'#7a2d2a','#e8c25a');flagPole(-E-2.6,GW+1.6,'#7a2d2a','#e8c25a');
-  rabbit(-E-4.5,0);rabbit(-E-8.8,-6,'#a8a29a');squirrel(-E-4.2,-8.2,2.28);snail(-E-4.4,-10.6,2.26);
+  squirrel(-E-4.2,-8.2,2.28);snail(-E-4.4,-10.6,2.26);
   fairyHouse(-E-9.5,7.5);signpost(-E-2.4,-14.2,'BOSQUE','▲ GOL');
   for(let i=0;i<6;i++){const a=i/6*6.28;kenney('mushroom_redTall',2.6,-E-9.5+Math.cos(a)*1.3,-1+Math.sin(a)*1.3+0,null,{y:0});}addGlow(new THREE.Vector3(-E-9.5,.5,-1),1.8);
 }
+
+
+// ===== animales animados (Quaternius, CC0) =====
+const AN={},beasts=[];
+const loadA=n=>new Promise(res=>loader.load('assets/env/animals/'+n+'.glb',g=>{AN[n]=g;res();},undefined,()=>{console.warn('falta animal',n);res();}));
+function beast(n,x,z,S,ry,kind){const src=AN[n];if(!src)return;const o=THREE.SkeletonUtils.clone(src.scene);
+  o.traverse(c=>{if(c.isMesh){const col=c.material.color.clone().convertLinearToSRGB();c.material=new THREE.MeshLambertMaterial({color:col,flatShading:true,skinning:!!c.isSkinnedMesh});c.castShadow=true;c.receiveShadow=true;c.frustumCulled=false;}});
+  o.scale.setScalar(S);o.position.set(x,heightAt(x,z),z);o.rotation.y=ry;scene.add(o);
+  const mixer=new THREE.AnimationMixer(o),clip=k=>src.animations.find(a=>a.name===k);
+  const b={o,mixer,clip,kind,cur:null,t:0,x0:x,z0:z,ry0:ry,dir:1,react:0};
+  b.play=(k,once)=>{const c=clip(k);if(!c)return;const a=mixer.clipAction(c);if(b.cur===a&&!once)return;a.reset();a.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat);a.clampWhenFinished=!!once;
+    if(b.cur)a.crossFadeFrom(b.cur,.35,false);a.play();b.cur=a;};
+  b.play(kind==='fox'?'Idle':'Eating');mixer.update(Math.random()*5);beasts.push(b);}
+function beastsUpdate(dt,gk){for(const b of beasts){b.mixer.update(dt);b.t-=dt;
+  if(gk>.95&&b.react<=0){b.react=2.2;b.play(b.kind==='fox'?(b.clip('Jump_ToIdle')?'Jump_ToIdle':'Idle_HitReact1'):'Idle_HitReact1',true);continue;}
+  if(b.react>0){b.react-=dt;if(b.react<=0)b.t=0;continue;}
+  if(b.t>0){if(b.walk){b.o.position.x+=Math.sin(b.o.rotation.y)*dt*1.1;b.o.position.z+=Math.cos(b.o.rotation.y)*dt*1.1;b.o.position.y=heightAt(b.o.position.x,b.o.position.z);}continue;}
+  b.walk=false;const r=Math.random();
+  if(b.kind==='fox'){if(r<.35){b.walk=true;const far=Math.hypot(b.o.position.x-b.x0,b.o.position.z-b.z0)>2;b.o.rotation.y=far?Math.atan2(b.x0-b.o.position.x,b.z0-b.o.position.z):b.o.rotation.y+(Math.random()-.5)*2;b.play('Walk');b.t=2+Math.random()*1.5;}
+    else{b.play(r<.7?'Idle':(b.clip('Idle_2_HeadLow')?'Idle_2_HeadLow':'Idle_2'));b.t=3+Math.random()*4;}}
+  else{b.play(r<.55?'Eating':r<.8?'Idle':(b.clip('Idle_Headlow')?'Idle_Headlow':'Idle_2'));b.t=4+Math.random()*5;}}}
 
 // ===== cámara y animación =====
 let mode='partido',t0=0,goalT=0;
@@ -316,6 +341,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(.05,clock.getDelta
   for(const m of mushrooms){const b=gk>0?Math.sin(T*16)*.12*gk:Math.sin(T*1.5+m.position.x)*.012;m.scale.set(1-b*.5,1+b,1-b*.5);}
   if(waterTex)waterTex.offset.y-=dt*.25;
   for(const c of critters)c.upd(c,dt,T,gk);
+  beastsUpdate(dt,gk);
   for(const l of leaves){const u=l.userData;if(u.life<=0){if(Math.random()<dt*(gk>0?3:.35)&&treeTops.length){const p=pickC(treeTops);l.position.set(p.x+(Math.random()-.5)*3,p.y+6+Math.random()*2,p.z+(Math.random()-.5)*3);u.life=8;l.visible=true;u.ph=Math.random()*6;}else continue;}
     u.life-=dt;l.position.y-=dt*.7;l.position.x+=Math.sin(T*2+u.ph)*dt*.9+dt*.4;l.position.z+=Math.cos(T*1.7+u.ph)*dt*.6;l.rotation.set(T*2+u.ph,T*1.3,T+u.ph);if(l.position.y<.05||u.life<=0){u.life=0;l.visible=false;}}
   renderer.render(scene,camera);}
