@@ -530,13 +530,13 @@ const FORMS={
  muro:{n:'Muro',t:'3-1',s:[{x:-16,z:-8,r:'DEF'},{x:-17,z:0,r:'DEF'},{x:-16,z:8,r:'DEF'},{x:-3,z:0,r:'DEL'}]},
 };
 const ARENAS=[
- {n:'Llanera',sky:0x9fd0ff,g1:'#a6c64c',g2:'#9cbe45',line:'rgba(255,255,255,.8)',dirt:true,outer:0x8a6b45,step:0x8a6a45,wall:0x6b4f33,seats:[0x9bbf4a,0xd9b26a,0xa0703f],fence:0x59e3ff,deco:['🌳','🐄','🌻','🌳']},
+ {n:'Llanera',sky:0x9fd0ff,g1:'#9db150',g2:'#89a444',line:'rgba(240,234,214,.9)',dirt:true,outer:0x8a6b45,step:0x8a6a45,wall:0x6b4f33,seats:[0x9bbf4a,0xd9b26a,0xa0703f],fence:0x59e3ff,deco:['🌳','🐄','🌻','🌳']},
  {n:'Barrio',sky:0xf2a46b,g1:'#8e939d',g2:'#858a94',line:'#ffd43b',outer:0x45484f,step:0x5c6170,wall:0x3c4048,seats:[0xff4f9a,0x3fd0ff,0xffd43b,0x7cff6b],fence:0xff9a3c,deco:['🏚️','🛢️','💡','🛹']},
- {n:'Municipal',sky:0x7fb2ff,g1:'#9ec64a',g2:'#95bd43',line:'rgba(255,255,255,.92)',outer:0x1f4a2a,step:0x5a6b8a,wall:0x3a4a6a,seats:[0x2f7bff,0xffffff],fence:0x59e3ff,deco:['🚩','🌲','💡','🚩']},
- {n:'Estatal',sky:0x2a2f6a,g1:'#9ac24c',g2:'#91b945',line:'rgba(255,255,255,.92)',outer:0x1b3322,step:0x3a2f6a,wall:0x231d44,seats:[0x9b4dff,0xffffff,0x6b2fd0],fence:0xc07bff,deco:['💡','🚩','💡','🎺']},
- {n:'Nacional',sky:0x0e1838,g1:'#9cc64e',g2:'#93bd47',line:'rgba(255,255,255,.92)',outer:0x14261a,step:0x34406a,wall:0x222a4a,seats:[0xff3b4e,0xffffff,0xd62a3c],fence:0x59e3ff,deco:['📺','💡','🎆','💡']},
- {n:'Continental',sky:0x0a2a33,g1:'#98c650',g2:'#8fbd49',line:'rgba(255,255,255,.95)',outer:0x0f2a24,step:0x1d4a4f,wall:0x0f2f33,seats:[0x16c7b0,0xffffff,0x0e8f80],fence:0x6bffe0,deco:['🌎','💡','🎆','💡']},
- {n:'Leyendas',sky:0x1a1030,g1:'#aac84a',g2:'#a0c044',line:'#ffd84d',outer:0x231a10,step:0x3a2a10,wall:0x2a1d08,seats:[0xffcc33,0x1a1a1a,0xc98a00],fence:0xffcc33,deco:['🏆','👑','✨','🏆']},
+ {n:'Municipal',sky:0x7fb2ff,g1:'#98b24e',g2:'#85a142',line:'rgba(255,255,255,.92)',outer:0x1f4a2a,step:0x5a6b8a,wall:0x3a4a6a,seats:[0x2f7bff,0xffffff],fence:0x59e3ff,deco:['🚩','🌲','💡','🚩']},
+ {n:'Estatal',sky:0x2a2f6a,g1:'#96b04d',g2:'#839f41',line:'rgba(255,255,255,.92)',outer:0x1b3322,step:0x3a2f6a,wall:0x231d44,seats:[0x9b4dff,0xffffff,0x6b2fd0],fence:0xc07bff,deco:['💡','🚩','💡','🎺']},
+ {n:'Nacional',sky:0x0e1838,g1:'#9ab350',g2:'#87a243',line:'rgba(255,255,255,.92)',outer:0x14261a,step:0x34406a,wall:0x222a4a,seats:[0xff3b4e,0xffffff,0xd62a3c],fence:0x59e3ff,deco:['📺','💡','🎆','💡']},
+ {n:'Continental',sky:0x0a2a33,g1:'#97b452',g2:'#84a145',line:'rgba(255,255,255,.95)',outer:0x0f2a24,step:0x1d4a4f,wall:0x0f2f33,seats:[0x16c7b0,0xffffff,0x0e8f80],fence:0x6bffe0,deco:['🌎','💡','🎆','💡']},
+ {n:'Leyendas',sky:0x1a1030,g1:'#a2b44c',g2:'#8ea341',line:'#ffd84d',outer:0x231a10,step:0x3a2a10,wall:0x2a1d08,seats:[0xffcc33,0x1a1a1a,0xc98a00],fence:0xffcc33,deco:['🏆','👑','✨','🏆']},
 ];
 let ARENA=ARENAS[0];
 let TEAMKIT=[{j:0x2f7bff,d:0x173f99,s:0xffffff,b:0x151515},{j:0xff3b4e,d:0x99202e,s:0xffffff,b:0x151515}];
@@ -658,7 +658,7 @@ function drawFieldTex(th){
   const i=ARENAS.indexOf(th);if(FIELDTEX[i])return FIELDTEX[i];
   const PX=26,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d'),X=x=>(x+36)*PX,Z=z=>(z+24)*PX,cfg=ARENA_CFG[i]||{};
   g.fillStyle=th.g2;g.fillRect(0,0,W,H);
-  if(!cfg.concrete){const q=2;for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){g.fillStyle=(i+j)%2?th.g1:th.g2;g.fillRect(X(x),Z(z),q*PX+1,q*PX+1);}
+  if(!cfg.concrete){const q=4;for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){g.fillStyle=(i+j)%2?th.g1:th.g2;g.fillRect(X(x),Z(z),q*PX+1,q*PX+1);}
 }
   // manchas suaves (variación natural del color)
   for(let k=0;k<420;k++){const x=Math.random()*W,y=Math.random()*H,r=rand(30,140),gr=g.createRadialGradient(x,y,0,x,y,r),lt=Math.random()<.5;
@@ -672,7 +672,7 @@ function drawFieldTex(th){
   // hojitas de pasto
   if(!cfg.concrete){for(let k=0;k<26000;k++){const x=Math.random()*W,y=Math.random()*H,l=rand(3,8);g.strokeStyle=Math.random()<.5?'rgba(255,255,200,.10)':'rgba(0,40,0,.13)';g.lineWidth=1;g.beginPath();g.moveTo(x,y);g.lineTo(x+rand(-1.5,1.5),y-l);g.stroke();}}
   // grano fino
-  const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*9;d[k]+=n;d[k+1]+=n*1.15;d[k+2]+=n;}g.putImageData(id,0,0);
+  const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*6;d[k]+=n;d[k+1]+=n*1.1;d[k+2]+=n*.8;}g.putImageData(id,0,0);
   // líneas pintadas (ligeramente irregulares)
   g.strokeStyle=th.line;g.fillStyle=th.line;g.lineWidth=PX*.18;g.shadowColor=th.line;g.shadowBlur=2;
   g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
@@ -729,8 +729,8 @@ function buildArenaProps(){
   updateBoards&&score&&updateBoards();
 }
 function applyLights(){const cfg=ARENA_CFG[ARENAS.indexOf(ARENA)]||{};
-  if(hemiL){hemiL.intensity=cfg.night?.65:.55;hemiL.color.setHex(cfg.night?0x9fb0ff:0xfff4e0);hemiL.groundColor.setHex(cfg.night?0x10201a:0x6b5a3a);}
-  if(sun){sun.intensity=cfg.night?1.15:1.4;sun.color.setHex(cfg.night?0xf2f6ff:(cfg.concrete?0xffd8b0:0xfff0d2));sun.position.set(cfg.night?-6:-16,cfg.night?48:42,cfg.night?10:22);}}
+  if(hemiL){hemiL.intensity=cfg.night?.5:.48;hemiL.color.setHex(cfg.night?0xc8d4ff:0xffffff);hemiL.groundColor.setHex(cfg.night?0x30383a:0x8a8a72);}
+  if(sun){sun.intensity=cfg.night?.6:.62;sun.color.setHex(cfg.night?0xf2f6ff:(cfg.concrete?0xffe0c0:0xfff6e6));sun.position.set(cfg.night?-6:-16,cfg.night?48:42,cfg.night?10:22);}}
 
 
 // ================== PÚBLICO ANIMADO EN LAS TRIBUNAS ==================
@@ -981,8 +981,8 @@ function applyKit(mat,info,K){
           if(uAnim>.5){float band=smoothstep(.13,0.,abs(fract(v*.8-uTime*.4+u*.35)-.5));col+=band*.5;}
           if(uAnim>1.5)col=kHue(col,uTime*1.4);}
         diffuseColor.rgb=col*shd;}
-      diffuseColor.rgb=gzSat(diffuseColor.rgb);`);};
-  mat.customProgramCacheKey=()=>'kitproj';
+      diffuseColor.rgb=gzSat(diffuseColor.rgb);`).replace('#include <tonemapping_fragment>','gl_FragColor.rgb+=diffuseColor.rgb*.34;\n#include <tonemapping_fragment>');};
+  mat.customProgramCacheKey=()=>'kitproj2';
   return mat;
 }
 
@@ -991,7 +991,7 @@ let TOONGRAD=null,OUTLINE_MAT=null;
 function toonGrad(){if(TOONGRAD)return TOONGRAD;const c=document.createElement('canvas');c.width=4;c.height=1;const x=c.getContext('2d');['#9c9c9c','#cdcdcd','#f0f0f0','#ffffff'].forEach((col,i)=>{x.fillStyle=col;x.fillRect(i,0,1,1);});
   TOONGRAD=new THREE.CanvasTexture(c);TOONGRAD.minFilter=TOONGRAD.magFilter=THREE.NearestFilter;TOONGRAD.generateMipmaps=false;return TOONGRAD;}
 function toonize(mat){if(!mat||!mat.isMeshStandardMaterial)return mat;const t=new THREE.MeshLambertMaterial({map:mat.map,color:mat.color.clone(),side:mat.side});t.name=mat.name;t.skinning=!!mat.skinning;
-  t.onBeforeCompile=sh=>{sh.fragmentShader='vec3 gzSat(vec3 c){float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.25);return clamp((c-.5)*1.08+.5,0.,1.);}\n'+sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n diffuseColor.rgb=gzSat(diffuseColor.rgb);');};t.customProgramCacheKey=()=>'gzsat';return t;}
+  t.onBeforeCompile=sh=>{sh.fragmentShader=('vec3 gzSat(vec3 c){float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.25);return clamp((c-.5)*1.08+.5,0.,1.);}\n'+sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n diffuseColor.rgb=gzSat(diffuseColor.rgb);')).replace('#include <tonemapping_fragment>','gl_FragColor.rgb+=diffuseColor.rgb*.34;\n#include <tonemapping_fragment>');};t.customProgramCacheKey=()=>'gzsat2';return t;}
 function outlineMat(){if(OUTLINE_MAT)return OUTLINE_MAT;OUTLINE_MAT=new THREE.MeshBasicMaterial({color:0x000000,side:THREE.BackSide});OUTLINE_MAT.skinning=true;
   OUTLINE_MAT.onBeforeCompile=sh=>{sh.vertexShader='attribute vec3 smoothNormal;\n'+sh.vertexShader.replace('#include <begin_vertex>','float odist=-(modelViewMatrix*vec4(0.,0.,0.,1.)).z;vec3 transformed=vec3(position)+normalize(smoothNormal)*clamp(odist*0.0016,0.006,0.05);');};OUTLINE_MAT.customProgramCacheKey=()=>'outline2';return OUTLINE_MAT;}
 function smoothNormals(geo){if(geo.userData.smoothDone)return;geo.userData.smoothDone=true;const p=geo.attributes.position,n=geo.attributes.normal;if(!p||!n){return;}const map=new Map(),acc=[];
