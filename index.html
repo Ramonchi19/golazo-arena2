@@ -814,19 +814,72 @@ function applyArena(i){
   if(arenaGroup){scene.remove(arenaGroup);}arenaGroup=new THREE.Group();scene.add(arenaGroup);buildArenaProps();applyLights();rebuildCrowd();
 }
 function buildGoals(){
-  const nc=document.createElement('canvas');nc.width=64;nc.height=64;const ng=nc.getContext('2d');ng.strokeStyle='rgba(255,255,255,.85)';ng.lineWidth=2;
-  for(let i=0;i<=64;i+=16){ng.beginPath();ng.moveTo(i,0);ng.lineTo(i,64);ng.stroke();ng.beginPath();ng.moveTo(0,i);ng.lineTo(64,i);ng.stroke();}
-  const nt=new THREE.CanvasTexture(nc);nt.wrapS=nt.wrapT=THREE.RepeatWrapping;
-  const post=new THREE.MeshLambertMaterial({color:0xffffff});
+  // v41: porterías con red hexagonal de verdad, soportes traseros y física de red
+  const post=new THREE.MeshLambertMaterial({color:0xffffff}),frame=new THREE.MeshLambertMaterial({color:0xdfe4ea});
+  const tube=(a,b,r,mat)=>{const d=new THREE.Vector3().subVectors(b,a),len=d.length(),m=M(new THREE.CylinderGeometry(r,r,len,8),mat);m.position.copy(a).addScaledVector(d,.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;scene.add(m);return m;};
+  NETS.length=0;
   for(const s of [-1,1]){
     for(const z of [-GW,GW]){const p=M(new THREE.CylinderGeometry(.12,.12,GH,10),post);p.position.set(s*L,GH/2,z);p.castShadow=true;scene.add(p);}
     const bar=M(new THREE.CylinderGeometry(.12,.12,GW*2+.24,10),post);bar.rotation.x=Math.PI/2;bar.position.set(s*L,GH,0);bar.castShadow=true;scene.add(bar);
-    const mk=(w,h,rep)=>{const t=nt.clone();t.needsUpdate=true;t.repeat.set(rep[0],rep[1]);return new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide,depthWrite:false});};
-    const back=M(new THREE.PlaneGeometry(GW*2,GH),mk(0,0,[9,3]));back.position.set(s*(L+2),GH/2,0);back.rotation.y=Math.PI/2;scene.add(back);
-    for(const z of [-GW,GW]){const sd=M(new THREE.PlaneGeometry(2,GH),mk(0,0,[2,3]));sd.position.set(s*(L+1),GH/2,z);scene.add(sd);}
-    const tp=M(new THREE.PlaneGeometry(2,GW*2),mk(0,0,[2,9]));tp.rotation.x=Math.PI/2;tp.position.set(s*(L+1),GH,0);scene.add(tp);
+    const V=(x,y,z)=>new THREE.Vector3(x,y,z),bx=s*(L+NET_D),HB=NET_HB;
+    // soportes: postes traseros, barra de arriba, barras inclinadas desde el travesaño y barras al piso
+    for(const z of [-GW,GW]){tube(V(bx,0,z),V(bx,HB,z),.05,frame);tube(V(s*L,GH,z),V(bx,HB,z),.05,frame);tube(V(s*L,.04,z),V(bx,.04,z),.04,frame);}
+    tube(V(bx,HB,-GW),V(bx,HB,GW),.05,frame);tube(V(bx,.04,-GW),V(bx,.04,GW),.04,frame);
+    NETS.push(makeNet(s));
   }
 }
+const NETS=[],NET_D=2.2,NET_HB=GH*.72,NET_STRETCH=1.1;
+let NETTEX=null;
+function netTex(){if(NETTEX)return NETTEX;const W=96,H=Math.round(96*Math.sqrt(3)/2*2),c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.strokeStyle='rgba(255,255,255,.95)';g.lineWidth=2.4;const r=W/6,h=r*Math.sqrt(3)/2;
+  for(let row=-1;row<=H/h+1;row++)for(let col=-1;col<=W/(r*3)+1;col++){const cx=col*r*3+(row%2?r*1.5:0),cy=row*h;g.beginPath();for(let k=0;k<=6;k++){const a=k/6*Math.PI*2;const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;k?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();}
+  NETTEX=new THREE.CanvasTexture(c);NETTEX.wrapS=NETTEX.wrapT=THREE.RepeatWrapping;return NETTEX;}
+// un panel de red = rejilla de puntos con resorte; los bordes quedan sujetos al marco
+function netPanel(fn,nu,nv,normal,wu,wv){const n=(nu+1)*(nv+1),base=new Float32Array(n*3),pos=new Float32Array(n*3),uv=new Float32Array(n*2),pin=new Uint8Array(n),idx=[];
+  for(let j=0;j<=nv;j++)for(let i=0;i<=nu;i++){const k=j*(nu+1)+i,p=fn(i/nu,j/nv);base.set([p.x,p.y,p.z],k*3);pos.set([p.x,p.y,p.z],k*3);uv.set([i/nu*wu/1.6,j/nv*wv/1.6],k*2);pin[k]=(i===0||j===0||i===nu||j===nv)?1:0;}
+  for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){const a=j*(nu+1)+i,b=a+1,c=a+nu+1,d=c+1;idx.push(a,c,b,b,c,d);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setIndex(idx);
+  const t=netTex();const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:.25,side:THREE.DoubleSide,depthWrite:false}));mesh.frustumCulled=false;scene.add(mesh);
+  return {mesh,geo,base,pos,disp:new Float32Array(n*3),vel:new Float32Array(n*3),pin,nu,nv,normal,act:0};}
+function makeNet(s){const X=s*L,D=NET_D,HB=NET_HB,P=[];
+  P.push(netPanel((u,v)=>new THREE.Vector3(X+s*D,v*HB,-GW+u*2*GW),18,8,new THREE.Vector3(s,0,0),2*GW,HB));
+  const tn=new THREE.Vector3(s*(GH-HB),D,0).normalize();
+  P.push(netPanel((u,v)=>new THREE.Vector3(X+s*D*v,GH+(HB-GH)*v,-GW+u*2*GW),18,6,tn,2*GW,D));
+  for(const sz of [-1,1])P.push(netPanel((u,v)=>{const top=GH+(HB-GH)*u;return new THREE.Vector3(X+s*D*u,v*top,sz*GW);},7,8,new THREE.Vector3(0,0,sz),D,GH));
+  return {s,panels:P};}
+// la red empuja/frena al balón y se deforma donde la toca
+function netCollide(dt){if(!ball)return;const b=new THREE.Vector3(ball.x,ball.y,ball.z);
+  for(const N of NETS){const xs=ball.x*N.s;
+    if(xs>L&&Math.abs(ball.z)<GW&&ball.y<GH)ball.netSide=N.s;   // el balón entró por la boca de esta portería
+    if(ball.netSide===N.s&&xs<L-1)ball.netSide=0;
+    if(ball.netSide!==N.s)continue;
+    for(const P of N.panels){const n=P.normal,k0=0,bx=P.base[0],by=P.base[1],bz=P.base[2];
+      // distancia del balón al plano del panel (usando un punto del panel como referencia)
+      const ref=new THREE.Vector3(P.base[(P.nu+1)*3*Math.floor(P.nv/2)+3*Math.floor(P.nu/2)],P.base[(P.nu+1)*3*Math.floor(P.nv/2)+3*Math.floor(P.nu/2)+1],P.base[(P.nu+1)*3*Math.floor(P.nv/2)+3*Math.floor(P.nu/2)+2]);
+      const d=(b.x-ref.x)*n.x+(b.y-ref.y)*n.y+(b.z-ref.z)*n.z,pen=d+BR;if(pen<=0)continue;
+      let hit=false;const R=1.15,vn=ball.vx*n.x+ball.vy*n.y+ball.vz*n.z;
+      for(let k=0;k<P.pin.length;k++){if(P.pin[k])continue;const px=P.base[k*3],py=P.base[k*3+1],pz=P.base[k*3+2];
+        const dx=px-b.x,dy=py-b.y,dz=pz-b.z,along=dx*n.x+dy*n.y+dz*n.z,qx=dx-along*n.x,qy=dy-along*n.y,qz=dz-along*n.z,r=Math.sqrt(qx*qx+qy*qy+qz*qz);if(r>R)continue;
+        const f=Math.pow(1-(r/R)*(r/R),1.5),tgt=Math.min(NET_STRETCH,pen)*f,cur=P.disp[k*3]*n.x+P.disp[k*3+1]*n.y+P.disp[k*3+2]*n.z;
+        if(cur<tgt){const add=tgt-cur;P.disp[k*3]+=n.x*add;P.disp[k*3+1]+=n.y*add;P.disp[k*3+2]+=n.z*add;const vv=Math.max(0,vn)*f*.6;P.vel[k*3]=n.x*vv;P.vel[k*3+1]=n.y*vv;P.vel[k*3+2]=n.z*vv;hit=true;}}
+      if(hit)P.act=2.5;
+      // frena el balón como una bolsa: más resistencia mientras más se estira
+      if(vn>0){const k=Math.min(1,(3+pen*14)*dt);ball.vx-=n.x*vn*k;ball.vy-=n.y*vn*k;ball.vz-=n.z*vn*k;}
+      if(pen>NET_STRETCH){const back=pen-NET_STRETCH;ball.x-=n.x*back;ball.y-=n.y*back;ball.z-=n.z*back;const v2=ball.vx*n.x+ball.vy*n.y+ball.vz*n.z;if(v2>0){ball.vx-=n.x*v2*1.25;ball.vy-=n.y*v2*1.25;ball.vz-=n.z*v2*1.25;}}
+    }}}
+function netStep(dt){dt=Math.min(dt,.033);
+  for(const N of NETS)for(const P of N.panels){if(P.act<=0)continue;P.act-=dt;const nu=P.nu,K=55,C=7,KN=140;
+    for(let j=1;j<P.nv;j++)for(let i=1;i<nu;i++){const k=j*(nu+1)+i;if(P.pin[k])continue;
+      for(let a=0;a<3;a++){const o=k*3+a,lap=(P.disp[o-3]+P.disp[o+3]+P.disp[o-(nu+1)*3]+P.disp[o+(nu+1)*3])/4-P.disp[o];
+        P.vel[o]+=(-K*P.disp[o]-C*P.vel[o]+KN*lap)*dt;P.disp[o]+=P.vel[o]*dt;}}
+    for(let k=0;k<P.pin.length;k++){P.pos[k*3]=P.base[k*3]+P.disp[k*3];P.pos[k*3+1]=Math.max(.02,P.base[k*3+1]+P.disp[k*3+1]);P.pos[k*3+2]=P.base[k*3+2]+P.disp[k*3+2];}
+    P.geo.attributes.position.needsUpdate=true;}}
+// durante la pausa del gol el balón sigue su camino dentro de la red
+function ballInNet(dt){if(!ball||ball.owner||ball.gk||Math.abs(ball.x)<L)return;
+  ball.vy-=GRAV*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.z+=ball.vz*dt;
+  if(ball.y<BR){ball.y=BR;ball.vy=Math.abs(ball.vy)>2?-ball.vy*.35:0;ball.vx*=Math.max(0,1-2.2*dt);ball.vz*=Math.max(0,1-2.2*dt);}
+  netCollide(dt);if(typeof ballMesh!=='undefined'&&ballMesh){ballMesh.position.set(ball.x,ball.y,ball.z);ballMesh.rotation.x+=ball.vz*dt/BR;ballMesh.rotation.z-=ball.vx*dt/BR;}}
 let fenceGroup=null,ledMats=[];
 function buildFence(){
   if(fenceGroup&&scene)scene.remove(fenceGroup);fenceGroup=new THREE.Group();scene.add(fenceGroup);ledMats=[];
@@ -1385,7 +1438,7 @@ function bestCrossTarget(p,dv){
 function landing(){const a=GRAV/2,b=ball.vy,c=ball.y-1.2;const disc=b*b+4*a*c;if(disc<0)return{x:ball.x,z:ball.z,t:0};const t=(b+Math.sqrt(disc))/(2*a);return{x:ball.x+ball.vx*t,z:ball.z+ball.vz*t,t};}
 function wallBall(){for(const w of walls){if(w.up<.6||ball.y>w.h+BR)continue;const hx=w.th/2+BR,hz=w.len/2+BR;if(Math.abs(ball.x-w.x)<hx&&Math.abs(ball.z-w.z)<hz){const s=Math.sign(ball.x-w.x-ball.vx*.02)||1;ball.x=w.x+s*hx;if(ball.vx*s<0)ball.vx=-ball.vx*.55;if(Math.abs(ball.vx)>4)sfx('bounce');if(ball.owner){const o=ball.owner;ball.owner=null;ball.lastTeam=o.team;o.pcd=.3;}}}}
 let wallBallPost=false;
-function updateBall(dt){_updateBall(dt);if(walls.length)wallBall();}
+function updateBall(dt){_updateBall(dt);if(walls.length)wallBall();netCollide(dt);}
 function _updateBall(dt){
   if(ball.gk){const k=ball.gk;if(gkSequence(k,dt))return;if(ballToHands(k,'mid')){k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}ball.x=k.x+Math.sin(k.face)*.55;ball.z=k.z+Math.cos(k.face)*.55;ball.y=1.05;ball.vx=ball.vy=ball.vz=0;k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}
   if(ball.owner){
@@ -1429,7 +1482,6 @@ function _updateBall(dt){
       const inMouth=Math.abs(ball.z)<GW-BR&&ball.y<GH-BR;
       if(xs>L+.05&&inMouth||xs>L+.3&&Math.abs(ball.z)<GW&&ball.y<GH){
         if(xs>L+.7)goal(s===1?0:1);
-        if(xs>L+1.8){ball.x=s*(L+1.8);ball.vx*=-.2;}
         if(Math.abs(ball.z)>GW-BR){ball.z=Math.sign(ball.z)*(GW-BR);ball.vz*=-.3;}
         if(ball.y>GH-BR){ball.y=GH-BR;ball.vy=-Math.abs(ball.vy)*.3;}
       } else if(xs<L+.3&&!inMouth){
@@ -2100,12 +2152,12 @@ function goal(team){
   shakeAmt=1.2;hitstop=.15;goalCam=2.6;sfx(team===0?'goal':'goalbad');
   energy[1-team]=Math.min(10,energy[1-team]+2);
   assignReactions(team);crowdReact(team);goalStandFX(team);setTimeout(()=>{try{updateBoards();}catch(e){}},50);
-  ball.vx*=.15;ball.vz*=.15;ball.super=false;
+  ball.vx*=.92;ball.vz*=.92;ball.super=false;
   pause=2.8;pauseCb=()=>{if(overtime)endGame();else kickoff(1-team);};
 }
 function update(dt){
   if(hitstop>0){hitstop-=dt;return;}
-  if(pause>0){pause-=dt;for(const p of players)if(p.celebrate>0)p.celebrate-=dt;reactUpdate(dt);if(pause<=0&&pauseCb){const cb=pauseCb;pauseCb=null;cb();}return;}
+  if(pause>0){pause-=dt;ballInNet(dt);for(const p of players)if(p.celebrate>0)p.celebrate-=dt;reactUpdate(dt);if(pause<=0&&pauseCb){const cb=pauseCb;pauseCb=null;cb();}return;}
   if(!overtime){time-=dt;
     if(time<=60&&!x2said){x2said=true;showBig('¡Energía x2!','#e08bff');sfx('power');}
     if(time<=0){time=0;if(score[0]===score[1]){overtime=true;otTime=60;showBig('¡Gol de oro!');sfx('whistle');pause=1.8;pauseCb=()=>kickoff(Math.random()<.5?0:1);return;}endGame();return;}}
@@ -2204,7 +2256,7 @@ function render(dt){
   camera.position.set(tx-Math.cos(CAM_EL2)*dd+sy,Math.sin(CAM_EL2)*dd+sy,camZ+sx);
   camera.lookAt(tx,0,camZ);
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
-  drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
+  netStep(dt);drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
 }
 
 // ================== CÁMARA: CANCHA COMPLETA ==================
