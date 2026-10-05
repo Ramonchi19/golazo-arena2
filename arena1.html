@@ -128,6 +128,20 @@ function board(){const g=new THREE.Group();const c=document.createElement('canva
 function barrel(){const g=new THREE.Group();const b=mesh(new THREE.CylinderGeometry(.42,.42,.95,9),PAL.wood);b.position.y=.48;g.add(b);
   for(const y of [.2,.76]){const r=mesh(new THREE.CylinderGeometry(.45,.45,.07,9),'#6b6b6b');r.position.y=y;g.add(r);}
   const w=mesh(new THREE.CylinderGeometry(.38,.38,.02,9),'#5fb0d8');w.position.y=.95;g.add(w);return g;}
+function crate(){const g=new THREE.Group();const b=mesh(new THREE.BoxGeometry(1.1,.55,.8),PAL.wood);b.position.y=.28;g.add(b);
+  for(let i=0;i<6;i++){const bt=mesh(new THREE.CylinderGeometry(.09,.09,.42,6),i%2?'#5fb0d8':PAL.white);bt.position.set(-.35+(i%3)*.35,.72,-.18+Math.floor(i/3)*.36);g.add(bt);
+    const cap=mesh(new THREE.CylinderGeometry(.05,.05,.08,6),PAL.orange);cap.position.set(bt.position.x,.97,bt.position.z);g.add(cap);}return g;}
+function ladder(){const g=new THREE.Group();for(const s of [-1,1]){const r=mesh(new THREE.BoxGeometry(.08,.05,5),PAL.yellow);r.position.set(s*.45,.03,0);g.add(r);}
+  for(let i=0;i<9;i++){const r=mesh(new THREE.BoxGeometry(.98,.05,.08),PAL.yellow);r.position.set(0,.04,-2.3+i*.575);g.add(r);}return g;}
+function miniGoal(){const g=new THREE.Group();const W=3.2,H=1.4;
+  for(const z of [-W/2,W/2]){const p=mesh(new THREE.CylinderGeometry(.06,.06,H,6),PAL.white);p.position.set(0,H/2,z);g.add(p);
+    const b=mesh(new THREE.CylinderGeometry(.05,.05,1.1,6),PAL.white);b.rotation.z=Math.PI/2-0.9;b.position.set(-.45,H*.4,z);g.add(b);}
+  const top=mesh(new THREE.CylinderGeometry(.06,.06,W,6),PAL.white);top.rotation.x=Math.PI/2;top.position.y=H;g.add(top);
+  const net=new THREE.Mesh(new THREE.PlaneGeometry(W,H*1.05),new THREE.MeshLambertMaterial({color:'#ffffff',transparent:true,opacity:.35,side:THREE.DoubleSide}));net.position.set(-.55,H*.5,0);net.rotation.set(0,Math.PI/2,-.5);g.add(net);
+  for(let i=0;i<3;i++){const b=mesh(new THREE.IcosahedronGeometry(.25,1),PAL.white);b.position.set(-.3+i*.2,.25,-.8+i*.8);g.add(b);}return g;}
+function ballBag(){const g=new THREE.Group();const s=mesh(new THREE.IcosahedronGeometry(.6,1),'#3a4a7a');s.scale.set(1,.85,1);s.position.y=.5;g.add(s);
+  for(let i=0;i<3;i++){const b=mesh(new THREE.IcosahedronGeometry(.26,1),PAL.white);b.position.set(-.25+i*.25,1.05,(i-1)*.15);g.add(b);}
+  const tie=mesh(new THREE.CylinderGeometry(.18,.25,.25,6),PAL.rope);tie.position.y=.98;g.add(tie);return g;}
 // banderas y banderines que ondean
 const flagMats=[];
 function clothMat(c1,c2,crest){const c=document.createElement('canvas');c.width=128;c.height=192;const x=c.getContext('2d');
@@ -166,9 +180,25 @@ const pennants=[];
 const loader=new THREE.GLTFLoader(),KB={};
 const loadK=n=>new Promise(res=>loader.load('assets/env/'+n+'.glb',g=>{KB[n]=g.scene;res();},undefined,()=>{console.warn('falta',n);res();}));
 function kenney(n,scale,x,z,ry,opt){const src=KB[n];if(!src)return null;const o=src.clone(true);const sway=opt&&opt.sway||0;
-  o.traverse(c=>{if(c.isMesh){const key=KMAP[c.material.name];const col=key?pickC(PAL[key]):'#'+c.material.color.getHexString();
-    c.material=flat(col,(key==='leaf'||key==='grass')?sway:0);c.castShadow=!(opt&&opt.noShadow);c.receiveShadow=true;}});
-  o.scale.setScalar(scale*(opt&&opt.var?1+(Math.random()-.5)*opt.var:1));o.position.set(x,0,z);o.rotation.y=ry==null?Math.random()*6.28:ry;scene.add(o);return o;}
+  o.traverse(c=>{if(c.isMesh){const key=KMAP[c.material.name];
+    if(key||!c.material.map){const col=key?pickC(opt&&opt.pal&&opt.pal[key]||PAL[key]):'#'+c.material.color.getHexString();c.material=flat(col,(key==='leaf'||key==='grass')?sway:0);}
+    c.castShadow=!(opt&&opt.noShadow);c.receiveShadow=true;}});
+  o.scale.setScalar(scale*(opt&&opt.var?1+(Math.random()-.5)*opt.var:1));o.position.set(x,opt&&opt.y!=null?opt.y:heightAt(x,z),z);o.rotation.y=ry==null?Math.random()*6.28:ry;scene.add(o);return o;}
+
+// ===== mesetas a los lados (el borde alto que encierra la cancha) =====
+const PLATS=[];
+function heightAt(x,z){let h=0;for(const p of PLATS)if(Math.abs(x-p.x)<=p.w/2&&Math.abs(z-p.z)<=p.d/2)h=Math.max(h,p.h);return h;}
+function plateau(x,z,w,d,h,stone){const n=stone?'cliff_block_stone':'cliff_block_rock';const src=KB[n];if(!src)return;
+  const o=src.clone(true);o.traverse(c=>{if(c.isMesh){const key=KMAP[c.material.name];c.material=flat(key==='grass'?'#84a83f':key==='stone'?pickC(PAL.stone):'#a5845c');c.castShadow=true;c.receiveShadow=true;}});
+  o.scale.set(w,h,d);o.position.set(x,0,z);scene.add(o);PLATS.push({x,z,w,d,h});}
+function buildSides(B,E){
+  for(const s of [-1,1]){
+    for(let x=-E-9;x<=E+9;x+=2.5){const h1=1.7+Math.random()*.35,st=Math.random()<.55;
+      plateau(x,s*(B+1.25),2.52,2.5,h1,st);plateau(x,s*(B+3.75),2.52,2.5,h1+.8+Math.random()*.3,!st);plateau(x,s*(B+6.25),2.52,2.5,h1+1.6+Math.random()*.4,st);}
+    // esquinas detrás de las líneas de fondo (abajo más bajas para no tapar)
+    for(const e of [-1,1])for(let z=GW+7.5;z<=B+.5;z+=2.5)for(let k=0;k<3;k++){const x=e*(E+2.2+k*2.5);const h=e>0?1.9+k*.8:1.0+k*.5;plateau(x,s*z,2.52,2.52,h+Math.random()*.2,Math.random()<.5);}
+  }
+}
 
 // ===== vida: mariposas, hojas, pájaros =====
 const flies=[],leaves=[],birds=[];
@@ -176,7 +206,7 @@ function makeFly(){const g=new THREE.Group(),col=pickC([PAL.yellow,PAL.white,'#f
   for(const s of [-1,1]){const w=new THREE.Mesh(new THREE.CircleGeometry(.16,5),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide}));w.position.x=s*.13;w.userData.s=s;g.add(w);}
   g.userData={cx:(Math.random()<.5?-1:1)*(L+4+Math.random()*6),cz:(Math.random()-.5)*HW*2.2,r:1.5+Math.random()*2,sp:.4+Math.random()*.5,ph:Math.random()*6};
   if(Math.random()<.5){g.userData.cx=(Math.random()-.5)*L*1.8;g.userData.cz=(Math.random()<.5?-1:1)*(HW+3+Math.random()*5);}
-  scene.add(g);flies.push(g);}
+  g.userData.base=heightAt(g.userData.cx,g.userData.cz);scene.add(g);flies.push(g);}
 function makeLeaf(){const m=new THREE.Mesh(new THREE.PlaneGeometry(.22,.16),new THREE.MeshLambertMaterial({color:pickC(PAL.leaf),side:THREE.DoubleSide}));m.visible=false;scene.add(m);leaves.push(m);m.userData={life:0};}
 let treeTops=[];
 function makeBird(){const g=new THREE.Group();const m=new THREE.MeshBasicMaterial({color:'#3a3a48',side:THREE.DoubleSide});
@@ -184,38 +214,38 @@ function makeBird(){const g=new THREE.Group();const m=new THREE.MeshBasicMateria
 
 // ===== armar la arena =====
 async function build(){
-  const names=['tree_oak','tree_fat','tree_default','tree_detailed','tree_simple','tree_small','tree_tall','plant_bushLarge','plant_bush','plant_bushDetailed','rock_largeA','rock_largeB','rock_largeD','rock_smallA','rock_smallC','stump_round','log_stack','log_large','fence_simple','fence_gate','flower_redA','flower_yellowA','flower_purpleA','grass_large','grass_leafs','mushroom_redGroup','tent_smallOpen','sign','pot_large','crop_pumpkin'];
+  const names=['cliff_block_rock','cliff_block_stone','hay-bale','hay-bale-bundled','tree_oak','tree_fat','tree_default','tree_detailed','tree_simple','tree_small','tree_tall','plant_bushLarge','plant_bush','plant_bushDetailed','rock_largeA','rock_largeB','rock_largeD','rock_smallA','rock_smallC','stump_round','log_stack','log_large','fence_simple','fence_gate','flower_redA','flower_yellowA','flower_purpleA','grass_large','grass_leafs','mushroom_redGroup','tent_smallOpen','sign','pot_large','crop_pumpkin'];
   await Promise.all(names.map(loadK));
   const B=HW+1.0,E=L+1.2;
-  // borde: muro bajo de piedra en los lados largos, con setos en tramos
-  for(const s of [-1,1]){stoneWall(-E,s*B,-12,s*B);stoneWall(12,s*B,E,s*B);
-    for(let x=-11;x<=11;x+=2.2)kenney('plant_bushLarge',3.2,x,s*(B+.1),Math.random()*6,{sway:.05,var:.15});}
+  buildSides(B,E);
   // fondo (detrás de las porterías): cerca de madera baja a los lados del arco
-  for(const s of [-1,1])for(const zs of [-1,1])for(let z=GW+2;z<B;z+=3)kenney('fence_simple',3,s*(E+.4),zs*(z+1.5),Math.PI/2);
+  for(const s of [-1,1])for(const zs of [-1,1])for(let z=GW+1.5;z<GW+6.5;z+=3)kenney('fence_simple',3,s*(E+.4),zs*(z+1.5),Math.PI/2,{y:0});
   // arriba: entrada de la academia + banderines
-  add(gate(),L+6.5,0,0);bunting(L+4.5,-B,L+4.5,-GW-1.5,5.2);bunting(L+4.5,GW+1.5,L+4.5,B,5.2);
-  // abajo: banca de suplentes, pizarrón, barril
-  add(bench(),-E-3.2,0,-8.5,Math.PI/2);add(board(),-E-3.6,0,8.5,-Math.PI/2);add(barrel(),-E-2.6,0,-5.2);
-  add(cones(4),-E-2.4,0,12.5);add(cones(2),-E-3.6,0,13.4);
-  // esquinas: árboles, rocas, carreta, muñecos
-  const corners=[[1,1],[1,-1],[-1,1],[-1,-1]];
-  for(const [sx,sz] of corners){const cx=sx*(E+5),cz=sz*(B+5);
-    for(let i=0;i<4;i++){const t=kenney(pickC(['tree_oak','tree_fat','tree_default','tree_detailed']),4.6,cx+(Math.random()-.5)*7,cz+(Math.random()-.5)*6,null,{sway:.035,var:.25});if(t)treeTops.push(t.position);}
-    kenney(pickC(['rock_largeA','rock_largeB','rock_largeD']),3.4,sx*(E+1.5),sz*(B+1.8),null,{var:.2});
-    kenney('plant_bushDetailed',3,sx*(E+2.5),sz*(B-2.5),null,{sway:.05});}
-  add(ballCart(),L-6,0,B+3.4,.25);add(dummy(),L-12,0,B+2.6);add(dummy(),L-14.5,0,B+3.1);add(dummy(),-L+13,0,-B-2.8);
-  kenney('log_stack',3.2,-L+8,B+3.2,.4);kenney('tent_smallOpen',4.2,-L+16,-B-5,Math.PI*.15);kenney('pot_large',2.6,-L+6,-B-2.6);
-  kenney('sign',3.4,-E-1.6,-14.8,Math.PI/2);kenney('stump_round',3,L-3,-B-2.4);kenney('log_large',3,L-9,-B-3.4,.2);
-  // relleno de los lados (se ve en pantallas anchas)
-  for(let i=0;i<70;i++){const s=Math.random()<.5?-1:1,x=(Math.random()-.5)*2*(L+14),z=s*(B+4+Math.random()*26);
-    const r=Math.random();
-    if(r<.42){const t=kenney(pickC(['tree_oak','tree_fat','tree_default','tree_detailed','tree_simple','tree_tall']),4.4,x,z,null,{sway:.035,var:.3});if(t)treeTops.push(t.position);}
-    else if(r<.6)kenney(pickC(['plant_bush','plant_bushLarge','plant_bushDetailed']),3,x,z,null,{sway:.05,var:.3});
-    else if(r<.72)kenney(pickC(['rock_largeA','rock_largeB','rock_smallA','rock_smallC']),3.2,x,z,null,{var:.3});
-    else if(r<.9)kenney(pickC(['flower_redA','flower_yellowA','flower_purpleA','grass_large','grass_leafs']),3.4,x,z,null,{sway:.6,var:.3,noShadow:true});
-    else kenney(pickC(['mushroom_redGroup','stump_round','crop_pumpkin']),3,x,z,null,{var:.2});}
+  add(gate(),L+6.5,0,0);bunting(L+4.5,-GW-6,L+4.5,-GW-1.5,5.2);bunting(L+4.5,GW+1.5,L+4.5,GW+6,5.2);
+  // abajo: zona de práctica llena (la banca y todo lo del entrenamiento)
+  add(bench(),-E-3.2,0,-8.5,Math.PI/2);add(board(),-E-3.6,0,8.5,-Math.PI/2);add(barrel(),-E-2.4,0,-5.6);add(crate(),-E-2.3,0,-11.6,.3);
+  add(cones(4),-E-2.4,0,12.6);add(cones(2),-E-3.4,0,13.6);add(ballCart(),-E-6.2,0,-5.2,.9);add(ladder(),-E-6.4,0,10.2,0);
+  add(miniGoal(),-E-8.6,0,4.6,0);add(dummy(),-E-4.6,0,5.6);add(dummy(),-E-6.2,0,6.8);add(ballBag(),-E-3.1,0,-2.6);
+  kenney('hay-bale',3.2,-E-6.4,-10.8,.4,{y:0});kenney('hay-bale-bundled',3.2,-E-8.2,-12.4,1.2,{y:0});kenney('hay-bale',3.2,-E-8.6,-9.6,2,{y:0});
+  kenney('tent_smallOpen',4.4,-E-9.5,-1.5,-Math.PI/2,{y:0});kenney('sign',3.4,-E-1.8,-14.8,Math.PI/2,{y:0});
+  for(let i=0;i<14;i++)kenney(pickC(['flower_redA','flower_yellowA','flower_purpleA','grass_large']),3.4,-E-2-Math.random()*9,(Math.random()-.5)*2*(B-1),null,{sway:.6,var:.3,noShadow:true,y:0});
+  // arriba de las mesetas: árboles densos, arbustos, rocas, flores y algo de utilería
+  for(const s of [-1,1]){
+    for(let x=-E-8;x<=E+8;x+=2.2){
+      const z1=s*(B+.7+Math.random()*1.0);const r=Math.random();
+      if(r<.45)kenney(pickC(['plant_bushLarge','plant_bush','plant_bushDetailed']),3.2,x+Math.random(),z1,null,{sway:.05,var:.3});
+      else if(r<.65)kenney(pickC(['rock_largeA','rock_largeB','rock_smallA']),2.6,x+Math.random(),z1,null,{var:.3});
+      else if(r<.85)kenney(pickC(['flower_redA','flower_yellowA','flower_purpleA','grass_large']),3.4,x,z1,null,{sway:.6,var:.3,noShadow:true});
+      const t=kenney(pickC(['tree_oak','tree_fat','tree_default','tree_detailed','tree_tall']),4.4,x+Math.random()*1.2,s*(B+3.5+Math.random()*4),null,{sway:.035,var:.3});if(t)treeTops.push(t.position);
+      if(Math.random()<.5){const t2=kenney(pickC(['tree_oak','tree_default','tree_tall','tree_simple']),4.8,x+Math.random()*2,s*(B+8+Math.random()*10),null,{sway:.035,var:.3});if(t2)treeTops.push(t2.position);}
+    }
+    // rocas pegadas a la pared del acantilado (rompen la línea recta)
+    for(let x=-E-6;x<=E+6;x+=5+Math.random()*4)kenney(pickC(['rock_largeA','rock_largeB','rock_largeD']),2.8,x,s*(B-.15),null,{var:.4,y:0});
+  }
+  add(ballCart(),L-6,heightAt(L-6,B+1.4),B+1.4,.25);add(dummy(),L-12,heightAt(L-12,-B-1.2),-B-1.2);kenney('log_stack',3.2,-L+8,B+1.4,.4);kenney('pot_large',2.6,-L+6,-B-1.3);
+  kenney('stump_round',3,L-3,-B-1.5);kenney('log_large',3,L-9,B+1.6,.2);
   // detrás de los fondos
-  for(const s of [-1,1])for(let i=0;i<16;i++){const t=kenney(pickC(['tree_oak','tree_fat','tree_default','tree_tall','tree_detailed']),4.6,s*(E+12+Math.random()*20),(Math.random()-.5)*(2*B+30),null,{sway:.035,var:.3});if(t)treeTops.push(t.position);}
+  for(const s of [-1,1])for(let i=0;i<16;i++){const z=(Math.random()-.5)*(2*B+30),x=s*(E+12+Math.random()*20);const t=kenney(pickC(['tree_oak','tree_fat','tree_default','tree_tall','tree_detailed']),4.6,x,z,null,{sway:.035,var:.3});if(t)treeTops.push(t.position);}
   for(let i=0;i<10;i++)makeFly();for(let i=0;i<14;i++)makeLeaf();for(let i=0;i<5;i++)makeBird();
   document.getElementById('msg').remove();
 }
@@ -233,8 +263,8 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(.05,clock.getDelta
   U.uWind.value=1+(goalT>0?goalT*.8:0);if(goalT>0)goalT-=dt;
   if(mode==='partido'){camX=Math.sin(t0*.18)*13;const d=44,el=1.0;camera.position.set(camX-Math.cos(el)*d+6,Math.sin(el)*d,0);camera.lookAt(camX+6,0,0);}
   else if(mode==='vuelta'){const a=t0*.12,r=62;camera.position.set(Math.cos(a)*r,26,Math.sin(a)*r);camera.lookAt(0,0,0);}
-  else{camera.position.set(L-2,7,HW+12);camera.lookAt(L+3,2,HW-2);}
-  for(const f of flies){const u=f.userData,a=T*u.sp+u.ph;f.position.set(u.cx+Math.cos(a)*u.r,1.2+Math.sin(a*2.3)*.5+(goalT>0?1.2:0),u.cz+Math.sin(a*1.3)*u.r);
+  else{camera.position.set(L-8,9.5,HW+3);camera.lookAt(L+2,1,HW-5);}
+  for(const f of flies){const u=f.userData,a=T*u.sp+u.ph;f.position.set(u.cx+Math.cos(a)*u.r,u.base+1.2+Math.sin(a*2.3)*.5+(goalT>0?1.2:0),u.cz+Math.sin(a*1.3)*u.r);
     f.rotation.y=-a;for(const w of f.children)w.rotation.y=w.userData.s*(.3+Math.abs(Math.sin(T*18+u.ph))*1.1);}
   for(const l of leaves){const u=l.userData;if(u.life<=0){if(Math.random()<dt*(goalT>0?3:.35)&&treeTops.length){const p=pickC(treeTops);l.position.set(p.x+(Math.random()-.5)*3,5+Math.random()*2,p.z+(Math.random()-.5)*3);u.life=6;l.visible=true;u.ph=Math.random()*6;}else continue;}
     u.life-=dt;l.position.y-=dt*.7;l.position.x+=Math.sin(T*2+u.ph)*dt*.9+dt*.4;l.position.z+=Math.cos(T*1.7+u.ph)*dt*.6;l.rotation.set(T*2+u.ph,T*1.3,T+u.ph);if(l.position.y<.05||u.life<=0){u.life=0;l.visible=false;}}
