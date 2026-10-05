@@ -68,16 +68,25 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 // ===== cancha: verde más profundo con musgo y hojas caídas =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;
-  // lago congelado de brillo medio (para que el balón blanco resalte): hielo azul con grietas y escarcha
-  const bg=g.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#7aa6c2');bg.addColorStop(.5,'#86b0ca');bg.addColorStop(1,'#759fbb');g.fillStyle=bg;g.fillRect(0,0,W,H);
-  for(let k=0;k<200;k++){const x=Math.random()*W,y=Math.random()*H,r=30+Math.random()*140,gr=g.createRadialGradient(x,y,0,x,y,r);
-    gr.addColorStop(0,Math.random()<.5?'rgba(220,240,255,.12)':'rgba(60,100,140,.12)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
-  for(let k=0;k<160;k++){let x=Math.random()*W,y=Math.random()*H;g.strokeStyle=`rgba(235,248,255,${.15+Math.random()*.2})`;g.lineWidth=1+Math.random()*1.5;g.beginPath();g.moveTo(x,y);
-    for(let s=0;s<4+Math.random()*4;s++){x+=(Math.random()-.5)*90;y+=(Math.random()-.5)*90;g.lineTo(x,y);}g.stroke();}
-  for(let k=0;k<70;k++){const x=Math.random()*W,y=Math.random()*H;g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=2;for(let a=0;a<6;a++){g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*18,y+Math.sin(a)*18);g.stroke();}}
+  // v37: hielo turquesa translúcido con cuadrícula tenue "debajo del hielo", marco de bloques de hielo y nieve alrededor
+  g.fillStyle='#eaf3f8';g.fillRect(0,0,W,H);
+  for(let k=0;k<160;k++){const x=Math.random()*W,y=Math.random()*H,r=20+Math.random()*80,gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(170,200,225,.25)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
+  const fx=X(-L-.9),fy=Z(-HW-.9),fw=(2*L+1.8)*PX,fh=(2*HW+1.8)*PX;
+  // marco de bloques de hielo
+  for(let x=fx;x<fx+fw;x+=PX*2.2)for(const y of [fy,fy+fh-PX*1.1]){g.fillStyle=pickC(['#a8e2ee','#b6e8f2','#9ad9e8']);g.fillRect(x+2,y+2,PX*2.2-4,PX*1.1-4);g.fillStyle='rgba(255,255,255,.35)';g.fillRect(x+4,y+4,PX*2.2-8,4);}
+  for(let y=fy;y<fy+fh;y+=PX*2.2)for(const x of [fx,fx+fw-PX*1.1]){g.fillStyle=pickC(['#a8e2ee','#b6e8f2','#9ad9e8']);g.fillRect(x+2,y+2,PX*1.1-4,PX*2.2-4);g.fillStyle='rgba(255,255,255,.35)';g.fillRect(x+4,y+4,4,PX*2.2-8);}
+  // superficie de hielo
+  const ix=X(-L-.2),iy=Z(-HW-.2),iw=(2*L+.4)*PX,ih=(2*HW+.4)*PX;
+  const bg=g.createLinearGradient(ix,iy,ix+iw,iy+ih);bg.addColorStop(0,'#6cc4d9');bg.addColorStop(.5,'#7cd0e2');bg.addColorStop(1,'#66bfd5');g.fillStyle=bg;g.fillRect(ix,iy,iw,ih);
+  for(let x=-L,i=0;x<L;x+=2,i++)for(let z=-HW,j=0;z<HW;z+=2,j++){g.fillStyle=(i+j)%2?'rgba(255,255,255,.07)':'rgba(20,90,130,.06)';g.fillRect(X(x),Z(z),2*PX,2*PX);}
+  for(let k=0;k<120;k++){const x=ix+Math.random()*iw,y=iy+Math.random()*ih,r=30+Math.random()*120,gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,Math.random()<.5?'rgba(220,250,255,.12)':'rgba(30,110,150,.10)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
+  for(let k=0;k<14;k++){const x=ix+Math.random()*iw,y=iy+Math.random()*ih,len=300+Math.random()*500;const gr=g.createLinearGradient(x,y,x+len,y-len*.5);gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(.5,'rgba(255,255,255,.16)');gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.strokeStyle=gr;g.lineWidth=10+Math.random()*25;g.beginPath();g.moveTo(x,y);g.lineTo(x+len,y-len*.5);g.stroke();}
+  for(let k=0;k<26;k++){let x=ix+Math.random()*iw,y=iy+Math.random()*ih;g.strokeStyle='rgba(30,90,130,.45)';g.lineWidth=1.6;g.beginPath();g.moveTo(x,y);
+    for(let s=0;s<5+Math.random()*6;s++){x+=(Math.random()-.5)*110;y+=(Math.random()-.5)*110;g.lineTo(x,y);}g.stroke();}
   const line=(w,col)=>{g.strokeStyle=col;g.lineWidth=PX*w;g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
     g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}};
-  line(.34,'rgba(30,60,90,.35)');line(.22,'rgba(255,255,255,.97)');
+  line(.34,'rgba(20,70,110,.35)');line(.22,'rgba(255,255,255,.97)');
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex(),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
