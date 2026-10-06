@@ -41,27 +41,22 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 // ===== cancha: verde más profundo con musgo y hojas caídas =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX;
-  // v31: losas de piedra irregulares (no cuadros), juntas oscuras, bisel de luz y sombra
-  g.fillStyle='#564a44';g.fillRect(0,0,W,H);
-  let y=0;while(y<H){const rh=(1.1+Math.random()*1.1)*PX;let x=-Math.random()*1.5*PX;
-    while(x<W){const rw=(1.1+Math.random()*1.9)*PX,gap=3+Math.random()*2,x0=x+gap,y0=y+gap,w=rw-gap*2,h=rh-gap*2;
-      const b=132+Math.random()*28,r=b+16+Math.random()*6,gg=b+2+Math.random()*4,bb=b-12;
-      g.fillStyle=`rgb(${r|0},${gg|0},${bb|0})`;g.beginPath();if(g.roundRect)g.roundRect(x0,y0,w,h,5+Math.random()*6);else g.rect(x0,y0,w,h);g.fill();
-      g.strokeStyle='rgba(255,240,220,.10)';g.lineWidth=3;g.beginPath();g.moveTo(x0+4,y0+h-4);g.lineTo(x0+4,y0+4);g.lineTo(x0+w-4,y0+4);g.stroke();
-      g.strokeStyle='rgba(0,0,0,.22)';g.beginPath();g.moveTo(x0+4,y0+h-3);g.lineTo(x0+w-3,y0+h-3);g.lineTo(x0+w-3,y0+4);g.stroke();
-      for(let k=0;k<6;k++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.08)':'rgba(255,255,255,.05)';g.beginPath();g.arc(x0+Math.random()*w,y0+Math.random()*h,2+Math.random()*7,0,7);g.fill();}
-      if(Math.random()<.12){g.strokeStyle='rgba(30,22,20,.45)';g.lineWidth=1.5;g.beginPath();let cx=x0+Math.random()*w,cy=y0+Math.random()*h;g.moveTo(cx,cy);for(let s=0;s<3;s++){cx+=(Math.random()-.5)*30;cy+=(Math.random()-.5)*30;g.lineTo(cx,cy);}g.stroke();}
-      x+=rw;}
-    y+=rh;}
-  // grietas con brillo de lava solo cerca de las orillas
-  for(let k=0;k<70;k++){let x=Math.random()*W,yy=Math.random()<.5?Math.random()*PX*6.5:H-Math.random()*PX*6.5;g.strokeStyle='rgba(255,130,40,.55)';g.lineWidth=2;g.beginPath();g.moveTo(x,yy);
-    for(let s=0;s<5;s++){x+=(Math.random()-.5)*40;yy+=(Math.random()-.5)*40;g.lineTo(x,yy);}g.stroke();}
+  // v45: losas cuadradas estilo Clash (gris cálido malva, tonos mezclados, juntas finas y bisel suave)
+  const TK=window.__VOLK||1;const T=[[140,125,123],[148,131,129],[155,137,134],[162,144,140],[170,151,147],[176,157,151]];
+  g.fillStyle=`rgb(${118*TK|0},${104*TK|0},${104*TK|0})`;g.fillRect(0,0,W,H);
+  const S=2*PX;for(let x0=X(0)-S*19,i=0;x0<W;x0+=S,i++)for(let y0=Z(0)-S*13,j=0;y0<H;y0+=S,j++){
+    const c0=T[Math.floor(Math.random()*T.length)],v=(Math.random()-.5)*4;g.fillStyle=`rgb(${(c0[0]+v)*TK|0},${(c0[1]+v)*TK|0},${(c0[2]+v)*TK|0})`;
+    g.fillRect(x0+1.5,y0+1.5,S-3,S-3);
+    g.fillStyle='rgba(255,245,240,.10)';g.fillRect(x0+1.5,y0+1.5,S-3,3);g.fillRect(x0+1.5,y0+1.5,3,S-3);
+    g.fillStyle='rgba(70,50,50,.10)';g.fillRect(x0+1.5,y0+S-4.5,S-3,3);g.fillRect(x0+S-4.5,y0+1.5,3,S-3);
+    for(let k=0;k<3;k++){g.fillStyle=Math.random()<.5?'rgba(80,60,60,.04)':'rgba(255,255,255,.035)';g.beginPath();g.arc(x0+Math.random()*S,y0+Math.random()*S,4+Math.random()*10,0,7);g.fill();}}
   g.strokeStyle='rgba(246,232,206,.92)';g.lineWidth=PX*.22;
   g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
   for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
-const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex(),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
+const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
+field.material.color.setRGB(1.07,1.48,2.03); // v45: neutraliza la luz naranja del volcán solo en el piso (que se vea gris como Clash)
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
 (function(){const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.fillStyle='#2e2523';g.fillRect(0,0,S,S);
   for(let i=0;i<300;i++){g.fillStyle=pickC(['rgba(70,58,54,.5)','rgba(40,32,30,.5)','rgba(120,50,20,.25)']);g.beginPath();g.arc(Math.random()*S,Math.random()*S,4+Math.random()*20,0,7);g.fill();}
