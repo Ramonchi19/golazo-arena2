@@ -482,6 +482,36 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 </style>
 </head>
 <body>
+<!-- v57: pantalla de carga -->
+<div id="boot" aria-label="Cargando Golazo Arena">
+  <div class="bt-art"></div><div class="bt-shade"></div>
+  <div class="bt-logo"><span class="bt-g">GOLAZO</span><span class="bt-a">ARENA</span></div>
+  <div class="bt-bottom">
+    <p class="bt-tip" id="btTip">Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!</p>
+    <div class="bt-bar"><i id="btFill"></i><b id="btPct">0%</b></div>
+    <small class="bt-st" id="btSt">Calentando motores…</small>
+  </div>
+</div>
+<style>
+#boot{position:fixed;inset:0;z-index:9999;background:#0d1f4a;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;font-family:'Lilita One',"Arial Rounded MT Bold",system-ui,sans-serif;color:#fff;transition:opacity .45s ease,transform .45s ease}
+#boot.out{opacity:0;transform:scale(1.04);pointer-events:none}
+#boot .bt-art{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(120,180,255,.45),rgba(120,180,255,0) 60%),repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),linear-gradient(#2f66d6,#1b3f9e);animation:btZoom 14s ease-out forwards}
+#boot .bt-art.img{background:#2a5cc0 var(--art) center 40%/cover no-repeat}
+@keyframes btZoom{from{transform:scale(1.08)}to{transform:scale(1)}}
+#boot .bt-shade{position:absolute;inset:0;background:linear-gradient(rgba(8,18,52,.55) 0,rgba(8,18,52,0) 26%,rgba(8,18,52,0) 70%,rgba(8,18,52,.85) 100%)}
+#boot .bt-logo{position:relative;margin-top:calc(env(safe-area-inset-top,0px) + 7vh);display:flex;flex-direction:column;align-items:center;line-height:.86;animation:btIn .8s cubic-bezier(.2,1.5,.4,1) both}
+#boot .bt-g{font-size:clamp(58px,19vw,120px);letter-spacing:1px;background:linear-gradient(#fff6b8 0,#ffd23a 45%,#f39a12 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:5px #3a1d00;paint-order:stroke fill;filter:drop-shadow(0 6px 0 #3a1d00) drop-shadow(0 10px 14px rgba(0,0,0,.45))}
+#boot .bt-a{margin-top:6px;font-size:clamp(28px,9vw,56px);letter-spacing:8px;padding:4px 22px 6px 30px;background:linear-gradient(#3d7bff,#1f4cc4);border:4px solid #0b1a3d;border-radius:12px;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill;box-shadow:0 5px 0 #0b1a3d;transform:rotate(-2deg)}
+@keyframes btIn{from{transform:scale(.3) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
+#boot .bt-bottom{position:relative;width:min(88%,420px);margin-bottom:calc(env(safe-area-inset-bottom,0px) + 5vh);display:flex;flex-direction:column;align-items:center;gap:10px}
+#boot .bt-tip{margin:0;min-height:2.6em;text-align:center;font-size:16px;line-height:1.3;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill;transition:opacity .3s}
+#boot .bt-bar{position:relative;width:100%;height:30px;border-radius:15px;background:#0b1a3d;border:3px solid #0b1a3d;box-shadow:0 4px 0 rgba(0,0,0,.35),inset 0 3px 0 rgba(0,0,0,.4);overflow:hidden}
+#boot .bt-bar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:12px;background:repeating-linear-gradient(115deg,rgba(255,255,255,.18) 0 10px,transparent 10px 20px),linear-gradient(#ffe46a,#ffb21a);box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset 0 -4px 0 rgba(160,90,0,.45);transition:width .25s ease;animation:btStripes .8s linear infinite}
+@keyframes btStripes{to{background-position:28px 0,0 0}}
+#boot .bt-bar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:400;font-size:16px;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill}
+#boot .bt-st{font-family:system-ui,sans-serif;font-size:12px;color:#c9d6ff;text-shadow:0 1px 2px #000}
+@media (prefers-reduced-motion:reduce){#boot .bt-art,#boot .bt-logo,#boot .bt-bar i{animation:none}}
+</style>
 <div id="meta">
   <header id="topbar">
     <div class="lvl"><span class="lvl-b" id="tbLvl">1</span><div class="xp"><i id="tbXp"></i><span id="tbXpT"></span></div></div>
@@ -682,10 +712,10 @@ function init3D(){
   [[16,14],[48,10],[80,14],[112,10],[0,40],[32,46],[64,40],[96,46],[128,40],[20,62],[84,62],[52,2],[116,2]].forEach(([x,y])=>{bg.beginPath();for(let i=0;i<5;i++){const a=i*1.2566-1.57;bg.lineTo(x+Math.cos(a)*7,y+Math.sin(a)*7);}bg.fill();});
   ballMesh=M(new THREE.SphereGeometry(BR,20,14),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(bc)}));ballMesh.castShadow=true;scene.add(ballMesh);
   {const S=128,c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d'),gr=q.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
-   gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.28,'rgba(255,255,255,.75)');gr.addColorStop(.55,'rgba(220,240,255,.22)');gr.addColorStop(1,'rgba(220,240,255,0)');q.fillStyle=gr;q.fillRect(0,0,S,S);
+   gr.addColorStop(0,'rgba(255,255,255,.06)');gr.addColorStop(.42,'rgba(255,255,255,.10)');gr.addColorStop(.56,'rgba(255,255,255,.55)');gr.addColorStop(.72,'rgba(225,240,255,.22)');gr.addColorStop(1,'rgba(225,240,255,0)');q.fillStyle=gr;q.fillRect(0,0,S,S);
    const tx=new THREE.CanvasTexture(c);
-   ballGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:.6,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending}));ballGlow.scale.setScalar(BR*5);ballGlow.renderOrder=6;scene.add(ballGlow);
-   ballXray=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:.45,depthWrite:false,depthTest:false}));ballXray.scale.setScalar(BR*3.6);ballXray.renderOrder=7;scene.add(ballXray);
+   ballGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));ballGlow.scale.setScalar(BR*5);ballGlow.renderOrder=6;scene.add(ballGlow);
+   ballXray=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:0,depthWrite:false}));ballXray.visible=false;(ballXray);
    ballLand=M(new THREE.RingGeometry(.55,.72,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));ballLand.rotation.x=-Math.PI/2;scene.add(ballLand);}
   ballShadow=M(new THREE.CircleGeometry(BR*1.1,16),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.35,depthWrite:false}));ballShadow.rotation.x=-Math.PI/2;scene.add(ballShadow);
   {const S=256,c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d'),C=S/2;
@@ -2421,7 +2451,8 @@ function aiCards(dt){
 // ================== GOL / FLUJO ==================
 function goal(team){
   if(pause>0)return;
-  score[team]++;crowdShot('goal',team===0?.55:.38);if(ARENA_MOD&&ARENA_MOD.onGoal)ARENA_MOD.onGoal();
+  score[team]++;for(const p of players){p.stun=0;p.slip=0;p.spinT=0;p.elecT=0;if(p.mesh&&p.mesh.tilt)p.mesh.tilt.rotation.z=0;} // v58: nadie se queda aturdido durante el festejo
+  crowdShot('goal',team===0?.55:.38);if(ARENA_MOD&&ARENA_MOD.onGoal)ARENA_MOD.onGoal();
   showBig(team===0?'¡GOOOOL!':'Gol rival',team===0?'#ffcc33':'#ff7b88',true);vib(team===0?[90,60,140]:70);
   const gx=team===0?L:-L;
   for(let i=0;i<90;i++)part(gx,rand(.5,3),rand(-GW,GW),rand(-6,6)-dirOf(team)*rand(2,8),rand(4,12),rand(-6,6),[0xffcc33,0x2f7bff,0xff3b4e,0xffffff,0x16c79a][i%5],rand(1.2,2.2),9,rand(.8,1.4));
@@ -2499,7 +2530,7 @@ function syncPlayer(p,dt){
   }
   if(false){m.arms[0].rotation.z=-2.4*k;m.arms[1].rotation.z=2.4*k;}
   else if(p.gk){m.arms[0].rotation.z=-.15;m.arms[1].rotation.z=.15;if(!(ANIMLIB&&m.glb))gkPose(p,m,sp);}
-  if(p.stun>0&&p.slip<=0){m.tilt.rotation.z=Math.sin(T*18)*.3;}
+  if(p.stun>0&&p.slip<=0&&!m.glb){m.tilt.rotation.z=Math.sin(T*18)*.3;} // v58: los personajes 3D ya no se bambolean (usan su animación de golpe)
   lifePose(p,m,sp,dt);fxPose(p,m,dt);if(m.footAdj)m.tilt.position.y+=m.footAdj;
   if(m.glb){m.tilt.rotation.x*=.25;let df=p.face-(p._pf===undefined?p.face:p._pf);while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p._pf=p.face;
     const tgt=clamp(-df/Math.max(dt,.001)*.05,-.28,.28)*Math.min(1,sp/5);p._lean=(p._lean||0)+(tgt-(p._lean||0))*Math.min(1,dt*7);
@@ -2513,9 +2544,9 @@ function syncPlayer(p,dt){
 }
 function render(dt){
   for(const p of players)syncPlayer(p,dt);
-  if(ball&&ballGlow){const sp=Math.hypot(ball.vx,ball.vz),held=!!(ball.owner||ball.gk);ballGlow.position.set(ball.x,ball.y,ball.z);ballXray.position.copy(ballGlow.position);
-    ballGlow.scale.setScalar(BR*(6.5+Math.min(2.5,sp*.08))+Math.sin(T*8)*.1);ballGlow.material.opacity=held?.6:.85;
-    ballXray.visible=state==='play';const h=ball.y-BR;
+  if(ball&&ballGlow){const sp=Math.hypot(ball.vx,ball.vz),held=!!(ball.owner||ball.gk);ballGlow.position.set(ball.x,ball.y,ball.z);{const dx=camera.position.x-ball.x,dy=camera.position.y-ball.y,dz=camera.position.z-ball.z,dl=Math.hypot(dx,dy,dz)||1;ballGlow.position.x+=dx/dl*BR*1.4;ballGlow.position.y+=dy/dl*BR*1.4;ballGlow.position.z+=dz/dl*BR*1.4;}
+    ballGlow.scale.setScalar(BR*(3.9+Math.min(1.2,sp*.04)));ballGlow.material.opacity=held?.32:.45;
+    ballXray.visible=false;const h=ball.y-BR;
     if(!held&&h>1.1){const t=ballLandT();ballLand.visible=true;ballLand.position.set(ball.x+ball.vx*t,.05,ball.z+ball.vz*t);ballLand.scale.setScalar(1+.12*Math.sin(T*10));ballLand.material.opacity=Math.min(.75,(h-1.1)*.6);}else ballLand.visible=false;}
   if(ball){ballMesh.position.set(ball.x,ball.y,ball.z);ballShadow.position.set(ball.x,.03,ball.z);const h=ball.y-BR;ballShadow.scale.setScalar(1+h*.25);ballShadow.material.opacity=Math.max(.08,.35-h*.06);
     if(ball.super){ballMesh.material.emissive.setRGB(.8,.4,0);}else ballMesh.material.emissive.setRGB(0,0,0);}
@@ -2691,7 +2722,7 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 </script>
-<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=56", "s": "assets/cards/zurdito_c.webp?v=56"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=56", "s": "assets/cards/cazador_c.webp?v=56"}, "perro": {"c": "assets/cards/perro_c.webp?v=56", "s": "assets/cards/perro_c.webp?v=56"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_c.webp?v=56"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=56", "s": "assets/cards/coletazo_c.webp?v=56"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=56", "s": "assets/cards/expreso_c.webp?v=56"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=56", "s": "assets/cards/pausa_c.webp?v=56"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=56", "s": "assets/cards/gigante_c.webp?v=56"}, "rey": {"c": "assets/cards/rey_c.webp?v=56", "s": "assets/cards/rey_c.webp?v=56"}, "gato": {"c": "assets/cards/gato_c.webp?v=56", "s": "assets/cards/gato_c.webp?v=56"}, "toro": {"c": "assets/cards/toro_c.webp?v=56", "s": "assets/cards/toro_c.webp?v=56"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=56", "s": "assets/cards/vikingo_c.webp?v=56"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=56", "s": "assets/cards/muralla_c.webp?v=56"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=56", "s": "assets/cards/ciclon_c.webp?v=56"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=56", "s": "assets/cards/malabares_c.webp?v=56"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=56", "s": "assets/cards/ruleta_c.webp?v=56"}, "leon": {"c": "assets/cards/leon_c.webp?v=56", "s": "assets/cards/leon_c.webp?v=56"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=56", "s": "assets/cards/turbo_c.webp?v=56"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
+<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb?v=59", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=56", "s": "assets/cards/zurdito_c.webp?v=56"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=56", "s": "assets/cards/cazador_c.webp?v=56"}, "perro": {"c": "assets/cards/perro_c.webp?v=56", "s": "assets/cards/perro_c.webp?v=56"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_c.webp?v=56"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=56", "s": "assets/cards/coletazo_c.webp?v=56"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=56", "s": "assets/cards/expreso_c.webp?v=56"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=56", "s": "assets/cards/pausa_c.webp?v=56"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=56", "s": "assets/cards/gigante_c.webp?v=56"}, "rey": {"c": "assets/cards/rey_c.webp?v=56", "s": "assets/cards/rey_c.webp?v=56"}, "gato": {"c": "assets/cards/gato_c.webp?v=56", "s": "assets/cards/gato_c.webp?v=56"}, "toro": {"c": "assets/cards/toro_c.webp?v=56", "s": "assets/cards/toro_c.webp?v=56"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=56", "s": "assets/cards/vikingo_c.webp?v=56"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=56", "s": "assets/cards/muralla_c.webp?v=56"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=56", "s": "assets/cards/ciclon_c.webp?v=56"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=56", "s": "assets/cards/malabares_c.webp?v=56"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=56", "s": "assets/cards/ruleta_c.webp?v=56"}, "leon": {"c": "assets/cards/leon_c.webp?v=56", "s": "assets/cards/leon_c.webp?v=56"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=56", "s": "assets/cards/turbo_c.webp?v=56"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
 window.ANIMURL='assets/anims.glb';window.ANIMMETAURL='assets/anims.json';</script>
 <script>
 // ================== DATOS ==================
@@ -3278,6 +3309,21 @@ function onMatchEnd(a,b,forfeit){
 
 // ================== ARRANQUE ==================
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
+// v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
+(function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=57)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=57';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
+  const TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
+  let ti=Math.floor(Math.random()*TIPS.length);tip.textContent=TIPS[ti];
+  const tipT=setInterval(()=>{tip.style.opacity=0;setTimeout(()=>{ti=(ti+1)%TIPS.length;tip.textContent=TIPS[ti];tip.style.opacity=1;},300);},3200);
+  const t0=performance.now();let shown=0,done=false;
+  const prog=()=>{let p=.12;if(typeof THREE!=='undefined')p+=.1;if(ANIMLIB)p+=.18;
+    const tot=MODEL_IDS.length||1,fin=MODEL_IDS.filter(id=>MSTATUS[id]&&MSTATUS[id]!=='cargando').length;p+=.6*fin/tot;
+    st.textContent=fin<tot?'Cargando personajes '+fin+'/'+tot+'…':(ANIMLIB?'¡Listo!':'Cargando animaciones…');return Math.min(1,p);};
+  const tick=setInterval(()=>{const target=done?1:Math.min(.97,prog());shown+=(target-shown)*.35;if(target-shown<.004)shown=target;
+    fill.style.width=(shown*100).toFixed(1)+'%';pct.textContent=Math.round(shown*100)+'%';
+    if(done&&shown>=.999&&performance.now()-t0>1800){clearInterval(tick);clearInterval(tipT);boot.classList.add('out');setTimeout(()=>boot.remove(),520);}},90);
+  Promise.race([modelsReady,sleep(25000)]).catch(()=>{}).then(()=>{done=true;});
+})();
+
 document.addEventListener('pointerdown',()=>audio(),{once:true});
 
 </script>
