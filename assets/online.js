@@ -216,8 +216,50 @@ window.openSettings=function(){origSettings.apply(this,arguments);const p=docume
     row.innerHTML=`<div><b class="ct">Cuenta</b><small class="acc">${h(who)} · progreso guardado en la nube</small></div><button class="btn r sm" id="soB">Salir</button>`;}
   else row.innerHTML=`<div><b class="ct">Cuenta</b><small class="acc">${NET.offline?'Jugando sin conexión':'Sin iniciar sesión'}</small></div><button class="btn y sm" id="siB">Entrar</button>`;
   const first=p.querySelector('.set');if(first)p.insertBefore(row,first);else p.appendChild(row);
+  const pr=document.createElement('div');pr.className='set';pr.innerHTML='<div><b class="ct">Prueba de conexión</b><small>Mide el ping con el servidor de partidas</small></div><button class="btn b sm" id="pgB">Probar</button>';
+  row.after(pr);document.getElementById('pgB').onclick=()=>{try{closeModal();}catch(e){}NET.pingTest();};
   const so=document.getElementById('soB');if(so)so.onclick=()=>askConfirm('¿Cerrar sesión?','Tu progreso queda guardado en tu cuenta.',()=>{try{closeModal();}catch(e){}NET.signOut();});
   const si=document.getElementById('siB');if(si)si.onclick=()=>{try{closeModal();}catch(e){}NET.login();};};
+
+// ---------- v61: prueba de conexión con el servidor de partidas (Cloudflare) ----------
+const SERVER=window.WS_SERVER||'wss://wild-strikers.ramoncas0234.workers.dev';
+NET.server=SERVER;
+let pws=null,pT=null,pings=[],pState={};
+function qual(ms){return ms==null?['—','#b8c8f0']:ms<=80?['Excelente','#7dffa8']:ms<=150?['Buena','#d8ff7d']:ms<=250?['Regular','#ffd27d']:['Mala','#ff8a8a'];}
+function pRender(){const el=document.getElementById('pgBody');if(!el)return;
+  const n=pings.length,avg=n?Math.round(pings.reduce((a,b)=>a+b,0)/n):null,mn=n?Math.round(Math.min(...pings)):null,mx=n?Math.round(Math.max(...pings)):null,q=qual(avg);
+  const J=(pState.jugadores||[]).map(j=>`<div class="rrow ${j.id===pState.id?'me':''}"><span class="pos ct">${j.id===pState.id?'Tú':''}</span><span class="av">${h(j.avatar)}</span><span class="nm ct">${h(j.name)}</span><span class="tr ct" style="color:${qual(j.ping)[1]}">${j.ping==null?'…':j.ping+' ms'}</span></div>`).join('');
+  el.innerHTML=`<div class="pf-grid" style="grid-template-columns:repeat(3,1fr)"><div class="pfs"><span>📶</span><b class="ct" style="color:${q[1]}">${avg==null?'—':avg+' ms'}</b><small>Promedio · ${q[0]}</small></div><div class="pfs"><span>⬇️</span><b class="ct">${mn==null?'—':mn+' ms'}</b><small>Mejor</small></div><div class="pfs"><span>⬆️</span><b class="ct">${mx==null?'—':mx+' ms'}</b><small>Peor</small></div></div>
+   <p class="note">${pws&&pws.readyState===1?'Conectado'+(pState.lugar?' al centro de datos <b>'+h(pState.lugar)+'</b>':'')+(pState.version?' · '+h(pState.version):''):pState.err?h(pState.err):'Conectando…'}</p>
+   <div class="mtitle ct" style="font-size:16px;margin:6px 0">En la sala ${h(pState.sala||'')} (${(pState.jugadores||[]).length})</div><div class="rk">${J||'<p class="note">Nadie todavía.</p>'}</div>`;}
+function pStop(){clearInterval(pT);pT=null;if(pws){try{pws.close();}catch(e){}pws=null;}}
+function pStart(sala){pStop();pings=[];pState={sala};pRender();
+  const q=new URLSearchParams({sala,nombre:save.name||'Jugador',av:save.avatar||'⚽'});
+  try{pws=new WebSocket(SERVER+'/ws?'+q);}catch(e){pState.err='No se pudo abrir la conexión.';pRender();return;}
+  pws.onopen=()=>{pT=setInterval(()=>{if(pws&&pws.readyState===1)pws.send(JSON.stringify({t:'ping',c:performance.now()}));},500);};
+  let k=0;
+  pws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(e){return;}
+    if(m.t==='hola'){pState.id=m.id;pState.lugar=m.lugar;pState.version=m.version;}
+    else if(m.t==='pong'){pings.push(performance.now()-m.c);if(pings.length>20)pings.shift();if(++k%4===0){const a=pings.reduce((x,y)=>x+y,0)/pings.length;pws.send(JSON.stringify({t:'miPing',ms:a}));}}
+    else if(m.t==='sala'){pState.jugadores=m.jugadores;}
+    else if(m.t==='toque'){say('👋 ¡Toque de '+m.de+'!');try{sfx('whistle');}catch(e){}try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}}
+    pRender();};
+  pws.onclose=()=>{clearInterval(pT);if(!pState.err)pState.err='Desconectado.';pRender();};
+  pws.onerror=()=>{pState.err='No se pudo conectar con el servidor. ¿Ya se publicó en Cloudflare?';pRender();};}
+NET.pingTest=function(){
+  showModal(`<div class="mpanel ep"><button class="mclose ct" id="mx">✕</button><div class="mtitle ct">Prueba de conexión</div>
+   <p class="desc" style="margin-top:0">Abre esta pantalla en dos teléfonos con la misma sala para que se vean.</p>
+   <div style="display:flex;gap:8px;align-items:center"><input id="pgS" maxlength="12" value="PRUEBA" autocomplete="off" style="flex:1;text-transform:uppercase"><button class="btn y sm" id="pgGo" style="margin:0">Entrar</button></div>
+   <div id="pgBody" style="margin-top:10px"></div>
+   <div class="acts"><button class="btn b" id="pgT">👋 Mandar toque</button></div></div>`);
+  const close=()=>{pStop();closeModal();};
+  document.getElementById('mx').onclick=close;
+  const go=()=>{const v=document.getElementById('pgS').value.toUpperCase().replace(/[^A-Z0-9]/g,'')||'PRUEBA';document.getElementById('pgS').value=v;pStart(v);};
+  document.getElementById('pgGo').onclick=go;
+  document.getElementById('pgT').onclick=()=>{if(pws&&pws.readyState===1){pws.send(JSON.stringify({t:'toque',c:Date.now()}));say('Toque enviado');}else say('Primero conéctate');};
+  go();};
+// cerrar la prueba si se cierra el modal tocando afuera
+document.addEventListener('click',e=>{if(pws&&e.target&&e.target.id==='modal')pStop();},true);
 
 start();
 })();
