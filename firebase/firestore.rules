@@ -1,0 +1,47 @@
+rules_version = '2';
+// Wild Strikers · reglas de Firestore (v60)
+// Cada jugador solo escribe su propio documento players/{uid}.
+// Las copas solo pueden subir poco a poco (como máximo lo que da un partido), así nadie se pone 5000 a mano.
+// Todo lo demás de la base (lo de la app de chat vieja) queda bloqueado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && okShape() && request.resource.data.trophies <= 8000;
+      allow update: if request.auth != null && request.auth.uid == uid
+                    && okShape() && okTrophies();
+      allow delete: if false;
+
+      function okShape() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['name','avatar','color','country','trophies','maxTrophies','lvl',
+                                 'wins','losses','draws','save','updatedAt','matchAt'])
+          && d.name is string && d.name.size() >= 1 && d.name.size() <= 16
+          && d.avatar is string && d.avatar.size() <= 8
+          && d.color is string && d.color.size() <= 9
+          && d.country is string && d.country.size() <= 3
+          && d.trophies is int && d.trophies >= 0
+          && d.maxTrophies is int && d.maxTrophies >= 0
+          && d.lvl is int && d.wins is int && d.losses is int && d.draws is int
+          && d.save is map
+          && d.updatedAt == request.time;
+      }
+
+      function okTrophies() {
+        let n = request.resource.data;
+        let o = resource.data;
+        let last = o.get('matchAt', o.updatedAt);
+        let mins = (request.time.toMillis() - last.toMillis()) / 60000;
+        return (n.trophies <= o.trophies
+                || (n.matchAt == request.time && n.trophies - o.trophies <= 40 + mins * 20))
+          && (n.maxTrophies <= o.maxTrophies || n.maxTrophies == n.trophies);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
