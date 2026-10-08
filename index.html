@@ -570,9 +570,9 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="assets/sim/ball.js?v=64"></script>
-<script src="assets/sim/data.js?v=64"></script>
-<script src="assets/sim/match.js?v=64"></script>
+<script src="assets/sim/ball.js?v=65"></script>
+<script src="assets/sim/data.js?v=65"></script>
+<script src="assets/sim/match.js?v=65"></script>
 <script>
 
 if(typeof THREE==='undefined'){document.getElementById('err').style.display='flex';}
@@ -1411,24 +1411,10 @@ function buildAimArrow(){
 }
 const zoneCol=pw=>pw<.6?0x3ccf5a:pw<.85?0xffcc33:0xff4d5e;
 /* v63: movido a assets/sim/match.js */
-function startAim(type,key){user.aim={type,key,power:0,t:0,dir:aimDefault(user,type)};if(type==='shot'){user.charging=true;user.charge=0;}}
-function updateAim(dt){
-  const a=user&&user.aim;if(!a)return;
-  if(ball.owner!==user||user.stun>0){user.aim=null;user.charging=false;return;}
-  a.t+=dt;a.power=Math.min(1,a.power+dt/1.1*(a.type==='shot'?(user.chargeMul||1):1));if(a.type==='shot')user.charge=a.power;
-  const m=Math.hypot(joy.x,joy.y);a.dir=m>.25?{x:-joy.y/m,z:joy.x/m}:aimDefault(user,a.type);
-}
+function startAim(type,key){simStartAim(0,type,key);} // v65: lógica en assets/sim/match.js
+/* v65: updateAim() movido a assets/sim/match.js */
 /* v63: movido a assets/sim/match.js */
-function releaseAim(){
-  const a=user&&user.aim;if(!a)return;user.aim=null;user.charging=false;
-  if(ball.owner!==user)return;
-  const tap=a.t<.13,pw=tap?null:a.power;
-  if(a.type==='shot'){const d=dirOf(user.team),gx=d*L,fwd=a.dir.x*d;let az;
-    if(fwd>.15)az=user.z+a.dir.z/a.dir.x*(gx-user.x);else az=clamp(a.dir.z*6,-GW,GW);
-    az=clamp(az,-(GW+2.5),GW+2.5);shoot(user,tap?.55:pw,null,{az});user.charge=0;}
-  else if(a.type==='pass')passAim(user,pw,a.dir);
-  else crossAim(user,pw,a.dir);
-}
+function releaseAim(){simReleaseAim(0);}
 /* v63: movido a assets/sim/match.js */
 const meterEl=document.getElementById('meter'),meterCover=document.getElementById('meterCover'),meterLbl=document.getElementById('meterLbl');
 function drawAim(){
@@ -2065,17 +2051,12 @@ joyEl.addEventListener('pointerup',joyEnd);joyEl.addEventListener('pointercancel
 function joyMove(e){const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2-10;let dx=e.clientX-cx,dy=e.clientY-cy;const l=Math.hypot(dx,dy);if(l>R){dx=dx/l*R;dy=dy/l*R;}joy.x=dx/R;joy.y=dy/R;knob.style.transform=`translate(${dx}px,${dy}px)`;}
 // botones
 const btnPtr=new Map();
-function userDir(){const m=Math.hypot(joy.x,joy.y);if(m>.2)return{x:-joy.y,z:joy.x};return{x:Math.sin(user.face),z:Math.cos(user.face)};}
+function userDir(){return simDir(0);}
 function btnDown(k){
-  if(ball.gk&&ball.gk.team===0&&!ball.gk.distrib&&state==='play'){const mj=Math.hypot(joy.x,joy.y),dir=mj>.25?{x:-joy.y/mj,z:joy.x/mj}:null;keeperDistribute(ball.gk,k==='a'?'largo':k==='b'?'mano':'corto',dir);return;}
-  audio();if(state!=='play'||pause>0||!user)return;
-  if(user.stun>0||user.act||user.recover>0)return;
-  const atk=attackMode(),has=ball.owner===user,dv={x:-joy.y,z:joy.x};
-  if(k==='a'){if(atk){if(has){startAim('shot','a');}else{user.volleyQ=.45;tryVolley(user);}}else if(user.tcd<=0){const u=userDir();startAct(user,'slide',u.x,u.z);}}
-  if(k==='b'){if(atk){if(has)startAim('pass','b');}else if(user.tcd<=0){const u=userDir();startAct(user,'body',u.x,u.z);}}
-  if(k==='c'){if(atk){if(has)startAim('cross','c');}else{pressT=2.5;popText('¡Presión!',user.x,2.6,user.z,'#ffb3e6');}}
+  if(ball.gk&&ball.gk.team===0&&!ball.gk.distrib&&state==='play'){simBtnDown(0,k);return;}
+  audio();simBtnDown(0,k);
 }
-function btnUp(k){if(user&&user.aim&&user.aim.key===k)releaseAim();}
+function btnUp(k){simBtnUp(0,k);}
 [['a','bA'],['b','bB'],['c','bC']].forEach(([k,id])=>{const el=document.getElementById(id);
   el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();btnPtr.set(e.pointerId,k);el.setPointerCapture(e.pointerId);el.classList.add('down');btnDown(k);});
   const up=e=>{if(btnPtr.get(e.pointerId)!==k)return;btnPtr.delete(e.pointerId);el.classList.remove('down');btnUp(k);};
@@ -2731,6 +2712,7 @@ applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()
 document.addEventListener('pointerdown',()=>audio(),{once:true});
 
 </script>
-<script src="assets/online.js?v=61"></script>
+<script src="assets/online.js?v=65"></script>
+<script src="assets/online-play.js?v=65"></script>
 </body>
 </html>

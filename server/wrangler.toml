@@ -12,3 +12,15 @@ class_name = "Room"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
+
+[[durable_objects.bindings]]
+name = "FILA"
+class_name = "Fila"
+
+[[durable_objects.bindings]]
+name = "PARTIDOS"
+class_name = "Partido"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Fila", "Partido"]
