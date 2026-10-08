@@ -6,7 +6,7 @@ import "../../assets/sim/ball.js"; // la misma física del balón que usa el jue
 const SIM = globalThis.SIM;
 import { makeMatch } from "./match.gen.js"; // jugadores, IA y porteros del juego (assets/sim/match.js)
 
-const VERSION = "v63-jugadores";
+const VERSION = "v64-poderes";
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }
 });
@@ -32,10 +32,12 @@ export default {
       const card = pos => ({ id: "x", pos, st: { vel: 70, tir: 70, pas: 70, reg: 70, def: 70, fis: 70, ref: 70, alc: 70, sal: 70 } });
       const sq = () => ({ gk: { card: card("POR"), lvl: 1 }, f: slots.map(s => ({ card: card(s.r), lvl: 1 })), slots });
       const M = makeMatch(); M.setup(sq(), sq());
-      const t0 = Date.now(); let f = 0; for (; f < seg * 60 && M.state === "play"; f++) M.step(1 / 60);
+      const poder = url.searchParams.get("poder"); // por ejemplo ?poder=bomba
+      const t0 = Date.now(); let f = 0;
+      for (; f < seg * 60 && M.state === "play"; f++) { if (poder && f === 30) M.castSpell(poder, 0, M.ball.x, M.ball.z); M.step(1 / 60); }
       const r = v => Math.round(v * 10) / 10;
       return json({ ok: true, version: VERSION, segundos: seg, cuadros: f, marcador: M.score.join("-"),
-        balon: { x: r(M.ball.x), z: r(M.ball.z) }, jugadores: M.players.map(p => ({ equipo: p.team, portero: !!p.gk, x: r(p.x), z: r(p.z) })), ms: Date.now() - t0 });
+        poder: poder || null, balon: { x: r(M.ball.x), y: r(M.ball.y), z: r(M.ball.z) }, jugadores: M.players.map(p => ({ equipo: p.team, portero: !!p.gk, x: r(p.x), z: r(p.z), aturdido: p.stun > 0 })), ms: Date.now() - t0 });
     }
     if (url.pathname === "/ws") {
       if (req.headers.get("Upgrade") !== "websocket") return json({ error: "se esperaba websocket" }, 426);
