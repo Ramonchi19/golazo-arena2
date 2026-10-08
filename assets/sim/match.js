@@ -221,7 +221,7 @@ function updateKeeper(k,dt){
   if(free&&ball.vx*-d>3){const atLine=crossAt(gx),atK=crossAt(k.x);
     if(atLine&&atK&&atLine.t<2.4&&Math.abs(atLine.z)<GW+1.2&&atLine.y<GH+1.2)pred={line:atLine,k:atK};}
   if(pred){
-    if(!k.alert){k.alert=true;k.plan=null;if(ball.super&&k.team===0&&ball.lastTeam===1)startQTE(k);
+    if(!k.alert){k.alert=true;k.plan=null;if(ball.super&&k.team===0&&ball.lastTeam===1&&!AI0)startQTE(k);
       k.reactT=G_.react*rand(.94,1.06)+(screened(k)?.08:0);}
     k.reactT-=dt;k.vx=k.vz=0;
     if(k.reactT<=0){
@@ -648,17 +648,21 @@ function explode(e){psfx('bomba');
   if(!ball.owner&&!ball.gk){const dd=Math.hypot(ball.x-e.x,ball.z-e.z);if(dd<r){ball.vx=(ball.x-e.x)/(dd||1)*12;ball.vz=(ball.z-e.z)/(dd||1)*12;ball.vy=7;ball.tried=[false,false];}}
   shakeAmt=1;hitstop=.08;sfx('boom');popText('¡BUM!',e.x,2.5,e.z,'#ffb347',26);
 }
-function aiCards(dt){
-  aiT-=dt;if(aiT>0)return;aiT=rand(1,2.2)*D.think;
-  const h=hands[1],e=energy[1],has=k=>{const i=h.indexOf(k);return i>=0&&CARDS[k].cost<=e?i:-1;};
+// v69: los poderes de la IA, para cualquier equipo (IA contra IA usa los dos)
+let aiT0=2;
+function aiCards(dt,t){
+  if(t==null)t=1;
+  if(t===0){aiT0-=dt;if(aiT0>0)return;aiT0=rand(1,2.2)*D.think;}else{aiT-=dt;if(aiT>0)return;aiT=rand(1,2.2)*D.think;}
+  const d=dirOf(t),myG=-d*L,thG=d*L;
+  const h=hands[t],e=energy[t],has=k=>{const i=h.indexOf(k);return i>=0&&CARDS[k].cost<=e?i:-1;};
   const c=ball.owner;
-  if(c&&c.team===0){const dg=Math.hypot(c.x-L,c.z);
-    if(dg<16&&has('escudo')>=0&&Math.random()<.5)return playCard(1,has('escudo'),0,0);
-    if(dg<32)for(const k of shuffle(['rayo','bomba','hielo','cascara','punetazo','tornado','meteorito','lodo','muro','barril'])){const i=has(k);if(i>=0&&Math.random()<.5){return playCard(1,i,c.x+c.vx*.45,c.z+c.vz*.45);}}}
-  if(c&&c.team===1){const dg=Math.hypot(c.x+L,c.z);
-    if(dg<24&&has('superbalon')>=0&&Math.random()<.4)return playCard(1,has('superbalon'),0,0);
-    if(has('turbo')>=0&&Math.random()<.25)return playCard(1,has('turbo'),0,0);}
-  if(e>=9.5){const i=h.findIndex(k=>!CARDS[k].target&&CARDS[k].cost<=e);if(i>=0)playCard(1,i,0,0);}
+  if(c&&c.team!==t){const dg=Math.hypot(c.x-myG,c.z);
+    if(dg<16&&has('escudo')>=0&&Math.random()<.5)return playCard(t,has('escudo'),0,0);
+    if(dg<32)for(const k of shuffle(['rayo','bomba','hielo','cascara','punetazo','tornado','meteorito','lodo','muro','barril'])){const i=has(k);if(i>=0&&Math.random()<.5){return playCard(t,i,c.x+c.vx*.45,c.z+c.vz*.45);}}}
+  if(c&&c.team===t){const dg=Math.hypot(c.x-thG,c.z);
+    if(dg<24&&has('superbalon')>=0&&Math.random()<.4)return playCard(t,has('superbalon'),0,0);
+    if(has('turbo')>=0&&Math.random()<.25)return playCard(t,has('turbo'),0,0);}
+  if(e>=9.5){const i=h.findIndex(k=>!CARDS[k].target&&CARDS[k].cost<=e);if(i>=0)playCard(t,i,0,0);}
 }
 
 function update(dt){
@@ -671,7 +675,7 @@ function update(dt){
   const rate=(time<=X2T||overtime?2:1)/2.8;
   energy[0]=Math.min(10,energy[0]+rate*dt);energy[1]=Math.min(10,energy[1]+rate*dt*D.ai);
   pressT-=dt;pressT1-=dt;shield[0]-=dt;shield[1]-=dt;
-  if(!H1&&!NOCARDS)aiCards(dt);updateControl();updateAim(dt);
+  if(!H1&&!NOCARDS){aiCards(dt,1);if(AI0)aiCards(dt,0);}updateControl();updateAim(dt);
   for(const p of players){updatePlayer(p,dt);runQueue(p,dt);}
   contestBall(dt);separate();updateBall(dt);
   for(const t of traps){t.life-=dt;for(const p of players){if(p.team===t.team||p.gk||p.stun>0||p.star>0)continue;

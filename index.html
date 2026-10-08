@@ -80,7 +80,8 @@ h3{margin:14px 0 7px;font-size:17px;font-weight:400}
 .arena-wrap{position:relative;margin:8px 0 2px;display:flex;flex-direction:column;align-items:center}
 .round{position:absolute;width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ffe27a,#f5a300);border:3px solid #0a1636;font-size:26px;box-shadow:0 4px 0 #0a1636,inset 0 -4px 0 rgba(0,0,0,.2);z-index:3;display:flex;align-items:center;justify-content:center}
 .round span{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:11px;white-space:nowrap;-webkit-text-stroke:2.5px #0a1636;paint-order:stroke fill}
-.round.l1{left:2px;top:10px}.round.l2{left:2px;top:92px;background:radial-gradient(circle at 40% 35%,#9fd8ff,#2f7bff)}.round.r1{right:2px;top:10px;background:radial-gradient(circle at 40% 35%,#e4a8ff,#8a2ed6)}
+.round.l1{left:2px;top:10px}.round.l2{left:2px;top:92px;background:radial-gradient(circle at 40% 35%,#9fd8ff,#2f7bff)}.round.r2{right:2px;top:calc(clamp(44px,7vh,58px) + 28px);background:radial-gradient(circle at 40% 35%,#ffe08a,#e08a00)}
+.round.r1{right:2px;top:10px;background:radial-gradient(circle at 40% 35%,#e4a8ff,#8a2ed6)}
 .dio{width:auto;min-width:250px;height:auto;min-height:220px;perspective:650px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .plat{width:200px;height:250px;transform:rotateX(52deg) rotateZ(0deg);transform-style:preserve-3d;position:relative;border-radius:16px;background:var(--st);box-shadow:0 0 0 4px #0a1636,0 26px 0 var(--side),0 26px 0 4px #0a1636,0 60px 50px rgba(0,0,0,.45);animation:dioFloat 4s ease-in-out infinite}
 @keyframes dioFloat{50%{transform:rotateX(52deg) translateZ(8px)}}
@@ -573,7 +574,7 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=65"></script>
 <script src="assets/sim/data.js?v=65"></script>
-<script src="assets/sim/match.js?v=67"></script>
+<script src="assets/sim/match.js?v=69"></script>
 <script src="assets/kits.js?v=68"></script>
 <script>
 
@@ -2105,7 +2106,7 @@ function endGame(){try{tensEl.classList.remove('on','fast');clockEl.classList.re
 }
 document.getElementById('gkcamBtn').onclick=()=>{gkCam=!gkCam;const k=keeperOf(0);if(k){gcx=k.x+dirOf(0)*7.5;gcz=k.z+3;}document.getElementById('gkcamBtn').classList.toggle('on',gkCam);popText(gkCam?'🎥 Cámara: portero':'🎥 Cámara: cancha',0,3,0,'#fff',16);};
 document.getElementById('mute').onclick=()=>{save.settings.sound=!save.settings.sound;muted=!save.settings.sound;persist();document.getElementById('mute').textContent=muted?'🔇':'🔊';};
-document.getElementById('quit').onclick=()=>{if(state!=='play')return;askConfirm('¿Rendirte?','Contará como derrota.',()=>{state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);});};
+document.getElementById('quit').onclick=()=>{if(window.SPECT){askConfirm('¿Salir?','Dejas de ver el partido.',spectExit);return;}if(state!=='play')return;askConfirm('¿Rendirte?','Contará como derrota.',()=>{state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);});};
 
 let last=0,gameOn=false;
 function loop(ts){
@@ -2339,6 +2340,7 @@ function renderBattle(){
     <button class="round l1" id="hbRoad" aria-label="Camino de arenas">🛣️<span>Arenas</span></button>
     <button class="round l2" id="hbHow" aria-label="Cómo jugar">❓<span>Ayuda</span></button>
     <button class="round r1" id="hbLocker" aria-label="Vestuario">👕<span>Vestuario</span></button>
+    <button class="round r2" id="hbSpect" aria-label="Ver IA contra IA">📺<span>IA vs IA</span></button>
     ${dioramaHTML(li)}
     <button class="note" id="m3d" style="margin:0 0 4px;background:rgba(10,22,54,.6);border:2px solid #0a1636;border-radius:10px;padding:4px 10px;color:#fff">${statusTxt()}</button>
     <div class="arena-name ct">${Lg.ic} ${Lg.n}<small>${save.testArena!=null?'🎮 Prueba: '+ARENAS[save.testArena].n+' (toca el estadio para cambiar)':'Arena '+(li+1)+'/'+LEAGUES.length}</small></div>
@@ -2353,7 +2355,7 @@ function renderBattle(){
   $('#goBattle').onclick=()=>{audio();sfx('power');matchmaking();};
   $('#m3d').onclick=openPreview;
   $('#bnP').onclick=openProfile;$('#hbMenu').onclick=openSettings;$('#hbRank').onclick=()=>go('rank');$('#hbNews').onclick=openNews;
-  $('#hbRoad').onclick=openLeagues;$('#hbRoad2').onclick=openLeagues;$('#dio').onclick=openLeagues;$('#hbHow').onclick=openHow;$('#hbLocker').onclick=()=>go('locker');$('#hbDeck').onclick=()=>go('squad');
+  $('#hbRoad').onclick=openLeagues;$('#hbRoad2').onclick=openLeagues;$('#dio').onclick=openLeagues;$('#hbHow').onclick=openHow;$('#hbLocker').onclick=()=>go('locker');$('#hbSpect').onclick=()=>{audio();startSpectate();};$('#hbDeck').onclick=()=>go('squad');
   $$('.pslot.full').forEach(b=>b.onclick=()=>{const i=+b.dataset.i,t=save.packs[i];save.packs[i]=null;persist();openPack(t);});
 }
 
@@ -2695,6 +2697,23 @@ function matchmaking(){
     $('#mbox').innerHTML=`<div class="vs"><div class="vs-s"><span class="av" style="background:${save.color}">${save.avatar}</span><b class="ct">${esc(save.name)}</b><small class="ct">${flag(save.country)} 🏆 ${save.trophies}</small></div><div class="vs-x ct">VS</div><div class="vs-s op"><span class="av" style="background:#ff3b4e">${opp.av}</span><b class="ct">${esc(opp.name)}</b><small class="ct">${flag(opp.c)} 🏆 ${opp.trophies}</small></div></div>`;
     setTimeout(()=>{if(cancel)return;closeModal();startMatch(opp);},1700);},1600);
 }
+// v69: ver un partido de la IA contra la IA (sin premios ni copas)
+window.SPECT=false;
+async function startSpectate(){
+  const opp=makeOpponent();window.SPECT=true;
+  await startMatch(opp);if(!window.SPECT)return;
+  AI0=true;user=null;D=DIFF.hard;
+  for(const id of ['joy','btns','row'])(document.getElementById(id)||{}).style&&(document.getElementById(id).style.display='none');
+  let b=document.getElementById('spectTag');if(!b){b=document.createElement('div');b.id='spectTag';b.className='ct';
+    b.style.cssText='position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;display:flex;gap:10px;align-items:center;background:rgba(10,22,54,.75);border:3px solid #0a1636;border-radius:14px;padding:6px 12px;color:#fff;font-size:16px';
+    b.innerHTML='📺 IA contra IA <button class="btn r sm" id="spectX">Salir</button>';document.body.appendChild(b);document.getElementById('spectX').onclick=()=>askConfirm('¿Salir?','Dejas de ver el partido.',spectExit);}
+  b.style.display='flex';
+}
+function spectRestore(){window.SPECT=false;AI0=false;for(const id of ['joy','btns','row']){const e=document.getElementById(id);if(e)e.style.display='';}const b=document.getElementById('spectTag');if(b)b.style.display='none';}
+function spectExit(){spectRestore();state='menu';gameOn=false;crowdStop(true);document.getElementById('end').classList.add('hide');document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');}
+function spectEnd(a,b){const end=document.getElementById('end');const t=document.getElementById('spectTag');if(t)t.style.display='none';
+  end.innerHTML=`<div class="mpanel res-draw"><h2 class="ct">Fin del partido</h2><div class="rs">${a} - ${b}</div><small class="sys" style="display:block;text-align:center;margin-bottom:8px">IA contra IA · no cuenta para tus copas</small><div class="acts"><button class="btn b" id="spAgain">Ver otro</button><button class="btn y" id="spOk">Salir</button></div></div>`;
+  end.classList.remove('hide');$('#spOk').onclick=spectExit;$('#spAgain').onclick=()=>{end.classList.add('hide');spectRestore();startSpectate();};}
 async function startMatch(opp){
   try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait').catch(()=>{});}catch(e){}
   if(typeof THREE==='undefined'){toast('No se pudo cargar el motor 3D');return;}
@@ -2704,6 +2723,7 @@ async function startMatch(opp){
   D=li===0?DIFF.easy:li<3?DIFF.normal:DIFF.hard;lastMode=null;newGame(opp);state='play';gameOn=true;resize();crowdStart();
 }
 function onMatchEnd(a,b,forfeit){
+  if(window.SPECT){spectEnd(a,b);return;}
   const li=leagueIdx(save.trophies),res=a>b?'win':a<b?'loss':'draw';
   let dt=res==='win'?Math.round(rand(28,33)):res==='loss'?-Math.round(rand(22,27)):0;
   const before=save.trophies;save.trophies=Math.max(0,save.trophies+dt);dt=save.trophies-before;save.maxTrophies=Math.max(save.maxTrophies,save.trophies);
