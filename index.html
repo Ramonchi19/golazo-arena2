@@ -195,6 +195,7 @@ h3{margin:14px 0 7px;font-size:17px;font-weight:400}
 /* tienda */
 .shop-it{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px 8px;border-radius:12px;background:linear-gradient(#2f5cb8,#1e3f86);border:3px solid #0a1636;box-shadow:0 4px 0 #0a1636}
 .shop-it .pack{width:64%}
+.shop-it.kit-it svg{width:70%}
 .shop-it b{font-size:13px;text-align:center}
 .price{font-size:13px;background:linear-gradient(#6fe36f,#25a83c);border:2px solid #0a1636;border-radius:9px;padding:2px 10px;-webkit-text-stroke:2px #0a1636;paint-order:stroke fill}
 .free{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;background:linear-gradient(90deg,#2f5cb8,#5a2ed6);border:3px solid #0a1636;box-shadow:0 4px 0 #0a1636}
@@ -573,6 +574,7 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 <script src="assets/sim/ball.js?v=65"></script>
 <script src="assets/sim/data.js?v=65"></script>
 <script src="assets/sim/match.js?v=67"></script>
+<script src="assets/kits.js?v=68"></script>
 <script>
 
 if(typeof THREE==='undefined'){document.getElementById('err').style.display='flex';}
@@ -590,7 +592,7 @@ const ARENAS=[
  {n:'Coliseo de Leyendas',sky:0x1a1030,g1:'#80869a',g2:'#757b8f',line:'#ffd84d',outer:0x231a10,step:0x3a2a10,wall:0x2a1d08,seats:[0xffcc33,0x1a1a1a,0xc98a00],fence:0xffcc33,deco:['🏆','👑','✨','🏆']}
 ];
 let ARENA=ARENAS[0];
-let TEAMKIT=[{j:0x2f7bff,d:0x173f99,s:0xffffff,b:0x151515},{j:0xff3b4e,d:0x99202e,s:0xffffff,b:0x151515}];
+let TEAMNUM=[{},{}];let TEAMKIT=[{j:0x2f7bff,d:0x173f99,s:0xffffff,b:0x151515},{j:0xff3b4e,d:0x99202e,s:0xffffff,b:0x151515}];
 
 // ================== ESTADO ==================
 let ballGlow=null,ballXray=null,ballLand=null;
@@ -1136,39 +1138,30 @@ function buildKitInfo(img,scene){
     mp[i]=blue?255:0;mp[i+1]=white?255:0;mp[i+2]=0;mp[i+3]=255;if(blue){lsum+=.299*r+.587*g2+.114*b;ln++;}}
   x.putImageData(mk,0,0);const maskTex=new THREE.CanvasTexture(c);maskTex.flipY=false;maskTex.minFilter=maskTex.magFilter=THREE.NearestFilter;
   // medir el torso con los vértices azules (en pose de reposo)
-  let H=0,ys=[],xs=[];scene.traverse(o=>{if(o.isMesh&&o.geometry&&o.geometry.attributes.uv){const P=o.geometry.attributes.position,U=o.geometry.attributes.uv;
+  let H=0,ys=[],xs=[],low=[];scene.traverse(o=>{if(o.isMesh&&o.geometry&&o.geometry.attributes.uv){const P=o.geometry.attributes.position,U=o.geometry.attributes.uv;
     for(let i=0;i<P.count;i++){H=Math.max(H,P.getY(i));}
     for(let i=0;i<P.count;i++){const u=U.getX(i),v=U.getY(i),xx=Math.min(S-1,Math.max(0,Math.floor(u*S))),yy=Math.min(S-1,Math.max(0,Math.floor(v*S))),k=(yy*S+xx)*4;
-      if(mp[k]&&P.getY(i)>H*.36&&P.getY(i)<H*.8){ys.push(P.getY(i));xs.push(P.getX(i));}}}});
+      if(mp[k]&&P.getY(i)>H*.36&&P.getY(i)<H*.8){ys.push(P.getY(i));xs.push(P.getX(i));}
+      if(mp[k]&&P.getY(i)<H*.5)low.push(P.getY(i));}}});
   ys.sort((a,b)=>a-b);xs.sort((a,b)=>a-b);const q=(a,f)=>a.length?a[Math.floor(f*(a.length-1))]:0;
-  return{maskTex,box:new THREE.Vector4(q(xs,.02),q(xs,.98),q(ys,.03),q(ys,.985)),ref:ln?lsum/ln:.35};
+  // v68: rodilla = el hueco más grande entre el short y las medias (para pintarlos de distinto color)
+  const bz=q(ys,.03);let knee=null;{const L2=low.filter(y=>y<bz).sort((a,b)=>a-b);let gap=0;for(let i=1;i<L2.length;i++){const g=L2[i]-L2[i-1];if(g>gap&&L2[i-1]>bz*.15&&L2[i]<bz*.97){gap=g;knee=(L2[i]+L2[i-1])/2;}}if(gap<bz*.03)knee=bz*.55;}
+  return{maskTex,box:new THREE.Vector4(q(xs,.02),q(xs,.98),bz,q(ys,.985)),ref:ln?lsum/ln:.35,knee};
 }
-const KITTEX={};
-function kitTexture(K){
-  const key=[K.j,K.d,K.s,K.pat].join('-');if(KITTEX[key])return KITTEX[key];
-  const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d'),hx=n=>'#'+n.toString(16).padStart(6,'0');
-  for(const side of [0,1]){const ox=side*256;x.save();x.beginPath();x.rect(ox,0,256,256);x.clip();
-    x.fillStyle=hx(K.j);x.fillRect(ox,0,256,256);
-    if(K.pat==='rayas'){x.fillStyle=hx(K.s);for(let i=0;i<6;i++)x.fillRect(ox+18+i*42,0,20,256);}
-    if(K.pat==='franja'){x.fillStyle=hx(K.s);x.fillRect(ox,96,256,34);}
-    if(K.pat==='mitad'){x.fillStyle=hx(K.d);x.fillRect(side?ox:ox+128,0,128,256);}
-    x.fillStyle=hx(K.d);x.fillRect(ox,0,40,256);x.fillRect(ox+216,0,40,256);   // mangas
-    x.fillStyle=hx(K.s);x.fillRect(ox+70,0,116,10);                          // cuello
-    x.restore();}
-  const t=new THREE.CanvasTexture(c);KITTEX[key]=t;return t;
-}
-function applyKit(mat,info,K){
+const KITTEX=new Map();
+function kitTexture(K,num){const c=kitTextureCanvas(K.V||kitSide(K.id||'clasico',K.side||'L'),num);let t=KITTEX.get(c);if(!t){t=new THREE.CanvasTexture(c);t.anisotropy=4;KITTEX.set(c,t);}return t;}
+function applyKit(mat,info,K,num){
   if(!mat.map||!info)return mat;
   mat=mat.clone();mat.userData.kit=true;
-  const U={uMask:{value:info.maskTex},uKit:{value:kitTexture(K)},uBox:{value:info.box},uRef:{value:info.ref},uSock:{value:new THREE.Color(K.j)},uTime:{value:0},uAnim:{value:K.anim||0}};
+  const U={uMask:{value:info.maskTex},uKit:{value:kitTexture(K,num)},uBox:{value:info.box},uRef:{value:info.ref},uSock:{value:new THREE.Color(K.so!=null?K.so:K.j)},uShort:{value:new THREE.Color(K.sh!=null?K.sh:K.j)},uKnee:{value:info.knee!=null?info.knee:-1e9},uTime:{value:0},uAnim:{value:K.anim||0}};
   mat.userData.U=U;
   mat.onBeforeCompile=sh=>{Object.assign(sh.uniforms,U);
     sh.vertexShader='varying vec3 vKP;varying vec3 vKN;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvKP=position;vKN=normal;');
-    sh.fragmentShader='vec3 gzSat(vec3 c){float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.25);return clamp((c-.5)*1.08+.5,0.,1.);}\nuniform sampler2D uMask;uniform sampler2D uKit;uniform vec4 uBox;uniform float uRef;uniform vec3 uSock;uniform float uTime;uniform float uAnim;varying vec3 vKP;varying vec3 vKN;\nvec3 kHue(vec3 c,float a){const vec3 k=vec3(.57735);float ca=cos(a);return c*ca+cross(k,c)*sin(a)+k*dot(k,c)*(1.-ca);}\n'+
+    sh.fragmentShader='vec3 gzSat(vec3 c){float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.25);return clamp((c-.5)*1.08+.5,0.,1.);}\nuniform sampler2D uMask;uniform sampler2D uKit;uniform vec4 uBox;uniform float uRef;uniform vec3 uSock;uniform vec3 uShort;uniform float uKnee;uniform float uTime;uniform float uAnim;varying vec3 vKP;varying vec3 vKN;\nvec3 kHue(vec3 c,float a){const vec3 k=vec3(.57735);float ca=cos(a);return c*ca+cross(k,c)*sin(a)+k*dot(k,c)*(1.-ca);}\n'+
       sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-      vec4 km=texture2D(uMask,vUv);float inT=step(uBox.z,vKP.y)*step(vKP.y,uBox.w+.04);float m=max(km.r*step(vKP.y,uBox.w+.06),km.g*inT);
+      vec4 km=texture2D(uMask,vUv);float inT=step(uBox.z,vKP.y)*step(vKP.y,uBox.w+.04);float inS=step(vKP.y,uKnee)*step(uKnee*.3,vKP.y);float m=max(km.r*step(vKP.y,uBox.w+.06),km.g*max(inT,inS));
       if(m>.5){float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));float shd=km.r>.5?clamp(lum/uRef,.5,1.3):clamp(lum/.88,.5,1.15);vec3 col;
-        if(vKP.y<uBox.z){col=uSock;}else{float u=clamp((vKP.x-uBox.x)/(uBox.y-uBox.x),0.,1.),v=clamp((vKP.y-uBox.z)/(uBox.w-uBox.z),0.,1.),bk=step(vKN.z,0.);
+        if(vKP.y<uBox.z){col=vKP.y>uKnee?uShort:uSock;}else{float u=clamp((vKP.x-uBox.x)/(uBox.y-uBox.x),0.,1.),v=clamp((vKP.y-uBox.z)/(uBox.w-uBox.z),0.,1.),bk=step(vKN.z,0.);
           col=texture2D(uKit,vec2(mix(u*.5,.5+(1.-u)*.5,bk),v)).rgb;
           if(uAnim>.5){float band=smoothstep(.13,0.,abs(fract(v*.8-uTime*.4+u*.35)-.5));col+=band*.5;}
           if(uAnim>1.5)col=kHue(col,uTime*1.4);}
@@ -1209,7 +1202,7 @@ function makeGLBChar(team,id){
   const K=TEAMKIT[team]||TEAMKIT[0];
   const skinned=[];model.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o);});
   // v12: sin contorno negro en los personajes
-  model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
+  model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K,(TEAMNUM[team]&&TEAMNUM[team][id])||DEFNUM[id]||10);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
   // detectar hacia dónde mira y de qué lado está cada brazo
   root.updateMatrixWorld(true);
   const lp=b=>{const w=new THREE.Vector3();b.getWorldPosition(w);return model.worldToLocal(w);};
@@ -1402,6 +1395,10 @@ function newGame(opp){
   for(const p of players)scene.remove(p.mesh.root);
   players=[];
   const mine=mySquadCards(),th=opp.squad;
+  // v68: si los uniformes se confunden, el de visita se pone su visitante (en línea el de casa es el equipo 0 del servidor)
+  {const home=!(opp.online&&window.ONLINE&&ONLINE.team===1),ka=home?mine.kit.id:th.kit.id,kb=home?th.kit.id:mine.kit.id,sd=resolveKitSides(ka,kb),sm=home?sd[0]:sd[1],so=home?sd[1]:sd[0];
+   const bb=k=>Object.keys(BOOTS).find(b=>hexN(BOOTS[b].c)===k.b)||'negro';mine.kit=kitColors(mine.kit.id,bb(mine.kit),sm);th.kit=kitColors(th.kit.id,bb(th.kit),so);}
+  TEAMNUM=[mine.nums||{},th.nums||{}];
   TEAMKIT=[mine.kit,th.kit];const F0=FORMS[mine.form].s,F1=FORMS[th.form].s;
   players.push(newPlayer(0,true,0,mine.gk.card,mine.gk.lvl));mine.f.forEach((o,i)=>players.push(newPlayer(0,false,i,o.card,o.lvl,F0[i])));
   players.push(newPlayer(1,true,0,th.gk.card,th.gk.lvl));th.f.forEach((o,i)=>players.push(newPlayer(1,false,i,o.card,o.lvl,F1[i])));
@@ -2199,6 +2196,8 @@ const KITS={
  dorado:{n:'Dorado Leyenda',rar:'legendaria',j:'#ffcc33',d:'#8a5a00',s:'#1a1a1a',pat:'franja',gems:150},
  arcoiris:{n:'Arcoíris',rar:'legendaria',j:'#ff4fd8',d:'#4f6bff',s:'#ffffff',pat:'mitad',pack:true},
 };
+// v68: 20 paquetes de uniformes (local + visitante) — assets/kits.js
+for(const [k,o] of Object.entries(window.KITPACKS||{}))KITS[k]=Object.assign({j:o.L.j,d:o.L.col,s:o.L.c2,pat:o.L.pat},o);
 const BOOTS={
  negro:{n:'Clásicos negros',rar:'comun',c:'#1a1a1a',s:'#e8e8e8',cost:0},blanco:{n:'Blancos',rar:'comun',c:'#f2f2f2',s:'#2f7bff',cost:200},
  rojo:{n:'Rojos',rar:'comun',c:'#e8344a',s:'#ffffff',cost:250},azul:{n:'Azul eléctrico',rar:'rara',c:'#2f7bff',s:'#ffe14d',cost:300},
@@ -2225,7 +2224,7 @@ function defSave(){return{v:2,name:'Jugador',avatar:'⚽',color:'#2f7bff',countr
   players:{zurdito:{lvl:1,copies:0},cazador:{lvl:1,copies:0},perro:{lvl:1,copies:0},sangre:{lvl:1,copies:0},coletazo:{lvl:1,copies:0},expreso:{lvl:1,copies:0},pausa:{lvl:1,copies:0},gigante:{lvl:1,copies:0},rey:{lvl:1,copies:0},gato:{lvl:1,copies:0},toro:{lvl:1,copies:0},vikingo:{lvl:1,copies:0},muralla:{lvl:1,copies:0},ciclon:{lvl:1,copies:0},malabares:{lvl:1,copies:0},ruleta:{lvl:1,copies:0},leon:{lvl:1,copies:0},turbo:{lvl:1,copies:0},zurdito:{lvl:1,copies:0},expreso:{lvl:1,copies:0},cazador:{lvl:1,copies:0},perro:{lvl:1,copies:0},sangre:{lvl:1,copies:0},coletazo:{lvl:1,copies:0},toro:{lvl:1,copies:0},zurdo:{lvl:1,copies:0},motor:{lvl:1,copies:0},chispa:{lvl:1,copies:0},muro:{lvl:1,copies:0},flecha:{lvl:1,copies:0},gato:{lvl:1,copies:0}},
   powers:{bomba:{lvl:1,copies:0},cascara:{lvl:1,copies:0},rayo:{lvl:1,copies:0},turbo:{lvl:1,copies:0},punetazo:{lvl:1,copies:0},tornado:{lvl:1,copies:0},meteorito:{lvl:1,copies:0}},
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
-  packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},equip:{kit:'clasico',boots:'negro'},seen:{},
+  packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},nums:{},equip:{kit:'clasico',boots:'negro'},seen:{},
   settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
 const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"];
 function migrate(s){
@@ -2274,8 +2273,10 @@ const STATN={vel:'VEL',tir:'TIR',pas:'PAS',reg:'REG',def:'DEF',fis:'FÍS',ref:'R
 function statKeys(pl){return pl.pos==='POR'?['ref','alc','sal','vel','pas','fis']:['vel','tir','pas','reg','def','fis'];}
 const isPower=id=>!!CARDS[id];
 const rarOf=id=>isPower(id)?CARDS[id].rar:PBY[id].rar;
-function kitColors(k,b){const K=KITS[k]||KITS.clasico,B=BOOTS[b]||BOOTS.negro;return{id:k,pat:K.pat,anim:k==='dorado'?1:k==='arcoiris'?2:0,j:hexN(K.j),d:hexN(K.d),s:hexN(K.s),b:hexN(B.c)};}
-function mySquadCards(){const g=PBY[save.squad.gk];return{form:save.squad.form,kit:kitColors(save.equip.kit,save.equip.boots),gk:{card:g,lvl:save.players[g.id].lvl},f:save.squad.f.map(id=>({card:PBY[id],lvl:save.players[id].lvl}))};}
+function kitColors(k,b,side){if(!KITS[k])k='clasico';const B=BOOTS[b]||BOOTS.negro,V=kitSide(k,side||'L');return{id:k,side:side||'L',V,pat:V.pat,anim:k==='dorado'?1:k==='arcoiris'?2:0,j:hexN(V.j),d:hexN(V.col||V.c2||V.j),s:hexN(V.c2||V.col||V.j),sh:hexN(V.sh||V.j),so:hexN(V.so||V.j),b:hexN(B.c)};}
+// v68: número de cada jugador (el dueño lo puede cambiar)
+function numOf(id){const n=save.nums&&save.nums[id];return n>=1&&n<=99?n:(DEFNUM[id]||10);}
+function mySquadCards(){const g=PBY[save.squad.gk];const nums={};for(const id of [save.squad.gk,...save.squad.f])nums[id]=numOf(id);return{form:save.squad.form,nums,kit:kitColors(save.equip.kit,save.equip.boots),gk:{card:g,lvl:save.players[g.id].lvl},f:save.squad.f.map(id=>({card:PBY[id],lvl:save.players[id].lvl}))};}
 function teamOvr(){const F=FORMS[save.squad.form].s;let t=ovr(PBY[save.squad.gk],save.players[save.squad.gk].lvl);save.squad.f.forEach((id,i)=>{t+=ovr(PBY[id],save.players[id].lvl,PBY[id].pos!==F[i].r);});return Math.round(t/5);}
 function toast(t){const e=document.createElement('div');e.className='toast ct';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2200);}
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -2296,12 +2297,7 @@ function faceSVG(pl){
   if(st==='afro')hair=`<path d="M19 34 Q18 16 40 15 Q62 16 61 34 Q54 25 40 25 Q26 25 19 34Z" fill="${h}"/>`;
   return `<svg viewBox="0 0 80 80" aria-hidden="true"><ellipse cx="40" cy="84" rx="31" ry="22" fill="${jer}" stroke="#0a1636" stroke-width="3"/><rect x="34" y="50" width="12" height="12" rx="3" fill="${sk}"/>${back}<circle cx="40" cy="36" r="18" fill="${sk}" stroke="#0a1636" stroke-width="2.5"/>${hair}<ellipse cx="33" cy="38" rx="3.2" ry="3.8" fill="#fff"/><ellipse cx="47" cy="38" rx="3.2" ry="3.8" fill="#fff"/><circle cx="33.6" cy="38.6" r="1.9" fill="#111"/><circle cx="47.6" cy="38.6" r="1.9" fill="#111"/><path d="M29 32.5 L36 33.5 M44 33.5 L51 32.5" stroke="#2a1a10" stroke-width="1.8" stroke-linecap="round"/><path d="M35 46 Q40 49.5 45 46" stroke="#5a2a1a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`;
 }
-function jerseySVG(id){const K=KITS[id];const uid='k'+id+Math.random().toString(36).slice(2,6);
-  let pat='';if(K.pat==='rayas')pat=`<g clip-path="url(#${uid})">${[20,36,52,68,84].map(x=>`<rect x="${x}" y="0" width="8" height="120" fill="${K.s}" opacity=".9"/>`).join('')}</g>`;
-  if(K.pat==='franja')pat=`<g clip-path="url(#${uid})"><rect x="0" y="40" width="120" height="14" fill="${K.s}"/></g>`;
-  if(K.pat==='mitad')pat=`<g clip-path="url(#${uid})"><rect x="50" y="0" width="70" height="120" fill="${K.d}"/></g>`;
-  const path='M30 10 L45 4 Q50 14 60 14 Q70 14 75 4 L90 10 L112 32 L98 48 L90 40 L90 112 L30 112 L30 40 L22 48 L8 32Z';
-  return `<svg viewBox="0 0 120 120" aria-hidden="true"><defs><clipPath id="${uid}"><path d="${path}"/></clipPath></defs><path d="${path}" fill="${K.j}"/>${pat}<path d="M8 32 L22 48 L30 40 L30 30Z M112 32 L98 48 L90 40 L90 30Z" fill="${K.d}"/><path d="M45 4 Q50 14 60 14 Q70 14 75 4" fill="none" stroke="${K.s}" stroke-width="4"/><text x="60" y="88" font-family="Lilita One,sans-serif" font-size="34" text-anchor="middle" fill="${K.pat==='rayas'?K.d:K.s}" stroke="#0a1636" stroke-width="1.5">10</text><path d="${path}" fill="none" stroke="#0a1636" stroke-width="4" stroke-linejoin="round"/></svg>`;}
+function jerseySVG(id,side,num){if(!KITS[id])id='clasico';return `<svg viewBox="0 0 240 300" aria-hidden="true"><image href="${kitIconURL(id,side||'L',num)}" width="240" height="300"/></svg>`;}
 function bootSVG(id){const B=BOOTS[id];const glow=id==='fuego'?`<path d="M20 30 Q30 10 40 28 Q48 12 58 30" fill="#ffcc33" opacity=".7"/>`:'';
   return `<svg viewBox="0 0 120 80" aria-hidden="true">${glow}<path d="M12 30 Q14 20 30 22 L52 24 Q60 10 72 14 L74 40 Q96 42 108 52 Q112 60 104 62 L16 62 Q8 60 10 50Z" fill="${B.c}" stroke="#0a1636" stroke-width="4" stroke-linejoin="round"/><path d="M40 34 L70 32 M40 42 L72 40" stroke="${B.s}" stroke-width="4" stroke-linecap="round"/><path d="M12 62 L108 62 L104 68 L16 68Z" fill="#2a2a2a" stroke="#0a1636" stroke-width="3"/>${[24,42,62,82,98].map(x=>`<rect x="${x}" y="67" width="6" height="7" fill="#d0d0d0" stroke="#0a1636" stroke-width="2"/>`).join('')}</svg>`;}
 function packHTML(type,label){return `<div class="pack pk-${type}"><div class="pk-top"></div><div class="pk-logo">${type==='leyenda'?'👑':type==='oro'?'⭐':type==='plata'?'⚽':'⚽'}</div>${label?`<div class="pk-n">${PACKS[type].n.replace('Sobre de ','')}</div>`:''}</div>`;}
@@ -2368,7 +2364,7 @@ function rollPack(type){
   const got={};
   for(let i=0;i<P0.items;i++){let rar=rollRar(P0.boost);if(i===0&&RORD.indexOf(rar)<RORD.indexOf(P0.min))rar=P0.min;const opts=pool.filter(p=>p.rar===rar);const pk=opts[Math.floor(Math.random()*opts.length)];got[pk.id]=(got[pk.id]||0)+1;}
   const items=Object.entries(got).map(([id,n])=>({kind:isPower(id)?'power':'player',id,n,rar:rarOf(id),isNew:!(save.players[id]||save.powers[id])}));
-  if(Math.random()<P0.cos){const ck=Object.keys(KITS).filter(k=>!save.kits[k]),cb=Object.keys(BOOTS).filter(k=>!save.boots[k]);const useKit=ck.length&&(Math.random()<.5||!cb.length);
+  if(Math.random()<P0.cos){const ck=Object.keys(KITS).filter(k=>!save.kits[k]&&!KITS[k].paq),cb=Object.keys(BOOTS).filter(k=>!save.boots[k]);const useKit=ck.length&&(Math.random()<.5||!cb.length);
     if(useKit){const k=ck[Math.floor(Math.random()*ck.length)];items.push({kind:'kit',id:k,n:1,rar:KITS[k].rar,isNew:true});save.kits[k]=1;}
     else if(cb.length){const k=cb[Math.floor(Math.random()*cb.length)];items.push({kind:'boots',id:k,n:1,rar:BOOTS[k].rar,isNew:true});save.boots[k]=1;}}
   for(const it of items){if(it.kind==='player'||it.kind==='power'){const T=it.kind==='power'?save.powers:save.players;if(!T[it.id])T[it.id]={lvl:1,copies:it.n-1};else T[it.id].copies+=it.n;}}
@@ -2414,13 +2410,14 @@ function dayRng(salt){let h=0;for(const ch of todayKey()+salt)h=(h*31+ch.charCod
 function renderShop(){
   const now=Date.now(),free=now>=save.freeAt,r=dayRng('shop');
   const offer=PLAYERS[Math.floor(r()*PLAYERS.length)],offPrice={comun:60,rara:180,epica:500,legendaria:1500}[offer.rar];
-  const dk=Object.keys(KITS).filter(k=>!KITS[k].pack&&k!=='clasico'),db=Object.keys(BOOTS).filter(k=>!BOOTS[k].pack&&k!=='negro');
+  const dk=Object.keys(KITS).filter(k=>!KITS[k].pack&&!KITS[k].paq&&k!=='clasico'),db=Object.keys(BOOTS).filter(k=>!BOOTS[k].pack&&k!=='negro');
   const fk=dk[Math.floor(r()*dk.length)],fb=db[Math.floor(r()*db.length)];
   $('#sc-shop').innerHTML=`<h2>Tienda</h2>
    <div class="free"><div style="width:58px">${packHTML('plata')}</div><div><b class="ct">Sobre gratis</b><small>Cada 4 horas</small></div><button class="btn g sm" id="freeBtn" ${free?'':'disabled'}>${free?'Abrir':'<span id="freeT">'+fmtT((save.freeAt-now)/1000)+'</span>'}</button></div>
    <h3 class="ct">Sobres</h3>
    <div class="grid3">${[['bronce','🪙',120],['plata','🪙',300],['oro','💎',40],['leyenda','💎',120]].map(([t,c,p])=>`<button class="shop-it" data-pack="${t}" data-cur="${c}" data-price="${p}">${packHTML(t)}<b class="ct">${PACKS[t].n.replace('Sobre de ','')}</b><small class="sys" style="font-size:10px;color:#cfe0ff">${PACKS[t].items} objetos</small><span class="price">${c} ${p}</span></button>`).join('')}</div>
-   <p class="note">Pronto: uniformes, taquetes y más en la tienda.</p>`;
+   <h3 class="ct">Uniformes</h3><p class="note" style="margin-top:0">Cada paquete trae el uniforme de local y el de visitante.</p>
+   <div class="grid3">${Object.keys(KITS).filter(k=>KITS[k].paq).map(k=>{const o=KITS[k];return `<button class="shop-it kit-it" data-kit="${k}">${jerseySVG(k,'L')}<b class="ct" style="color:${RARS[o.rar].c}">${o.n}</b><span class="price">${save.kits[k]?(save.equip.kit===k?'Puesto':'Tuyo'):costTxt(o)}</span></button>`;}).join('')}</div>`;
   if(free)$('#freeBtn').onclick=()=>{save.freeAt=Date.now()+4*3600*1000;persist();openPack('plata');};
   if(false)$('#offBtn').onclick=()=>{if(save.offerDay===todayKey()){toast('Ya compraste la oferta de hoy');return;}if(save.gold<offPrice){toast('Te faltan monedas');return;}
     askConfirm(offer.nick+' x3',`¿Comprar por 🪙 ${offPrice}?`,()=>{save.gold-=offPrice;save.offerDay=todayKey();if(!save.players[offer.id])save.players[offer.id]={lvl:1,copies:2};else save.players[offer.id].copies+=3;persist();sfx('goal');toast('¡'+offer.nick+' x3!');renderTab();});};
@@ -2428,7 +2425,17 @@ function renderShop(){
     askConfirm(PACKS[t].n,`¿Comprar por ${c} ${p}?`,()=>{if(c==='🪙')save.gold-=p;else save.gems-=p;persist();renderTop();openPack(t);});});
   $$('[data-gold]').forEach(b=>b.onclick=()=>{const c=+b.dataset.cost;if(save.gems<c){toast('No tienes suficientes gemas');return;}save.gems-=c;save.gold+=+b.dataset.gold;persist();sfx('power');renderTop();toast('+'+b.dataset.gold+' monedas');});
   $$('[data-cos]').forEach(b=>b.onclick=()=>buyCos(b.dataset.cos,b.dataset.id));
+  $$('[data-kit]').forEach(b=>b.onclick=()=>openKit(b.dataset.kit));
 }
+// v68: ver un paquete de uniformes (local y visitante, de frente y de espalda)
+function openKit(id){const o=KITS[id],own=save.kits[id],eq=save.equip.kit===id,n=numOf(save.squad.f[save.squad.f.length-1]||'zurdito');
+  const fig=(sd,num)=>`<div style="width:46%">${jerseySVG(id,sd,num)}</div>`;
+  showModal(`<div class="mpanel"><button class="mclose ct" id="mx">✕</button><div class="mtitle ct" style="color:${RARS[o.rar].c}">${esc(o.n)}</div><small class="sys" style="display:block;text-align:center;color:#cfe0ff">${RARS[o.rar].n}${o.paq?' · paquete local + visitante':''}</small>
+    <b class="ct" style="display:block;margin:8px 0 2px">Local</b><div style="display:flex;justify-content:space-around">${fig('L')}${fig('L',n)}</div>
+    <b class="ct" style="display:block;margin:8px 0 2px">Visitante</b><div style="display:flex;justify-content:space-around">${fig('V')}${fig('V',n)}</div>
+    <p class="note">El visitante sale solo cuando tu uniforme se confunde con el del rival.</p>
+    <div class="acts"><button class="btn ${own?'b':'g'}" id="kB" ${eq?'disabled':''}>${eq?'Puesto':own?'Ponérmelo':'Comprar '+costTxt(o)}</button></div></div>`);
+  $('#mx').onclick=closeModal;$('#kB').onclick=()=>{closeModal();buyCos('kit',id);};}
 function costTxt(o){return o.gems?'💎 '+o.gems:o.cost?'🪙 '+o.cost:'Gratis';}
 function buyCos(kind,id){const T=kind==='kit'?KITS:BOOTS,own=kind==='kit'?save.kits:save.boots,o=T[id];
   if(own[id]){save.equip[kind==='kit'?'kit':'boots']=id;persist();toast('Equipado');renderTab();return;}
@@ -2482,7 +2489,7 @@ function openCard(id){
      <small class="sys">${esc(pl.name)}</small></div></div>
    <div class="fstage"><div class="smoke s1"></div><div class="smoke s2"></div><div class="smoke s3"></div><div class="fglow"></div>${Array.from({length:14},(_,k)=>`<i class="ember" style="left:${8+k*6.3}%;animation-delay:${(k*.37)%3}s;animation-duration:${2.6+(k%5)*.5}s"></i>`).join('')}
      ${art?`<img class="fart" src="${art.s}" alt="${esc(pl.nick)}">`:`<div class="fart fsvg">${faceSVG(pl)}</div>`}</div>
-   <div class="fbadges"><div><span class="ct">RAREZA</span><b class="ct" style="color:${RARS[pl.rar].c}">${RARS[pl.rar].n}</b></div><div><span class="ct">POSICIÓN</span><b class="ct">${posN}</b></div><div><span class="ct">MEDIA</span><b class="ct">${ovr(pl,lv)}</b></div></div>
+   <div class="fbadges"><div><span class="ct">RAREZA</span><b class="ct" style="color:${RARS[pl.rar].c}">${RARS[pl.rar].n}</b></div><div><span class="ct">POSICIÓN</span><b class="ct">${posN}</b></div><div><span class="ct">MEDIA</span><b class="ct">${ovr(pl,lv)}</b></div>${o?`<div><span class="ct">NÚMERO</span><button class="btn b sm ct" id="numB" style="padding:2px 12px">${numOf(id)}</button></div>`:''}</div>
    <p class="desc">${esc(pl.estilo)}</p>
    <div class="stats">${statKeys(pl).map(k=>{const v=stat(pl,k,lv);return `<div class="st ct"><span>${STATN[k]}</span><div class="sb"><i style="width:${v}%;background:${v>=80?'#3ccf5a':v>=60?'#ffc92e':'#ff6a5a'}"></i></div><b>${v}</b></div>`;}).join('')}</div>
    <div class="fd" style="margin-top:10px"><div class="f"><span class="ct">💪 Fuerte</span>${esc(pl.fuerte)}</div><div class="d"><span class="ct">⚠️ Débil</span>${esc(pl.debil)}</div></div>
@@ -2490,9 +2497,17 @@ function openCard(id){
      :`<div class="lockmsg">🔒 Consíguelo abriendo sobres. Las cartas ${RARS[pl.rar].n.toLowerCase()}s son ${pl.rar==='comun'?'fáciles':pl.rar==='rara'?'algo difíciles':pl.rar==='epica'?'difíciles':'muy difíciles'} de encontrar.</div>`}</div>`,true);
   $('#mx').onclick=closeModal;if(!o)return;
   const up=$('#upB');if(up)up.onclick=()=>levelUp('player',id);
+  const nb=$('#numB');if(nb)nb.onclick=()=>pickNum(id);
   const v3=$('#v3d');if(v3)v3.onclick=()=>{closeModal();pvIdx=MODEL_IDS.filter(x=>MODELS[x]).indexOf(id);openPreview();};
   $('#useB').onclick=()=>{closeModal();if(pl.pos==='POR'){placeIn(id,'gk');return;}slotPick=id;go('squad');toast('Toca el lugar donde va '+pl.nick);$('#sc-squad').scrollTop=0;};
 }
+// v68: escoger el número del jugador (si otro lo tiene, se intercambian)
+function pickNum(id){const cur=numOf(id),who=n=>Object.keys(save.players).filter(k=>READY.has(k)).find(k=>k!==id&&numOf(k)===n);
+  showModal(`<div class="mpanel"><button class="mclose ct" id="mx">✕</button><div class="mtitle ct">Número de ${esc(PBY[id].nick)}</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;max-height:52vh;overflow:auto;padding:4px">${Array.from({length:99},(_,i)=>i+1).map(n=>{const w=who(n);return `<button class="btn ${n===cur?'g':w?'r':'b'} sm ct" data-n="${n}" style="padding:6px 0" title="${w?esc(PBY[w].nick):''}">${n}</button>`;}).join('')}</div>
+    <p class="note">Rojo = ya lo usa otro jugador (se intercambian).</p></div>`);
+  $('#mx').onclick=()=>{closeModal();openCard(id);};
+  $$('[data-n]').forEach(b=>b.onclick=()=>{const n=+b.dataset.n,w=who(n);save.nums=save.nums||{};if(w)save.nums[w]=cur;save.nums[id]=n;persist();toast(w?`#${n} para ${PBY[id].nick} · ${PBY[w].nick} ahora es #${cur}`:`#${n} para ${PBY[id].nick}`);closeModal();openCard(id);});}
 function levelUp(kind,id){const T=kind==='player'?save.players:save.powers,o=T[id],need=LVL_COPIES[o.lvl],cost=LVL_GOLD[o.lvl];
   if(save.gold<cost){toast('Te faltan monedas');return;}save.gold-=cost;o.copies-=need;o.lvl++;const lu=addXp(20);persist();sfx('goal');vib(60);
   closeModal();showModal(`<div class="po" id="lvU" style="--bc:rgba(120,255,140,.4)"><div class="beams"></div><div class="flip"><div class="inner"><div class="front">${cardHTML(id,{bar:false})}</div><div class="back"></div></div></div><div class="wo-name ct">¡Nivel ${o.lvl}!<small>+20 XP${lu?' · ¡Subiste de nivel!':''}</small></div></div>`,true,true);
@@ -2517,7 +2532,7 @@ function renderLocker(){
    <div class="grid3">${Object.entries(T).map(([k,o])=>`<button class="cos ${eq===k?'on':''} ${own[k]?'':'lk'}" data-k="${k}">${lockerTab==='kits'?jerseySVG(k):bootSVG(k)}<span class="cname" style="font-size:11px;color:${RARS[o.rar].c}">${o.n}</span><span class="pr ${eq===k?'eq':''}">${eq===k?'Equipado':own[k]?'Usar':o.pack?'🎁 Sobres':costTxt(o)}</span></button>`).join('')}</div>
    <p class="note">Tus jugadores usan este uniforme y taquetes en la cancha.</p>`;
   $$('#sc-locker .tab').forEach(b=>b.onclick=()=>{lockerTab=b.dataset.t;renderLocker();});
-  $$('.cos').forEach(b=>b.onclick=()=>buyCos(lockerTab==='kits'?'kit':'boots',b.dataset.k));
+  $$('.cos').forEach(b=>b.onclick=()=>{if(lockerTab==='kits'&&KITS[b.dataset.k].paq&&!save.kits[b.dataset.k]){openKit(b.dataset.k);return;}buyCos(lockerTab==='kits'?'kit':'boots',b.dataset.k);});
   $('#lk3d').onclick=openPreview;
 }
 
@@ -2666,8 +2681,8 @@ function makeOpponent(){
   const li=leagueIdx(save.trophies),mi=li<1?1:li<3?2:3;
   const pick=pos=>{const o=PLAYERS.filter(p=>p.pos===pos&&RORD.indexOf(p.rar)<=mi&&(Math.random()<.6||RORD.indexOf(p.rar)<=Math.max(0,mi-1)));const a=o.length?o:PLAYERS.filter(p=>p.pos===pos);return a[Math.floor(Math.random()*a.length)];};
   const lvl=Math.min(MAXLVL,1+Math.floor(li/2)+(Math.random()<.3?1:0)),forms=Object.keys(FORMS),form=forms[Math.floor(Math.random()*forms.length)];
-  const mk=hexN(KITS[save.equip.kit].j),ok=Object.keys(KITS).filter(k=>{const c=hexN(KITS[k].j);const dr=((c>>16)&255)-((mk>>16)&255),dg=((c>>8)&255)-((mk>>8)&255),db=(c&255)-(mk&255);return Math.sqrt(dr*dr+dg*dg+db*db)>200;});
-  const ok2=ok.length?ok:['blanco'],kk=ok2.includes('rayas')&&Math.random()<.5?'rayas':ok2[Math.floor(Math.random()*ok2.length)];
+  // v68: el rival usa cualquier uniforme (también los de la tienda); si se confunde con el tuyo se pone el visitante
+  const ok2=Object.keys(KITS).filter(k=>k!==save.equip.kit),kk=ok2[Math.floor(Math.random()*ok2.length)];
   const bk=Object.keys(BOOTS)[Math.floor(Math.random()*6)];
   return{name:botName(Math.random),av:AVATARS[Math.floor(Math.random()*AVATARS.length)],c:Object.keys(COUNTRIES)[Math.floor(Math.random()*17)],trophies:Math.max(0,save.trophies+Math.round(rand(-60,60))),
     squad:{form,kit:kitColors(kk,bk),gk:{card:pick('POR'),lvl},f:FORMS[form].s.map(s=>({card:pick(s.r),lvl}))},deck:shuffle(Object.keys(CARDS)).slice(0,6),plvl:lvl,li};
@@ -2728,6 +2743,6 @@ document.addEventListener('pointerdown',()=>audio(),{once:true});
 
 </script>
 <script src="assets/online.js?v=65"></script>
-<script src="assets/online-play.js?v=67"></script>
+<script src="assets/online-play.js?v=68"></script>
 </body>
 </html>

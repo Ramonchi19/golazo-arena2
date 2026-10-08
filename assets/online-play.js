@@ -12,7 +12,7 @@ const say=t=>{try{toast(t);}catch(e){}};
 const h=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- datos que se mandan a la fila ----------
-function mySquadInfo(){const sq=save.squad;return{form:sq.form,gk:{id:sq.gk,lvl:(save.players[sq.gk]||{}).lvl||1},f:sq.f.map(id=>({id,lvl:(save.players[id]||{}).lvl||1}))};}
+function mySquadInfo(){const sq=save.squad;return{form:sq.form,gk:{id:sq.gk,lvl:(save.players[sq.gk]||{}).lvl||1,num:numOf(sq.gk)},f:sq.f.map(id=>({id,lvl:(save.players[id]||{}).lvl||1,num:numOf(id)}))};}
 function deckLvl(){const L=save.deck.map(k=>(save.powers[k]||{}).lvl||1);return Math.round(L.reduce((a,b)=>a+b,0)/(L.length||1));}
 function myInfo(){return{t:'buscar',uid:NET.user?NET.user.uid:'',name:save.name,avatar:save.avatar,country:save.country,trophies:save.trophies,
   squad:mySquadInfo(),deck:save.deck.slice(),plvl:deckLvl(),kit:{k:save.equip.kit,b:save.equip.boots}};}
@@ -21,13 +21,13 @@ function oppFrom(r){
   const sq=r.squad||{},form=FORMS[sq.form]?sq.form:'ataque',F=FORMS[form].s;
   const card=(id,pos)=>PBY[id]&&READY.has(id)?PBY[id]:PLAYERS.find(p=>p.pos===pos)||PLAYERS[0];
   const lv=v=>Math.max(1,Math.min(MAXLVL,v|0||1));
-  // uniforme del rival; si se parece al mío, se cambia por uno que contraste (como contra la CPU)
-  let kk=r.kit&&KITS[r.kit.k]?r.kit.k:'rojo',bk=r.kit&&BOOTS[r.kit.b]?r.kit.b:'negro';
-  const mk=hexN(KITS[save.equip.kit].j),dist=k=>{const c=hexN(KITS[k].j);const dr=((c>>16)&255)-((mk>>16)&255),dg=((c>>8)&255)-((mk>>8)&255),db=(c&255)-(mk&255);return Math.sqrt(dr*dr+dg*dg+db*db);};
-  if(!KITS[kk]||dist(kk)<200){const ok=Object.keys(KITS).filter(k=>dist(k)>200);kk=ok.includes('rojo')?'rojo':(ok[0]||'blanco');}
+  // v68: el rival juega con SU uniforme; si se confunde con el mío, newGame() pone el visitante al que juega de visita
+  const kk=r.kit&&KITS[r.kit.k]?r.kit.k:'clasico',bk=r.kit&&BOOTS[r.kit.b]?r.kit.b:'negro';
   const g=sq.gk||{},f=(sq.f||[]).slice(0,4);while(f.length<4)f.push({});
+  const nums={},nn=v=>{v=v|0;return v>=1&&v<=99?v:0;};
+  {const c0=card(g.id,'POR');if(nn(g.num))nums[c0.id]=nn(g.num);f.forEach((o,i)=>{const c=card(o.id,F[i].r);if(nn(o.num))nums[c.id]=nn(o.num);});}
   return{name:r.name||'Rival',av:r.avatar||'⚽',c:r.country||'MX',trophies:r.trophies|0,online:true,
-    squad:{form,kit:kitColors(kk,bk),gk:{card:card(g.id,'POR'),lvl:lv(g.lvl)},f:f.map((o,i)=>({card:card(o.id,F[i].r),lvl:lv(o.lvl)}))},
+    squad:{form,kit:kitColors(kk,bk),gk:{card:card(g.id,'POR'),lvl:lv(g.lvl)},f:f.map((o,i)=>({card:card(o.id,F[i].r),lvl:lv(o.lvl)})),nums},
     deck:(r.deck||[]).filter(k=>CARDS[k]).slice(0,8),plvl:1,li:leagueIdx(r.trophies|0)};
 }
 
