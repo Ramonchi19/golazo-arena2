@@ -520,6 +520,9 @@ function aiTarget(p,dt){
     const flp=fl.filter(m=>m!==ctrlOf(p.team)),pk=()=>stickyPick('pr'+p.team,flp,m=>d2(m,c),1.2);
     const presser=p.team===1?(H1?(pressT1>0?pk():null):pk()):(AI0||pressT>0?pk():null);
     if(p===presser){tx=ball.x+ball.vx*.15;tz=ball.z+ball.vz*.15;spd=RUN;
+      // v71: si el rival viene hacia mi arco y ya estoy entre él y el arco, freno y lo marco de frente (no me lanzo de largo)
+      {const dc=d2(p,c),gl=Math.hypot(gx-c.x,c.z)||1,ux=(gx-c.x)/gl,uz=-c.z/gl;
+       if(dc>1.7&&dc<4.2&&(p.x-c.x)*ux+(p.z-c.z)*uz>.4&&c.vx*ux+c.vz*uz>.5){tx=c.x+ux*1.5;tz=c.z+uz*1.5;spd=RUN*.62;}}
       p.react-=dt;if(p.react<=0&&p.tcd<=0&&d2(p,c)<1.9){p.react=rand(.5,1.1)*D.think/(p.team===1?D.tack:1);
         if(Math.random()<.5*p.defMul*(p.team===1?D.tack:1)){if(Math.random()<.45)startAct(p,'slide',c.x-p.x,c.z-p.z);else if(d2(p,c)<1.35)startAct(p,'body',c.x-p.x,c.z-p.z);}}}
     else if(s.r==='DEF'){
