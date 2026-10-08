@@ -1,0 +1,100 @@
+
+=== CAMPO DE TIRO (disparo real del juego) ===
+
+tirador 50 vs portero 75: 728 tiros · a puerta 90% · de los que iban a puerta: gol 43%, atrapadas 0%, desviadas 56% · goles sin que se tirara (a más de 1 m): 104
+   pasa a 1–2 m | 0.35–0.6 s     → gol  19% (57)
+   pasa a 1–2 m | <0.35 s        → gol  86% (97)
+   pasa a 1–2 m | >0.6 s         → gol   0% (37)
+   pasa a 2–3 m | 0.35–0.6 s     → gol  75% (56)
+   pasa a 2–3 m | <0.35 s        → gol 100% (54)
+   pasa a 2–3 m | >0.6 s         → gol  12% (34)
+   pasa a 3+ m | 0.35–0.6 s      → gol  97% (35)
+   pasa a 3+ m | <0.35 s         → gol  89% (18)
+   pasa a 3+ m | >0.6 s          → gol  60% (35)
+   pasa a <1 m | 0.35–0.6 s      → gol   9% (69)
+   pasa a <1 m | <0.35 s         → gol  10% (125)
+   pasa a <1 m | >0.6 s          → gol   2% (41)
+
+tirador 75 vs portero 75: 728 tiros · a puerta 92% · de los que iban a puerta: gol 46%, atrapadas 0%, desviadas 53% · goles sin que se tirara (a más de 1 m): 108
+   pasa a 1–2 m | 0.35–0.6 s     → gol  15% (48)
+   pasa a 1–2 m | <0.35 s        → gol  91% (102)
+   pasa a 1–2 m | >0.6 s         → gol  10% (31)
+   pasa a 2–3 m | 0.35–0.6 s     → gol  61% (44)
+   pasa a 2–3 m | <0.35 s        → gol 100% (62)
+   pasa a 2–3 m | >0.6 s         → gol   3% (31)
+   pasa a 3+ m | 0.35–0.6 s      → gol 100% (47)
+   pasa a 3+ m | <0.35 s         → gol  96% (24)
+   pasa a 3+ m | >0.6 s          → gol  79% (28)
+   pasa a <1 m | 0.35–0.6 s      → gol   7% (71)
+   pasa a <1 m | <0.35 s         → gol  11% (142)
+   pasa a <1 m | >0.6 s          → gol  11% (38)
+
+tirador 90 vs portero 75: 728 tiros · a puerta 94% · de los que iban a puerta: gol 47%, atrapadas 0%, desviadas 53% · goles sin que se tirara (a más de 1 m): 107
+   pasa a 1–2 m | 0.35–0.6 s     → gol  16% (38)
+   pasa a 1–2 m | <0.35 s        → gol  94% (102)
+   pasa a 1–2 m | >0.6 s         → gol   3% (29)
+   pasa a 2–3 m | 0.35–0.6 s     → gol  61% (41)
+   pasa a 2–3 m | <0.35 s        → gol 100% (63)
+   pasa a 2–3 m | >0.6 s         → gol   3% (33)
+   pasa a 3+ m | 0.35–0.6 s      → gol  95% (44)
+   pasa a 3+ m | <0.35 s         → gol 100% (35)
+   pasa a 3+ m | >0.6 s          → gol  68% (31)
+   pasa a <1 m | 0.35–0.6 s      → gol   2% (66)
+   pasa a <1 m | <0.35 s         → gol  14% (165)
+   pasa a <1 m | >0.6 s          → gol   9% (34)
+
+tirador 75 vs portero 60: 728 tiros · a puerta 92% · de los que iban a puerta: gol 51%, atrapadas 0%, desviadas 48% · goles sin que se tirara (a más de 1 m): 126
+   pasa a 1–2 m | 0.35–0.6 s     → gol  33% (49)
+   pasa a 1–2 m | <0.35 s        → gol  93% (105)
+   pasa a 1–2 m | >0.6 s         → gol  11% (27)
+   pasa a 2–3 m | 0.35–0.6 s     → gol  78% (51)
+   pasa a 2–3 m | <0.35 s        → gol  97% (66)
+   pasa a 2–3 m | >0.6 s         → gol  13% (30)
+   pasa a 3+ m | 0.35–0.6 s      → gol  98% (47)
+   pasa a 3+ m | <0.35 s         → gol  97% (31)
+   pasa a 3+ m | >0.6 s          → gol  94% (31)
+   pasa a <1 m | 0.35–0.6 s      → gol   3% (68)
+   pasa a <1 m | <0.35 s         → gol   8% (129)
+   pasa a <1 m | >0.6 s          → gol   3% (35)
+
+tirador 75 vs portero 95: 728 tiros · a puerta 94% · de los que iban a puerta: gol 39%, atrapadas 0%, desviadas 61% · goles sin que se tirara (a más de 1 m): 104
+   pasa a 1–2 m | 0.35–0.6 s     → gol  13% (47)
+   pasa a 1–2 m | <0.35 s        → gol  85% (110)
+   pasa a 1–2 m | >0.6 s         → gol   6% (33)
+   pasa a 2–3 m | 0.35–0.6 s     → gol  37% (49)
+   pasa a 2–3 m | <0.35 s        → gol  91% (64)
+   pasa a 2–3 m | >0.6 s         → gol  11% (28)
+   pasa a 3+ m | 0.35–0.6 s      → gol  95% (44)
+   pasa a 3+ m | <0.35 s         → gol  93% (15)
+   pasa a 3+ m | >0.6 s          → gol  32% (28)
+   pasa a <1 m | 0.35–0.6 s      → gol   3% (65)
+   pasa a <1 m | <0.35 s         → gol   9% (158)
+   pasa a <1 m | >0.6 s          → gol   5% (42)
+
+=== SÚPER TIRO ===
+  desde 10 m: gol 87%
+  desde 18 m: gol 73%
+  desde 26 m: gol 50%
+  desde 35 m: gol 30%
+  desde 50 m: gol 50%
+  desde 62 m: gol 30%
+
+=== SITUACIONES ESPECIALES ===
+  Globito por encima del portero             gol 100% · parada   0% · reaccionó 100%
+  Rebote que entra sin que nadie lo patee    gol 100% · parada   0% · reaccionó 100%
+  Tiro centrado y lento (siempre atajable)   gol   0% · parada 100% · reaccionó 100%
+  Mano a mano a 6 m                          gol  43% · parada  57% · reaccionó 100%
+  Remate de cabeza a centro (a 7 m)          gol   0% · parada 100% · reaccionó 0%
+  Tiro desde ángulo cerrado (banda, 8 m)     gol 100% · parada   0% · reaccionó 100%
+
+=== PARTIDOS COMPLETOS (IA contra IA) ===
+  marcadores: 0-4  0-6  0-5  0-5  0-7  0-8  0-9  0-8  0-7  1-7  2-9  1-8
+  goles por partido: 7.3 · tiros por partido: 14.7 · súper tiros por partido: 4.3
+
+(10 s)
+
+=== PARTIDOS COMPLETOS (IA contra IA) ===
+  marcadores: 2-1  2-3  2-0  0-1  3-1  2-1  3-0  1-3  4-1  3-2  1-2  0-2
+  goles por partido: 3.3 · tiros por partido: 8.3 · súper tiros por partido: 0.8
+
+(3 s)

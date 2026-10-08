@@ -8,7 +8,7 @@ import { makeMatch } from "./match.gen.js"; // jugadores, IA y porteros del jueg
 import { LobbyCore } from "./lobby.js";
 import { GameCore, GAME_TICK_MS } from "./game.js";
 
-const VERSION = "v65-en-linea";
+const VERSION = "v67-portero";
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }
 });

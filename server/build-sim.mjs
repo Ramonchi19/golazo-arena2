@@ -92,7 +92,16 @@ ${match}
     get overtime() { return overtime; },
     playCard: (team, i, x, z) => playCard(team, i, x, z), castSpell: (k, team, x, z) => castSpell(k, team, x, z),
     // ---- partido en línea: los dos equipos son humanos ----
-    setHumans(h) { H1 = !!h; if (H1 && !user1) user1 = fieldOf(1)[0] || null; },
+    setHumans(h) { H1 = !!h; if (H1 && !user1) user1 = fieldOf(1)[0] || null; CTRL_LOCK[0] = CTRL_LOCK[1] = !!h; },
+    // el teléfono dice a qué jugador controla (índice en la lista del servidor)
+    setCtrlIdx(t, i) { const p = players[i]; if (p && p.team === t && !p.gk) setCtrl(t, p); },
+    get ctrl() { return [user, user1]; },
+    setLock(t, v) { CTRL_LOCK[t] = !!v; },
+    // ---- laboratorio ----
+    setAI0(v) { AI0 = !!v; if (AI0) user = null; },
+    setNoCards(v) { NOCARDS = !!v; },
+    shoot: (p, pw, kind, aim) => shoot(p, pw, kind, aim), tryVolley: p => tryVolley(p), take: (p, s) => take(p, s),
+    keeperOf: t => keeperOf(t), get D() { return D; },
     setJoy(t, x, y) { const J = joyFor(t); J.x = x; J.y = y; },
     btnDown: (t, k) => simBtnDown(t, k), btnUp: (t, k) => simBtnUp(t, k),
     cast(t, k, x, z) { const c = CARDS[k]; if (!c || state !== 'play' || energy[t] < c.cost) return false; energy[t] -= c.cost; castSpell(k, t, clamp(x, -L, L), clamp(z, -HW, HW)); return true; }

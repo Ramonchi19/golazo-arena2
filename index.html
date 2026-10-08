@@ -572,7 +572,7 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=65"></script>
 <script src="assets/sim/data.js?v=65"></script>
-<script src="assets/sim/match.js?v=65"></script>
+<script src="assets/sim/match.js?v=67"></script>
 <script>
 
 if(typeof THREE==='undefined'){document.getElementById('err').style.display='flex';}
@@ -1249,10 +1249,10 @@ const _q1=typeof THREE!=='undefined'?new THREE.Quaternion():null,_q2=typeof THRE
 let ANIMLIB=null,ANIMMETA={},_fv=null,BASECLIPS=null,FLOORFIX=null;
 async function loadBaseClips(){if(BASECLIPS||typeof THREE==='undefined'||!THREE.GLTFLoader)return;try{const buf=await fetch('assets/base_anims.glb').then(r=>{if(!r.ok)throw new Error('base_anims');return r.arrayBuffer();});
   await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{BASECLIPS={};for(const c of gl.animations)BASECLIPS[c.name]=c;res();},rej));}catch(e){console.warn('animaciones base',e);}}
-const AIRCLIPS=new Set(['header','bicycle','gk_dive_l','gk_dive_r','gk_catch_high','fly_back','knocked','getup','getup_slow','gk_block_l','gk_block_r','tackle1','tackle2','tackle3','trip','gk_scoop','electro']);
+const AIRCLIPS=new Set(['gk_dive_low_l','gk_dive_low_r','gk_dive_high_l','gk_dive_high_r','gk_catch_jump','gk_miss','gk_catch_belly','header','bicycle','gk_dive_l','gk_dive_r','gk_catch_high','fly_back','knocked','getup','getup_slow','gk_block_l','gk_block_r','tackle1','tackle2','tackle3','trip','gk_scoop','electro']);
 async function loadAnimLib(){
   if(!window.ANIMURL||typeof THREE==='undefined'||!THREE.GLTFLoader)return;
-  fetch('assets/floorfix.json?v=44').then(r=>r.ok?r.json():null).then(j=>{FLOORFIX=j;}).catch(()=>{});
+  fetch('assets/floorfix.json?v=67').then(r=>r.ok?r.json():null).then(j=>{FLOORFIX=j;}).catch(()=>{});
   try{const [buf,meta]=await Promise.all([fetch(ANIMURL).then(r=>r.arrayBuffer()),fetch(ANIMMETAURL).then(r=>r.json())]);ANIMMETA=meta;
     await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{ANIMLIB={};for(const c of gl.animations)ANIMLIB[c.name]=c;res();},rej));}catch(e){console.warn('animaciones',e);ANIMLIB=null;}
 }
@@ -1283,14 +1283,24 @@ function libEvents(p,m){
   if(!p.react)p._reE=0;
   // portero
   if(p.gk){
-    if(p.dive>0&&!p._dvE){p._dvE=1;const n='gk_dive_'+sideOf(p,p.diveDir||1),mt=M(n),take=mt.key||.3,land=mt.land||1.3;ev(n,{from:Math.max(0,take-.08),ts:(land-take+.08)/.5,lock:1.1,fade:.05});return;}
+    // v67: la animación se elige por la altura y la distancia del balón (lo mismo que decide la atajada)
+    if(p.dive>0&&!p._dvE){p._dvE=1;const sd=sideOf(p,p.diveDir||1),h=p.diveH==null?1:p.diveH,n=(h<.6&&act(m,'gk_dive_low_'+sd)?'gk_dive_low_':h>1.3&&act(m,'gk_dive_high_'+sd)?'gk_dive_high_':'gk_dive_')+sd,mt=M(n),take=mt.key||.3,land=mt.land||1.3;
+      ev(n,{from:Math.max(0,take-.08),ts:(land-take+.08)/.5,lock:1.1,fade:.05});return;}
     if(!(p.dive>0))p._dvE=0;
     if(p.smother>0&&!p._smE){p._smE=1;const n='gk_block_'+sideOf(p,p.smDir||1),mt=M(n);ev(n,{from:Math.max(0,(mt.key||1)-.45),ts:1.5,lock:1.0,fade:.05});return;}
     if(!(p.smother>0))p._smE=0;
-    if(p.highT>0&&!p._hiE){p._hiE=1;ev('gk_catch_high',{from:(M('gk_catch_high').key||1.5)-.35,ts:1.2,lock:.8,fade:.06});return;}
-    if(!(p.highT>0))p._hiE=0;
-    if(p.blockT>0&&!p._blE){p._blE=1;if((p.catchY||0)>.75&&act(m,'gkblock'))ev('gkblock',{from:.15,ts:1.5,lock:.5,fade:.06});else ev('gk_scoop',{from:Math.max(0,(M('gk_scoop').key||.7)-.25),ts:1.3,lock:.6,fade:.06});return;}
-    if(!(p.blockT>0))p._blE=0;
+    // atajada de frente: empieza antes de que llegue el balón para que las manos lleguen justo a tiempo
+    const gkCatchClip=y=>y>2.05&&act(m,'gk_catch_jump')?'gk_catch_jump':y>1.65?'gk_catch_high':y>1.05&&act(m,'gk_catch_chest')?'gk_catch_chest':y>.4&&act(m,'gk_catch_belly')?'gk_catch_belly':'gk_scoop';
+    const playCatch=(n,lead)=>{const mt=M(n),k=mt.key||.6,ts=1.25;ev(n,{from:Math.max(0,k-Math.max(.06,lead)*ts),ts,lock:Math.max(.5,lead+.35),fade:.06});};
+    if(p.prepT>0&&!p._prE){p._prE=1;p._hiE=p._blE=1;playCatch(gkCatchClip(p.prepY||1),p.prepT);return;}
+    if(p._prE&&!(p.prepT>0)&&!(p.highT>0)&&!(p.blockT>0)&&!(p.alert))p._prE=0;
+    if(p.highT>0&&!p._hiE){p._hiE=1;playCatch(gkCatchClip(Math.max(1.7,p.diveH||p.catchY||1.8)),.12);return;}
+    if(!(p.highT>0)&&!p._prE)p._hiE=0;
+    if(p.blockT>0&&!p._blE){p._blE=1;playCatch(gkCatchClip(p.catchY||1),.08);return;}
+    if(!(p.blockT>0)&&!p._prE)p._blE=0;
+    // se le pasó por arriba: estira los brazos y cae
+    if(p.saveT>0&&p.saveKind==='fallo'&&!(p.dive>0)&&!p._miE&&(p.saveY||0)>1.6&&act(m,'gk_miss')){p._miE=1;ev('gk_miss',{from:Math.max(0,(M('gk_miss').key||.6)-.15),ts:1.3,lock:1,fade:.06});return;}
+    if(!(p.saveT>0))p._miE=0;
     if(p.distrib&&!p._diE){p._diE=1;const t=p.distrib.type,n=t==='mano'?'gk_throw':t==='corto'?'gk_roll':'gk_dropkick',rel=t==='mano'?.38:t==='corto'?.75:.32,k=M(n).key||1.3,ts=1.6;
       ev(n,{from:Math.max(0,k-rel*ts),ts,lock:rel+.5,fade:.08});return;}
     if(!p.distrib)p._diE=0;
@@ -1307,8 +1317,8 @@ function libEvents(p,m){
 }
 function libLoco(p,m,sp){
   let n,ts=1;
-  if(p.gk){if(ball.gk===p&&!p.distrib){if(m.curA!=='gk_hold'){const a=act(m,'gk_throw');if(a){goA(m,'gk_throw',{from:.33,ts:.0001,fade:.15});m.curA='gk_hold';}}return;}else if(p.setPos){const lat=-Math.cos(p.face)*p.vx+Math.sin(p.face)*p.vz;n=Math.abs(lat)>.9?(lat>0?'gk_step_r':'gk_step_l'):'gk_idle_low';ts=n==='gk_idle_low'?1:clamp(Math.abs(lat)/3,.7,1.5);}
-    else n=sp>4.5?'sprint':sp>1.2?'jog':'gk_idle';}
+  if(p.gk){if(ball.gk===p&&!p.distrib){if(m.curA!=='gk_hold'){const a=act(m,'gk_throw');if(a){goA(m,'gk_throw',{from:.33,ts:.0001,fade:.15});m.curA='gk_hold';}}return;}else if(p.backT>0&&sp>.8&&act(m,'gk_backpedal')){n='gk_backpedal';ts=clamp(sp/3.2,.7,1.5);}else if(p.setPos){const lat=-Math.cos(p.face)*p.vx+Math.sin(p.face)*p.vz;n=Math.abs(lat)>.9?(lat>0?'gk_step_r':'gk_step_l'):'gk_idle_low';ts=n==='gk_idle_low'?1:clamp(Math.abs(lat)/3,.7,1.5);}
+    else n=sp>4.5?'sprint':sp>1.2?'jog':(Math.abs(ball.x-p.x)>40&&!ball.gk&&act(m,'gk_direct')?'gk_direct':'gk_idle');}
   else if(sp<.7)n=ball.owner===p?'idle_ball':'idle';
   else if(sp<4.6)n='jog';else n='sprint';
   const nat=k=>{const mt=ANIMMETA[k];if(!mt||!mt.dur||!m.bones||!ANIMMETA._hips)return k==='jog'?3.4:7.6;const r=(m.bones.hipsWorldH||.9)/(ANIMMETA._hips[1]*.01);return Math.max(.5,Math.hypot(mt.root[0],mt.root[1])/mt.dur*r);};
@@ -1326,6 +1336,11 @@ function animLib(m,p,dt){
   Bz&&Bz.feet.forEach(f=>f.scale.setScalar(m.foot));
   // brazos un poco separados del cuerpo (personajes anchos)
   if(Bz&&Bz.la&&Bz.ra&&Bz.armOut){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
+  // v67: despeje con el puño y tapada con la pierna (no hay animación de Mixamo: se dobla el hueso encima de la animación)
+  if(Bz&&p.gk&&p.saveT>0&&!(p.dive>0)){const kd=p.saveKind,hi=(p.saveY||0)>1.45,leg=kd==='pie',punch=!leg&&hi&&(kd==='travesano'||kd==='desvio'||kd==='punta');
+    if(leg||punch){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}const u=clamp((.7-p.saveT)/.45,0,1),e=Math.sin(u*Math.PI)*(u<.5?1:1),r=sideOf(p,p.saveZ||1)==='r';
+      if(punch){const c=r?Bz.ra:Bz.la,sx=r?Bz.rsx:Bz.lsx;if(c){_gq2.setFromAxisAngle(c.az,sx*2.1*e);c.b.quaternion.premultiply(_gq2);}}
+      else{const c=r?Bz.rul:Bz.lul,sx=r?Bz.rsx:Bz.lsx;if(c){_gq2.setFromAxisAngle(c.az,sx*.95*e);c.b.quaternion.premultiply(_gq2);}}}}
   // pies pegados al piso: corregir la altura según el pie más bajo
   m.footAdj=0;
   if(Bz&&Bz.toes.length&&Bz.restFootY!=null&&!AIRCLIPS.has(m.curA)&&!(p.flyY>0)){const v=_fv||(_fv=new THREE.Vector3());let mn=1e9;for(const b of Bz.toes){b.getWorldPosition(v);Bz.model.worldToLocal(v);mn=Math.min(mn,v.y);}
@@ -2108,7 +2123,7 @@ requestAnimationFrame(loop);
 
 </script>
 <script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb?v=59", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=56", "s": "assets/cards/zurdito_c.webp?v=56"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=56", "s": "assets/cards/cazador_c.webp?v=56"}, "perro": {"c": "assets/cards/perro_c.webp?v=56", "s": "assets/cards/perro_c.webp?v=56"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_c.webp?v=56"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=56", "s": "assets/cards/coletazo_c.webp?v=56"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=56", "s": "assets/cards/expreso_c.webp?v=56"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=56", "s": "assets/cards/pausa_c.webp?v=56"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=56", "s": "assets/cards/gigante_c.webp?v=56"}, "rey": {"c": "assets/cards/rey_c.webp?v=56", "s": "assets/cards/rey_c.webp?v=56"}, "gato": {"c": "assets/cards/gato_c.webp?v=56", "s": "assets/cards/gato_c.webp?v=56"}, "toro": {"c": "assets/cards/toro_c.webp?v=56", "s": "assets/cards/toro_c.webp?v=56"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=56", "s": "assets/cards/vikingo_c.webp?v=56"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=56", "s": "assets/cards/muralla_c.webp?v=56"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=56", "s": "assets/cards/ciclon_c.webp?v=56"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=56", "s": "assets/cards/malabares_c.webp?v=56"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=56", "s": "assets/cards/ruleta_c.webp?v=56"}, "leon": {"c": "assets/cards/leon_c.webp?v=56", "s": "assets/cards/leon_c.webp?v=56"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=56", "s": "assets/cards/turbo_c.webp?v=56"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
-window.ANIMURL='assets/anims.glb';window.ANIMMETAURL='assets/anims.json';</script>
+window.ANIMURL='assets/anims.glb?v=67';window.ANIMMETAURL='assets/anims.json?v=67';</script>
 <script>
 // ================== DATOS ==================
 const RARS={comun:{n:'Común',c:'#cfe0ff'},rara:{n:'Rara',c:'#ffb347'},epica:{n:'Épica',c:'#d68bff'},legendaria:{n:'Legendaria',c:'#ffe066'}};
@@ -2713,6 +2728,6 @@ document.addEventListener('pointerdown',()=>audio(),{once:true});
 
 </script>
 <script src="assets/online.js?v=65"></script>
-<script src="assets/online-play.js?v=65"></script>
+<script src="assets/online-play.js?v=67"></script>
 </body>
 </html>

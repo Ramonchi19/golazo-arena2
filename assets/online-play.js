@@ -70,7 +70,7 @@ function connect(){
     if(O.retries<4){O.retries++;say('Reconectando…');setTimeout(()=>{if(O&&!O.ended)connect();},800*O.retries);}
     else fail('Se perdió la conexión');};
 }
-function fail(msg){if(!O)return;const wasStarted=O.started;O.ended=true;window.ONLINE=null;H1=false;
+function fail(msg){if(!O)return;const wasStarted=O.started;O.ended=true;window.ONLINE=null;H1=false;CTRL_LOCK[1]=false;
   try{closeModal();}catch(e){}say(msg);
   if(wasStarted&&state==='play'){state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);}
   O=null;}
@@ -81,6 +81,7 @@ function onMsg(m){if(!O)return;
   else if(m.t==='cuenta'){startOnline();}
   else if(m.t==='inicio'){if(!O.started)startOnline();O.go=true;pause=0;pauseCb=null;showBig('¡A jugar!');sfx('whistle');}
   else if(m.t==='s'){applySnap(m);}
+  else if(m.t==='po'){const r=performance.now()-m.c;O.rtt=O.rtt?O.rtt*.7+r*.3:r;}
   else if(m.t==='ri'){joy1.x=m.j[0];joy1.y=m.j[1];}
   else if(m.t==='rb'){if(m.d)simBtnDown(1,m.k);else simBtnUp(1,m.k);}
   else if(m.t==='rc'){if(CARDS[m.k])castSpell(m.k,1,m.x,m.z);}
@@ -93,7 +94,7 @@ async function startOnline(){
   const opp=O.rival||oppFrom({});
   await startMatch(opp);
   if(!O)return;
-  H1=true;user1=fieldOf(1)[0];
+  H1=true;user1=fieldOf(1)[0];CTRL_LOCK[1]=true;
   if(O.team===1)kickoff(1);          // el servidor saca con el equipo azul; desde el lado rojo eso es el rival
   pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
   if(!O.go){let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');sfx('touch');n--;setTimeout(c,1000);};c();}
@@ -107,7 +108,7 @@ function endOnline(m){if(!O||O.ended)return;O.ended=true;
   try{tensEl.classList.remove('on','fast');clockEl.classList.remove('hot');}catch(e){}
   state='end';selCard=-1;ghost=null;try{updateSel();}catch(e){}
   sfx('whistle');crowdStop(false);
-  H1=false;window.ONLINE=null;const ws=O.ws;O=null;try{ws.close();}catch(e){}
+  H1=false;CTRL_LOCK[1]=false;window.ONLINE=null;const ws=O.ws;O=null;try{ws.close();}catch(e){}
   onMatchEnd(a,b,false);
 }
 
@@ -117,24 +118,41 @@ function applySnap(S){
   if(!O||!O.started||state!=='play')return;O.snaps++;
   time=S.tm;overtime=!!S.ot;score=S.sc.slice();energy[0]=S.en;
   if(S.ps>0){pause=Math.max(pause,S.ps);pauseCb=null;}else if(O.go&&pause>0&&pause<50)pause=0;
+  // v66: el jugador que controla el rival lo dice el servidor; el mío lo decido yo
+  if(S.u&&S.u[1]>=0&&players[S.u[1]]&&players[S.u[1]].team===1)user1=players[S.u[1]];
+  const lead=Math.min(.15,(O.rtt||80)/2000);              // el servidor va un poco atrás: se adelanta su foto
   const B=S.b;
   const own=B[6]>=0?players[B[6]]:null,gk=B[7]>=0?players[B[7]]:null;
   if(own){if(ball.owner!==own){ball.owner=own;ball.gk=null;own.protect=.3;}}
   else if(gk){if(ball.gk!==gk){ball.gk=gk;ball.owner=null;}}
   else if(ball.owner||ball.gk){ball.owner=null;ball.gk=null;}
-  const bd=Math.hypot(B[0]-ball.x,B[2]-ball.z,B[1]-ball.y),bk=bd>3?1:.45;
-  ball.x+=(B[0]-ball.x)*bk;ball.y+=(B[1]-ball.y)*bk;ball.z+=(B[2]-ball.z)*bk;
-  if(!own){ball.vx=B[3];ball.vy=B[4];ball.vz=B[5];}ball.super=!!B[8];
-  S.p.forEach((q,i)=>{const p=players[i];if(!p)return;
-    const d=Math.hypot(q[0]-p.x,q[1]-p.z),mine=p===user;
-    const k=d>3.5?1:mine?.12:.35;
-    p.x+=(q[0]-p.x)*k;p.z+=(q[1]-p.z)*k;
-    if(!mine||d>3.5){p.vx=q[2];p.vz=q[3];p.face=angLerp(p.face,q[4],mine?.1:.5);}
+  {const tx=B[0]+(own||gk?0:B[3]*lead),ty=B[1],tz=B[2]+(own||gk?0:B[5]*lead),d=Math.hypot(tx-ball.x,tz-ball.z,ty-ball.y);
+    if(d>3){ball.x=tx;ball.y=ty;ball.z=tz;ball._ex=ball._ey=ball._ez=0;}else{ball._ex=tx-ball.x;ball._ey=ty-ball.y;ball._ez=tz-ball.z;}
+    if(!own){ball.vx=B[3];ball.vy=B[4];ball.vz=B[5];}ball.super=!!B[8];}
+  S.p.forEach((q,i)=>{const p=players[i];if(!p)return;const mine=p===user;
+    const tx=q[0]+q[2]*lead,tz=q[1]+q[3]*lead,d=Math.hypot(tx-p.x,tz-p.z);
+    if(d>3.5){p.x=tx;p.z=tz;p._ex=p._ez=0;p.vx=q[2];p.vz=q[3];}
+    else{const k=mine?.35:1;p._ex=(tx-p.x)*k;p._ez=(tz-p.z)*k;
+      if(!mine){p.vx=q[2];p.vz=q[3];p._fa=q[4];}}
     if(q[5]>0&&!(p.stun>0))p.stun=q[5];else if(q[5]<=0&&p.stun>.25)p.stun=.05;
     if(q[7]>0&&!(p.flyY>0)){p.flyY=q[7];p.flyVy=0;}
     p.star=q[8];
   });
+  // v67: el portero hace lo mismo que en el servidor (estirada, atajada, puño...) aunque aquí el azar haya salido distinto
+  if(S.g)S.g.forEach((g,i)=>{const k=players[i*5];if(!k||!k.gk||!g)return;
+    const up=(f,v)=>{if(v>0){if(!(k[f]>0)||Math.abs(k[f]-v)>.12)k[f]=v;}else if(k[f]>0)k[f]=0;};
+    if(g[0]>0&&!(k.dive>0)){k.diveDir=g[1];k.diveH=g[2];}up('dive',g[0]);
+    if(g[3]>0&&!(k.smother>0))k.smDir=g[4];up('smother',g[3]);
+    if((g[5]>0||g[6]>0))k.catchY=g[7];up('highT',g[5]);up('blockT',g[6]);
+    if(g[9]>0&&!(k.saveT>0)){k.saveKind=SAVEK[g[8]]||null;k.saveY=g[10];k.saveZ=g[11];}up('saveT',g[9]);
+    if(g[12]>0&&!(k.prepT>0))k.prepY=g[13];up('prepT',g[12]);up('down',g[14]);up('backT',g[15]);});
 }
+const SAVEK=['','fallo','pecho','alta','baja','lado','rechazo','travesano','pie','cuerpo','punta','desvio'];
+// v66: la diferencia con el servidor se reparte poco a poco (unos 0.15 s), sin saltos
+function smoothStep(dt){if(!O||!O.started)return;const f=Math.min(1,dt/.15),fb=Math.min(1,dt/.1);
+  for(const p of players){if(p._ex||p._ez){const dx=p._ex*f,dz=p._ez*f;p.x+=dx;p.z+=dz;p._ex-=dx;p._ez-=dz;if(Math.abs(p._ex)+Math.abs(p._ez)<.002)p._ex=p._ez=0;}
+    if(p._fa!=null&&p!==user&&ball.owner!==p){let df=p._fa-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,dt*8);if(Math.abs(df)<.02)p._fa=null;}}
+  if(ball._ex||ball._ez||ball._ey){const dx=ball._ex*fb,dy=ball._ey*fb,dz=ball._ez*fb;ball.x+=dx;ball.y=Math.max(BR,ball.y+dy);ball.z+=dz;ball._ex-=dx;ball._ey-=dy;ball._ez-=dz;}}
 
 // ---------- lo que cambia en el juego cuando hay partido en línea ----------
 const origGoal=window.goal;
@@ -154,13 +172,16 @@ const origPlay=window.playCard;
 window.playCard=function(team,i,x,z){if(O&&team===0){const k=hands[0][i];const ok=origPlay(team,i,x,z);if(ok)send({t:'c',k,x:+x.toFixed(2),z:+z.toFixed(2)});return ok;}return origPlay(team,i,x,z);};
 const qb=document.getElementById('quit');
 if(qb){const orig=qb.onclick;qb.onclick=()=>{if(!O)return orig&&orig();if(state!=='play')return;
-  askConfirm('¿Rendirte?','Contará como derrota.',()=>{const ws=O&&O.ws;if(O){O.ended=true;}window.ONLINE=null;H1=false;O=null;try{ws&&ws.close();}catch(e){}state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);});};}
+  askConfirm('¿Rendirte?','Contará como derrota.',()=>{const ws=O&&O.ws;if(O){O.ended=true;}window.ONLINE=null;H1=false;CTRL_LOCK[1]=false;O=null;try{ws&&ws.close();}catch(e){}state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);});};}
 
 // joystick al servidor (hasta 30 veces por segundo, solo si cambió)
 (function pump(){requestAnimationFrame(pump);if(!O||!O.go||state!=='play')return;
-  const now=performance.now();if(now-O.lastSend<33)return;
-  const jx=+joy.x.toFixed(2),jy=+joy.y.toFixed(2);
-  if(Math.abs(jx-O.lj[0])+Math.abs(jy-O.lj[1])>.04||now-O.lastSend>250){O.lj=[jx,jy];O.lastSend=now;send({t:'in',j:[jx,jy]});}})();
+  const now=performance.now();
+  const dt=Math.min(.05,(now-(O.lastFrame||now))/1000);O.lastFrame=now;smoothStep(dt);
+  if(now-(O.lastPing||0)>2000){O.lastPing=now;send({t:'p',c:now});}
+  if(now-O.lastSend<33)return;
+  const jx=+joy.x.toFixed(2),jy=+joy.y.toFixed(2),u=players.indexOf(user);
+  if(Math.abs(jx-O.lj[0])+Math.abs(jy-O.lj[1])>.04||u!==O.lu||now-O.lastSend>250){O.lj=[jx,jy];O.lu=u;O.lastSend=now;send({t:'in',j:[jx,jy],u});}})();
 
 window.NETPLAY={get active(){return !!O;},get info(){return O;}};
 })();

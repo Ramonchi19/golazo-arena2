@@ -59,11 +59,13 @@ export class GameCore {
   leave(team) { this.joined[team] = false; this.goneAt[team] = this.now(); this.send(1 - team, { t: 'rivalSeFue' }); }
   both(o) { this.send(0, o); this.send(1, o); }
   input(team, m) {
+    if (m.t === 'p') { this.send(team, { t: 'po', c: m.c }); return; }   // medir el ping
     if (this.phase !== 'juego') return;
     const M = this.M;
     if (m.t === 'in' && Array.isArray(m.j)) {
       const x = Math.max(-1, Math.min(1, +m.j[0] || 0)), y = Math.max(-1, Math.min(1, +m.j[1] || 0));
       M.setJoy(team, team === 1 ? -x : x, team === 1 ? -y : y);
+      if (Number.isInteger(m.u) && m.u >= 0 && m.u < 5) M.setCtrlIdx(team, team === 1 ? m.u + 5 : m.u);
       this.send(1 - team, { t: 'ri', j: [r2(-x), r2(-y)] }); // el rival, visto desde el otro lado
     } else if (m.t === 'b' && 'abc'.includes(m.k)) {
       if (m.d) M.btnDown(team, m.k); else M.btnUp(team, m.k);
@@ -108,11 +110,19 @@ export class GameCore {
     return {
       t: 's', k: this.tickN, tm: r2(M.time), ot: M.overtime ? 1 : 0, ps: r2(Math.max(0, M.pause)),
       sc: team === 1 ? [M.score[1], M.score[0]] : M.score.slice(), en: r2(M.energy[team]),
+      u: [idx(M.ctrl[team]), idx(M.ctrl[1 - team])],                    // a quién controla cada quien
       b: [r2(b.x * s), r2(b.y), r2(b.z * s), r2(b.vx * s), r2(b.vy), r2(b.vz * s), idx(b.owner), idx(b.gk), b.super ? 1 : 0],
       p: order.map(p => [r2(p.x * s), r2(p.z * s), r2(p.vx * s), r2(p.vz * s), r2(team === 1 ? p.face + Math.PI : p.face),
         r2(Math.max(0, p.stun)), ACT[p.act] || 0, r2(p.flyY || 0), r2(Math.max(0, p.star || 0))]),
+      g: [order[0], order[5]].map(k => gkSnap(k, s)),                // v67: lo que hace cada portero (para dibujar la misma atajada)
     };
   }
+}
+const SAVEK = ['', 'fallo', 'pecho', 'alta', 'baja', 'lado', 'rechazo', 'travesano', 'pie', 'cuerpo', 'punta', 'desvio'];
+export function gkSnap(k, s) {
+  const t = v => r2(Math.max(0, v || 0));
+  return [t(k.dive), (k.diveDir || 0) * s, r2(k.diveH || 0), t(k.smother), (k.smDir || 0) * s, t(k.highT), t(k.blockT), r2(k.catchY || 0),
+    Math.max(0, SAVEK.indexOf(k.saveKind || '')), t(k.saveT), r2(k.saveY || 0), r2((k.saveZ || 0) * s), t(k.prepT), r2(k.prepY || 0), t(k.down), t(k.backT)];
 }
 function pub(p) { return { name: p.name, avatar: p.avatar, country: p.country, trophies: p.trophies, squad: p.squad, kit: p.kit || null, deck: p.deck }; }
 export const GAME_TICK_MS = TICK_MS;
