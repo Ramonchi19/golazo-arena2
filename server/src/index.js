@@ -7,8 +7,10 @@ const SIM = globalThis.SIM;
 import { makeMatch } from "./match.gen.js"; // jugadores, IA y porteros del juego (assets/sim/match.js)
 import { LobbyCore } from "./lobby.js";
 import { GameCore, GAME_TICK_MS } from "./game.js";
+import { Cartera, uidFrom, econReady } from "./cartera.js";
+export { Cartera };
 
-const VERSION = "v67-portero";
+const VERSION = "v79-cartera";
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s, headers: { "content-type": "application/json", "access-control-allow-origin": "*" }
 });
@@ -17,7 +19,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/" || url.pathname === "/salud") {
-      return json({ ok: true, juego: "Wild Strikers", version: VERSION, lugar: req.cf && req.cf.colo });
+      return json({ ok: true, juego: "Titan Crashers", version: VERSION, lugar: req.cf && req.cf.colo });
     }
     if (url.pathname === "/prueba-balon") {
       // tiro de prueba simulado en el servidor con la física del juego
@@ -40,6 +42,19 @@ export default {
       const r = v => Math.round(v * 10) / 10;
       return json({ ok: true, version: VERSION, segundos: seg, cuadros: f, marcador: M.score.join("-"),
         poder: poder || null, balon: { x: r(M.ball.x), y: r(M.ball.y), z: r(M.ball.z) }, jugadores: M.players.map(p => ({ equipo: p.team, portero: !!p.gk, x: r(p.x), z: r(p.z), aturdido: p.stun > 0 })), ms: Date.now() - t0 });
+    }
+    if (url.pathname === "/econ") {
+      // v79: economía del jugador (monedas, gemas, cartas, sobres, copas). Solo con la cuenta de Firebase.
+      const cors = { "access-control-allow-origin": "*", "access-control-allow-methods": "POST, OPTIONS", "access-control-allow-headers": "authorization, content-type", "access-control-max-age": "86400" };
+      if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+      if (req.method !== "POST") return json({ error: "usa POST" }, 405);
+      if (!econReady(env)) return json({ off: true });
+      const uid = await uidFrom(req, env).catch(() => null);
+      if (!uid) return json({ err: "Tu sesión venció. Vuelve a entrar." }, 401);
+      const body = await req.text();
+      if (body.length > 60000) return json({ err: "Demasiado grande" }, 413);
+      const r = await env.CARTERA.get(env.CARTERA.idFromName("u:" + uid)).fetch("https://cartera/", { method: "POST", headers: { "x-uid": uid, "content-type": "application/json" }, body });
+      return new Response(r.body, { status: r.status, headers: Object.assign({ "content-type": "application/json" }, cors) });
     }
     if (url.pathname === "/fila") {
       if (req.headers.get("Upgrade") !== "websocket") return json({ error: "se esperaba websocket" }, 426);

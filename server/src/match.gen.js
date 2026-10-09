@@ -399,7 +399,7 @@ function resolveSave(k,G_){
   ball.lastTeam=k.team;ball.super=false;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;settle();
   sfx('catch');if(!fb('impacto',ball.x,ball.y,ball.z,big?3.2:2,.35))burst(ball.x,ball.y,ball.z,0xffffff,10,5);if(big)bigSave();
 }
-function catchBall(k){k.catchY=ball.y;if(ball.y>1.75&&k.dive<=0)k.highT=.45;else if(k.dive<=0)k.blockT=.5;ball.gk=k;ball.owner=null;k.hold=(k.team===0||H1)?2.2:rand(.55,.95);k.distrib=null;ball.super=false;ball.passTo=null;ball.cross=false;ball.vx=ball.vy=ball.vz=0;sfx('catch');}
+function catchBall(k){k.catchY=ball.y;if(ball.y>1.75&&k.dive<=0)k.highT=.45;else if(k.dive<=0)k.blockT=.5;ball.gk=k;ball.owner=null;k.hold=(k.team===0||H1)?2.2:rand(.55,.95);if(k.dive>0||k.plan==='estirada')k.hold=Math.max(k.hold,rand(1.35,1.6));/* v77: tiempo para levantarse con el balón */k.distrib=null;ball.super=false;ball.passTo=null;ball.cross=false;ball.vx=ball.vy=ball.vz=0;sfx('catch');}
 function gkTargets(k,dir){
   const d=dirOf(k.team),mates=fieldOf(k.team).filter(m=>m.stun<=0);let best=null,bs=-1e9;
   for(const m of mates){const o=nearestOpp(m),free=o?Math.min(9,d2(m,o)):9,dist=d2(k,m);let s=free-dist*.06;

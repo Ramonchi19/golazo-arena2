@@ -1,4 +1,4 @@
-/* v60 · Wild Strikers en línea (fase 1)
+/* v60 · Titan Crashers en línea (fase 1) · v79: la economía la decide el servidor
    Cuentas con Google y correo, progreso guardado en Firestore (players/{uid}) y ranking real.
    Si Firebase no carga (sin internet), el juego sigue funcionando con el guardado del teléfono. */
 (function(){
@@ -67,8 +67,8 @@ const G_ICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d
 
 // ---------- pantalla de entrada ----------
 let ov=null,mode='inicio';
-function overlay(){if(ov)return ov;ov=document.createElement('div');ov.id='login';ov.className='hide';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Entrar a Wild Strikers');document.body.appendChild(ov);return ov;}
-function frame(inner){overlay().innerHTML=`<div class="lg-box"><div class="lg-logo"><b>WILD</b><i>STRIKERS</i></div><div class="mpanel">${inner}</div></div>`;ov.classList.remove('hide');}
+function overlay(){if(ov)return ov;ov=document.createElement('div');ov.id='login';ov.className='hide';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Entrar a Titan Crashers');document.body.appendChild(ov);return ov;}
+function frame(inner){overlay().innerHTML=`<div class="lg-box"><div class="lg-logo"><img src="assets/ui/logo.webp?v=78" alt="Titan Crashers" style="width:min(78vw,380px);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,30,.45))" onerror="this.src='assets/ui/logo.png?v=78'"></div><div class="mpanel">${inner}</div></div>`;ov.classList.remove('hide');}
 function hideLogin(){if(ov)ov.classList.add('hide');}
 function msg(t,ok){const m=ov&&ov.querySelector('.lg-msg');if(m){m.textContent=t||'';m.classList.toggle('ok',!!ok);}}
 function busy(on){if(!ov)return;ov.querySelectorAll('button,input').forEach(b=>b.disabled=!!on);}
@@ -120,18 +120,41 @@ async function resetPass(){const E=document.getElementById('lgE').value.trim();
   if(!/^\S+@\S+\.\S+$/.test(E)){msg('Escribe tu correo arriba y vuelve a tocar aquí.');return;}
   busy(true);try{auth.languageCode='es';await auth.sendPasswordResetEmail(E);msg('Te mandamos un correo para cambiar tu contraseña.',true);}catch(e){msg(errTxt(e));}busy(false);}
 
+// ---------- v79: economía en el servidor ----------
+// Con cuenta, monedas, gemas, cartas, sobres y copas los cambia SOLO el servidor (Cloudflare). El teléfono pide y el servidor responde.
+const HTTP=(window.WS_SERVER||'wss://wild-strikers.ramoncas0234.workers.dev').replace(/^ws/,'http');
+const ECON_KEY='tc_econ_on';
+NET.econOn=(()=>{try{return localStorage.getItem(ECON_KEY)==='1';}catch(e){return false;}})();
+NET.econCall=async function(a){if(!NET.user)throw new Error('Necesitas tu cuenta');
+  let tok;try{tok=await NET.user.getIdToken();}catch(e){throw new Error('Sin conexión');}
+  let r,j=null;const ac=new AbortController(),to=setTimeout(()=>ac.abort(),12000);
+  try{r=await fetch(HTTP+'/econ',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+tok},body:JSON.stringify(a),signal:ac.signal});}catch(e){clearTimeout(to);throw new Error('Sin conexión con el servidor');}
+  clearTimeout(to);
+  try{j=await r.json();}catch(e){}
+  if(!j)throw new Error('El servidor no respondió');
+  if(j.off){NET.econOn=false;try{localStorage.setItem(ECON_KEY,'0');}catch(e){}throw new Error('El servidor todavía no guarda la economía');}
+  return j;};
+// al entrar: el servidor manda la cartera (cuentas de antes: la pasa una vez desde la nube; cuentas nuevas: empiezan de cero)
+async function econLogin(){
+  try{const j=await NET.econCall({t:'get'});
+    if(j.E){NET.econOn=true;try{localStorage.setItem(ECON_KEY,'1');}catch(e){}if(j.now)window.SRV_DT=j.now-Date.now();applyE(j.E);orig.call(window);}
+  }catch(e){console.warn('[econ]',e.message);}}
+
 // ---------- progreso en la nube ----------
 const score=s=>s?((s.maxTrophies||0)*3+(s.wins||0)*5+(s.losses||0)+(s.lvl||1)*20):0;
 function clean(s){const o=JSON.parse(JSON.stringify(s));delete o.owner;return o;}
-function docData(){const s=save;return{name:String(s.name||'Jugador').slice(0,16),avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),
+function docData(){const s=save;
+  if(NET.econOn){const sv=clean(s);for(const k of ECON.EK)sv[k]=FV.delete();   // se borra la economía vieja de la nube (ahora la tiene el servidor)
+    return{name:String(s.name||'Jugador').slice(0,16),avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),save:sv,updatedAt:FV.serverTimestamp()};}
+  return{name:String(s.name||'Jugador').slice(0,16),avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),
   trophies:Math.max(0,Math.floor(s.trophies||0)),maxTrophies:Math.max(0,Math.floor(s.maxTrophies||0)),lvl:Math.max(1,Math.floor(s.lvl||1)),
   wins:Math.floor(s.wins||0),losses:Math.floor(s.losses||0),draws:Math.floor(s.draws||0),save:clean(s),updatedAt:FV.serverTimestamp()};}
 async function upload(){if(!NET.user||!db)return;if(uploading){again=true;return;}uploading=true;
   const ref=db.collection(COL).doc(NET.user.uid),d=docData();
-  if(lastUp&&d.trophies>lastUp.trophies)d.matchAt=FV.serverTimestamp();
+  if(!NET.econOn&&lastUp&&d.trophies>lastUp.trophies)d.matchAt=FV.serverTimestamp();
   try{await ref.set(d,{merge:true});lastUp={trophies:d.trophies};NET.state='sync';}
   catch(e){console.warn('[online] guardado rechazado',e);
-    if(e&&e.code==='permission-denied'){ // copas fuera de rango: se respeta lo que tiene la nube
+    if(e&&e.code==='permission-denied'&&!NET.econOn){ // copas fuera de rango: se respeta lo que tiene la nube
       try{const snap=await ref.get();if(snap.exists){const c=snap.data();save.trophies=c.trophies;save.maxTrophies=c.maxTrophies;lastUp={trophies:c.trophies};orig.call(window);await ref.set(docData(),{merge:true});}}catch(e2){}
     }}
   uploading=false;if(again){again=false;upload();}}
@@ -150,10 +173,12 @@ async function onLogin(u){NET.user=u;NET.offline=false;NET.state='sync';showWait
     else pick=cloud;
     lastUp={trophies:snap.data().trophies||0};
   }else{pick=(local.owner&&local.owner!==u.uid)?defSave():local;lastUp=null;}
+  if(NET.econOn&&pick!==local&&local.owner===u.uid){pick=JSON.parse(JSON.stringify(pick));for(const k of ECON.EK)if(local[k]!==undefined)pick[k]=local[k];}   // v79: la nube ya no guarda la economía en save (la tiene el servidor)
   let s;try{s=migrate(JSON.parse(JSON.stringify(pick)));}catch(e){s=migrate(defSave());}
   s.owner=u.uid;
   if((!s.name||s.name==='Jugador')){const dn=(u.displayName||(u.email||'').split('@')[0]||'').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,16);if(dn.length>=3)s.name=dn;}
   window.save=s;
+  await econLogin();
   try{orig.call(window);applySettings();renderTab();}catch(e){console.warn(e);}
   await upload();
   hideLogin();if(snap.exists)say('¡Hola, '+save.name+'!');else say('Cuenta lista. ¡A jugar!');}

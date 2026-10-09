@@ -1,4 +1,4 @@
-# Wild Strikers · servidor de partidas (Cloudflare Workers + Durable Objects)
+# Titan Crashers · servidor de partidas (Cloudflare Workers + Durable Objects)
 name = "wild-strikers"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
@@ -24,3 +24,12 @@ class_name = "Partido"
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Fila", "Partido"]
+
+# v79: cartera de cada jugador (economía protegida)
+[[durable_objects.bindings]]
+name = "CARTERA"
+class_name = "Cartera"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Cartera"]

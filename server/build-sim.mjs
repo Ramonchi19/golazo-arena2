@@ -110,3 +110,22 @@ ${match}
 `;
 writeFileSync(join(here, 'src/match.gen.js'), out);
 console.log('server/src/match.gen.js listo (' + out.length + ' bytes)');
+
+// ---- v79: datos de la economía (cartas, sobres, precios) sacados del mismo código del juego ----
+// Se corre la parte de DATOS de index.html en una caja aislada (con kits.js y data.js) y se guarda lo que usa assets/econ.js.
+{
+  const vm = await import('node:vm');
+  const kits = readFileSync(join(root, 'assets/kits.js'), 'utf8');
+  const econ = readFileSync(join(root, 'assets/econ.js'), 'utf8');
+  const a = html.indexOf('// ================== DATOS =================='), b = html.indexOf('const AVATARS=', a);
+  if (a < 0 || b < 0) throw new Error('no encontré los DATOS en index.html');
+  const ctx = { console }; ctx.window = ctx; vm.createContext(ctx);
+  vm.runInContext(kits, ctx);
+  vm.runInContext(econ, ctx);
+  vm.runInContext(data + '\n' + html.slice(a, b) + '\nglobalThis.__ED = ECON.data({PLAYERS,CARDS,LEAGUES,KITS,BOOTS,PACKS,RARE_PER_CARD,LVL_GOLD,LVL_COPIES,COPIES_BY_RAR,MAXLVL});', ctx);
+  const ED = JSON.parse(JSON.stringify(ctx.__ED));
+  const txt = '// ARCHIVO GENERADO por server/build-sim.mjs (datos de la economía, sacados de index.html). No editar.\n' +
+    'import "../../assets/econ.js";\nexport const ECON = globalThis.ECON;\nexport const ED = ' + JSON.stringify(ED) + ';\n';
+  writeFileSync(join(here, 'src/econ.gen.js'), txt);
+  console.log('server/src/econ.gen.js listo (' + ED.POOL.length + ' cartas en sobres, ' + Object.keys(ED.KITS).length + ' uniformes)');
+}

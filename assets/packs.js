@@ -27,11 +27,12 @@ const css=`
 .pk-bronce.pack2{--c1:#f3b27a;--c2:#9a5420;--c3:#5a2a08;--ink:#3a1a04}
 .pk-plata.pack2{--c1:#ffffff;--c2:#a7b2c6;--c3:#5d6a84;--ink:#263049;--glow:rgba(200,220,255,.35)}
 .pk-oro.pack2{--c1:#fff0a0;--c2:#e2a20a;--c3:#8a5200;--ink:#4a2a00;--glow:rgba(255,210,80,.55)}
+.pk-legendario.pack2{--c1:#fff7c8;--c2:#ffb21a;--c3:#7a3a00;--ink:#3a1800;--glow:rgba(255,200,60,.9)}
 .pk-leyenda.pack2{--c1:#d9a8ff;--c2:#7a2fd6;--c3:#2a0a5e;--ink:#1e0742;--glow:rgba(210,140,255,.75)}
 /* apertura */
 .po2{position:relative;min-height:min(640px,92vh);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;user-select:none;touch-action:none;
   background:radial-gradient(ellipse at 50% 70%,rgba(60,90,200,.55),rgba(5,8,25,.0) 70%)}
-.po2 .beams{position:absolute;width:1000px;height:1000px;left:50%;top:44%;margin:-500px;border-radius:50%;opacity:0;transition:opacity .5s;pointer-events:none;
+.po2 .beams{position:absolute;width:1000px;height:1000px;left:50%;top:var(--cy,44%);margin:-500px;border-radius:50%;opacity:0;transition:opacity .5s;pointer-events:none;
   background:repeating-conic-gradient(var(--bc) 0 5deg,transparent 5deg 15deg);-webkit-mask:radial-gradient(circle,#000 0,transparent 62%);mask:radial-gradient(circle,#000 0,transparent 62%);animation:rot 14s linear infinite}
 .po2.lit .beams{opacity:1}
 .po2 .dark{position:absolute;inset:0;background:#02030a;opacity:0;transition:opacity .4s;pointer-events:none;z-index:3}
@@ -53,7 +54,8 @@ const css=`
 .po2 .hand{position:absolute;z-index:6;left:50%;top:calc(50% - 150px);width:44px;height:44px;margin-left:-110px;animation:pk2hand 1.4s ease-in-out infinite;pointer-events:none}
 @keyframes pk2hand{0%{transform:translateX(0);opacity:0}15%{opacity:1}80%{transform:translateX(170px);opacity:1}100%{transform:translateX(190px);opacity:0}}
 .po2 .skip{position:absolute;right:10px;top:10px;z-index:10}
-.po2 .stage{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center}
+.po2 .stage{position:relative;z-index:6;display:flex;flex-direction:column;align-items:center;transition:transform .15s}
+.po2 .bp{transition:transform .15s}
 .po2 .clue2{font-size:20px;text-align:center;animation:clueIn .45s cubic-bezier(.2,1.6,.4,1)}
 .po2 .clue2 svg{width:110px;height:110px;display:block;margin:0 auto 6px;filter:drop-shadow(0 0 18px var(--cc))}
 .po2 .clue2 b{display:block;font-size:24px;color:var(--cc);-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
@@ -78,7 +80,7 @@ const css=`
 const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 
 // ---------------- emblema del sobre (dibujado, sin emojis) ----------------
-const TIER={bronce:{stars:1,n:'BRONCE'},plata:{stars:2,n:'PLATA'},oro:{stars:3,n:'ORO'},leyenda:{stars:0,n:'LEYENDA',crown:1}};
+const TIER={bronce:{stars:1,n:'BRONCE'},plata:{stars:2,n:'PLATA'},oro:{stars:3,n:'ORO'},leyenda:{stars:0,n:'LEYENDA',crown:1},legendario:{stars:0,n:'LEGENDARIO',crown:1}};
 function emblem(type){const t=TIER[type]||TIER.bronce;
   const star=(cx,cy,r)=>{let p='';for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?r*.45:r;p+=(i?'L':'M')+(cx+Math.cos(a)*rr).toFixed(1)+' '+(cy+Math.sin(a)*rr).toFixed(1);}return `<path d="${p}Z" fill="#fff6c8" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"/>`;};
   let top='';if(t.crown)top=`<path d="M30 30 L34 14 L43 23 L50 8 L57 23 L66 14 L70 30 Z" fill="#ffe36a" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="8" r="3.5" fill="#fff6c8" stroke="var(--ink)" stroke-width="2"/>`;
@@ -94,8 +96,8 @@ function emblem(type){const t=TIER[type]||TIER.bronce;
     <circle cx="50" cy="72" r="19.5" fill="#fff" stroke="var(--ink)" stroke-width="3.5"/><g clip-path="url(#bc${type})">${pent}</g>
     <ellipse cx="43" cy="64" rx="6" ry="3.5" fill="#fff" opacity=".85"/></svg>`;}
 window.packHTML=function(type,label){
-  const p=type==='leyenda'?Array.from({length:6},(_,i)=>`<i class="pk-p" style="left:${12+i*15}%;bottom:${8+(i%3)*10}%;animation-delay:${(i*.53)%3}s"></i>`).join(''):'';
-  return `<div class="pack pack2 pk-${type}"><div class="pk-foil"></div>${type==='leyenda'?'<div class="pk-holo"></div>':''}<div class="pk-shine"></div><div class="pk-strip"></div>
+  const p=type==='leyenda'||type==='legendario'?Array.from({length:6},(_,i)=>`<i class="pk-p" style="left:${12+i*15}%;bottom:${8+(i%3)*10}%;animation-delay:${(i*.53)%3}s"></i>`).join(''):'';
+  return `<div class="pack pack2 pk-${type}"><div class="pk-foil"></div>${type==='leyenda'||type==='legendario'?'<div class="pk-holo"></div>':''}<div class="pk-shine"></div><div class="pk-strip"></div>
     <div class="pk-emb">${emblem(type)}</div>${label===true?`<div class="pk-n">${(TIER[type]||TIER.bronce).n}</div>`:''}${p}</div>`;};
 // inclinar el sobre con el dedo (en el menú y en la apertura)
 function tiltAt(el,x,y){const r=el.getBoundingClientRect(),u=(x-r.left)/r.width-.5,v=(y-r.top)/r.height-.5;
@@ -131,12 +133,12 @@ const POSI={POR:['Portero','<path d="M30 70 Q24 40 34 24 Q38 18 44 22 L46 40 L48
 const GEM='<path d="M30 30 L50 14 L70 30 L60 80 L40 80 Z" fill="var(--cc)" stroke="#0a1636" stroke-width="5" stroke-linejoin="round"/><path d="M30 30 L70 30 M40 80 L50 30 L60 80" stroke="#0a1636" stroke-width="3" fill="none" opacity=".6"/>';
 const CROWN='<path d="M14 72 L20 30 L36 50 L50 20 L64 50 L80 30 L86 72 Z" fill="var(--cc)" stroke="#0a1636" stroke-width="5" stroke-linejoin="round"/><rect x="14" y="70" width="72" height="12" rx="3" fill="var(--cc)" stroke="#0a1636" stroke-width="5"/>';
 const nameOf=it=>it.kind==='kit'?KITS[it.id].n:it.kind==='boots'?BOOTS[it.id].n:isPower(it.id)?CARDS[it.id].name:PBY[it.id].nick;
-function cardBack(type){return `<div class="pack pack2 pk-${type}" style="width:100%;height:100%;border:none;box-shadow:none"><div class="pk-foil"></div>${type==='leyenda'?'<div class="pk-holo"></div>':''}<div class="pk-emb" style="margin-top:22%">${emblem(type)}</div></div>`;}
+function cardBack(type){return `<div class="pack pack2 pk-${type}" style="width:100%;height:100%;border:none;box-shadow:none"><div class="pk-foil"></div>${type==='leyenda'||type==='legendario'?'<div class="pk-holo"></div>':''}<div class="pk-emb" style="margin-top:22%">${emblem(type)}</div></div>`;}
 function papers(host,x,y,col,n){for(let i=0;i<n;i++){const p=document.createElement('i');p.className='paper';p.style.left=x+'px';p.style.top=y+'px';p.style.background=i%3?col:'#fff';
   p.style.setProperty('--x',(Math.random()*240-60)+'px');p.style.setProperty('--y',(-Math.random()*180-20)+'px');p.style.setProperty('--r',(Math.random()*720-360)+'deg');host.appendChild(p);setTimeout(()=>p.remove(),1100);}}
-window.openPack=function(type){
+window.openPack=function(type,pre){
   audio();try{crowdLoad();}catch(e){}
-  const res=rollPack(type),items=res.items,best=items[0],br=best.rar,bi=RORD.indexOf(br);let phase='drop',idx=0,done=false;
+  const res=pre||rollPack(type),items=res.items,best=items[0],br=best.rar,bi=RORD.indexOf(br);let phase='drop',idx=0,done=false;
   showModal(`<div class="po2" id="po2" style="--bc:${RC[br]}"><div class="beams"></div><div class="ped"></div><div class="dark"></div><div class="flash"></div>
     <button class="btn b sm skip" id="pkSkip">Saltar »</button>
     <div class="bp" id="bp">${packHTML(type,true)}<div class="tearline" id="tl"></div></div>
@@ -144,7 +146,13 @@ window.openPack=function(type){
     <p class="hint ct" id="pkH">Desliza el dedo por arriba para abrir</p></div>`,true,true);
   const po=$('#po2'),bp=$('#bp'),pk=bp.querySelector('.pack'),tl=$('#tl');
   play('pkWhoosh');setTimeout(()=>{play('pkDrop');vib(25);},560);setTimeout(()=>{phase='ready';},650);
-  const stage=h=>{po.querySelectorAll('.stage,.sum,.gold,.wname,.hint,.hand').forEach(e=>e.remove());const d=document.createElement('div');d.className='stage';d.innerHTML=h;po.appendChild(d);return d;};
+  // v73: la carta (o la pista) nace justo del centro de la espiral de rayos
+  const CY=.44;
+  const alignTo=(box,focal)=>{if(!box||!focal)return;box.style.translate='0 0';const pr=po.getBoundingClientRect(),fr=focal.getBoundingClientRect();
+    const dy=(pr.top+pr.height*CY)-(fr.top+fr.height/2),dx=(pr.left+pr.width/2)-(fr.left+fr.width/2);box.style.translate=dx.toFixed(1)+'px '+dy.toFixed(1)+'px';};
+  const realign=()=>{const s=po.querySelector('.stage');if(s)alignTo(s,s.querySelector('.card3d,.clue2 svg'));else if(!bp.classList.contains('gone'))alignTo(bp,pk);};
+  window.addEventListener('resize',realign);setTimeout(realign,720);   // el sobre se alinea cuando terminó de caer
+  const stage=h=>{po.querySelectorAll('.stage,.sum,.gold,.wname,.hint,.hand').forEach(e=>e.remove());const d=document.createElement('div');d.className='stage';d.innerHTML=h;po.appendChild(d);alignTo(d,d.querySelector('.card3d,.clue2 svg'));setTimeout(()=>{if(d.isConnected)alignTo(d,d.querySelector('.card3d,.clue2 svg'));},480);return d;};
   const flash=()=>{const f=po.querySelector('.flash');f.classList.remove('go');void f.offsetWidth;f.classList.add('go');};
   // ---- 1) rasgar ----
   let sx=null,prog=0,ripT=0;
@@ -184,14 +192,14 @@ window.openPack=function(type){
   function summary(){if(done)return;done=true;phase='sum';po.classList.remove('walk');po.querySelector('#pkSkip').remove();
     po.querySelectorAll('.stage,.bp,.hint,.hand').forEach(e=>e.remove());
     const bar=it=>{if(it.kind!=='player'&&it.kind!=='power')return '';const T=it.kind==='power'?save.powers:save.players,o=T[it.id];if(!o)return '';
-      if(o.lvl>=MAXLVL)return '<div class="bar up"><i data-w="100"></i></div>';const need=LVL_COPIES[o.lvl],w=Math.min(100,o.copies/need*100);return `<div class="bar ${o.copies>=need?'up':''}"><i data-w="${w.toFixed(0)}"></i></div>`;};
+      if(o.lvl>=MAXLVL)return '<div class="bar up"><i data-w="100"></i></div>';const need=needOf(it.id,o.lvl),w=Math.min(100,o.copies/need*100);return `<div class="bar ${o.copies>=need?'up':''}"><i data-w="${w.toFixed(0)}"></i></div>`;};
     const d=document.createElement('div');d.className='sum';d.innerHTML=items.map((it,i)=>`<div class="it" style="animation-delay:${i*.09}s">${itemHTML(it)}<b>x${it.n}</b>${bar(it)}</div>`).join('');po.appendChild(d);
     const g=document.createElement('div');g.className='gold ct';g.innerHTML='🪙 +<span id="pkG">0</span>';po.appendChild(g);
     const ok=document.createElement('button');ok.className='btn y';ok.style.cssText='position:relative;z-index:6;margin-top:12px';ok.textContent='Continuar';po.appendChild(ok);
     items.forEach((_,i)=>setTimeout(()=>play('pkFlip'),i*90));
     setTimeout(()=>d.querySelectorAll('.bar i').forEach(b=>b.style.width=b.dataset.w+'%'),60);
     let n=0;const tgt=res.gold,steps=Math.min(20,tgt),inc=Math.max(1,Math.ceil(tgt/steps));const ti=setInterval(()=>{n=Math.min(tgt,n+inc);const e=$('#pkG');if(e)e.textContent=n;play('pkCoin');if(n>=tgt)clearInterval(ti);},55);
-    ok.onclick=e=>{e.stopPropagation();clearInterval(ti);closeModal();renderTab();};}
+    ok.onclick=e=>{e.stopPropagation();clearInterval(ti);window.removeEventListener('resize',realign);closeModal();renderTab();};}
   $('#pkSkip').onclick=e=>{e.stopPropagation();if(phase==='drop'||phase==='ready'||phase==='tearing'){bp.classList.add('open','gone');po.classList.add('lit');}summary();};
 };
 })();

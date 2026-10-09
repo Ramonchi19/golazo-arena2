@@ -22,6 +22,11 @@ const lum=c=>{const n=parseInt(String(c).slice(1),16);return .299*(n>>16&255)+.5
 const rgb=c=>{const n=parseInt(String(c).slice(1),16);return[n>>16&255,n>>8&255,n&255];};
 const mixc=(a,b,t)=>{const A=rgb(a),B=rgb(b);return'#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');};
 window.kitLum=lum;
+// v74: zapatos del paquete: el color más vivo del uniforme de local (no blanco ni negro); el uniforme gratis lleva negros
+const sat=c=>{const [r,g,b]=rgb(c),mx=Math.max(r,g,b),mn=Math.min(r,g,b);return mx?(mx-mn)/mx:0;};
+window.kitBoot=function(id){if(!id||id==='clasico'||!KITS[id])return '#1a1a1a';const v=kitSide(id,'L');
+  const c=[v.c2,v.col,v.hom,v.j,v.sh].filter(Boolean).filter(x=>lum(x)>45&&lum(x)<235);c.sort((a,b)=>sat(b)-sat(a));return c[0]||'#1a1a1a';};
+window.KIT_GEMS={comun:60,rara:150,epica:300,legendaria:600};
 // un lado (L o V) de cualquier uniforme, en el formato nuevo
 window.kitSide=function(id,side){const K=KITS[id]||KITS.clasico;
   if(K.paq){const v=K[side==='V'?'V':'L'];return Object.assign({emb:K.emb},v);}

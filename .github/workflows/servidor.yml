@@ -3,15 +3,38 @@ name: Publicar servidor
 on:
   push:
     branches: [ main ]
-    paths: [ 'server/**', 'assets/sim/**', '.github/workflows/servidor.yml' ]
+    paths: [ 'server/**', 'assets/sim/**', 'assets/econ.js', 'assets/kits.js', 'index.html', '.github/workflows/servidor.yml' ]
   workflow_dispatch:
 
 jobs:
   publicar:
     runs-on: ubuntu-latest
+    env:
+      HAY_CUENTA: ${{ secrets.FIREBASE_SA != '' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cloudflare/wrangler-action@v3
+
+      # los datos del servidor (cartas, sobres, precios, partido) salen del mismo código del juego
+      - name: Armar datos del servidor
+        run: node server/build-sim.mjs
+
+      # v79: con la cuenta de servicio de Firebase (secreto FIREBASE_SA) el servidor guarda la economía
+      - name: Publicar con economía en el servidor
+        if: env.HAY_CUENTA == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: b05619abe39ffbb5e8656836f50fca5e
+          workingDirectory: server
+          secrets: |
+            FIREBASE_SA
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+
+      # sin ese secreto se publica igual; el juego sigue guardando la economía como antes
+      - name: Publicar (sin economía en el servidor todavía)
+        if: env.HAY_CUENTA != 'true'
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: b05619abe39ffbb5e8656836f50fca5e
