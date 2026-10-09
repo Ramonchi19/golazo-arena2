@@ -90,6 +90,17 @@ async function fsPatch(env, uid, fields, remove) {
   if (!r.ok) throw new Error("firestore escritura " + r.status + " " + (await r.text()).slice(0, 200));
 }
 
+// v91: nombres únicos. names/{clave} = {uid}. Se crea solo si no existe (o si ya es de este jugador)
+const nmUrl = (env, key) => `https://firestore.googleapis.com/v1/projects/${sa(env).project_id}/databases/(default)/documents/names`;
+async function claimName(env, uid, key) {
+  const r = await fetch(nmUrl(env) + "?documentId=" + encodeURIComponent(key), { method: "POST", headers: { authorization: "Bearer " + await saToken(env), "content-type": "application/json" },
+    body: JSON.stringify({ fields: { uid: enc(uid) } }) });
+  if (r.ok) return true;
+  if (r.status === 409) { const g = await fetch(nmUrl(env) + "/" + encodeURIComponent(key), { headers: { authorization: "Bearer " + await saToken(env) } });
+    if (g.ok) { const j = await g.json(); return decV((j.fields || {}).uid) === uid; } return false; }
+  throw new Error("firestore nombre " + r.status);
+}
+async function freeName(env, key) { try { await fetch(nmUrl(env) + "/" + encodeURIComponent(key), { method: "DELETE", headers: { authorization: "Bearer " + await saToken(env) } }); } catch (e) {} }
 // lo que se manda al teléfono (sin datos internos del servidor)
 const pub = E => { const o = Object.assign({}, E); delete o.mt; delete o.wh; delete o.adj; return o; };
 // cambios a mano desde la consola de Firebase: escribe en players/{uid} un mapa "ajuste" (por ejemplo ajuste: {gold: 5000, gems: 300, n: 1}).
@@ -132,8 +143,14 @@ export class Cartera extends DurableObject {
     E = structuredClone(this.E);
     if (a.t === "start") { E.mt = now; await save(E); return reply({ ok: true, out: {} }); }
     if (a.t === "match" && !E.mt) return reply({ err: "Ese partido no contó (no empezó en el servidor)" });
-    const mt = E.mt, r = ECON.act(ED, E, a, { now, R });
+    const oldName = E.name, mt = E.mt, r = ECON.act(ED, E, a, { now, R });
     if (r.err) return reply({ err: r.err });         // nada cambia
+    if (a.t === "name") {
+      const k = ECON.nameKey(E.name), ok = await claimName(this.env, uid, k).catch(() => null);
+      if (ok === null) return reply({ err: "No se pudo revisar el nombre. Intenta de nuevo." });
+      if (!ok) return reply({ err: "Ese nombre ya lo tiene otro jugador" });
+      if (oldName && ECON.nameKey(oldName) !== k) await freeName(this.env, ECON.nameKey(oldName));
+    }
     if (a.t === "match") {
       const res = r.out.res, wh = (E.wh || []).filter(t => now - t < 3600e3);
       const bad = res !== "loss" && now - mt < MIN_MATCH_MS ? "Ese partido no contó (fue demasiado corto)"
@@ -150,7 +167,7 @@ export class Cartera extends DurableObject {
   async alarm() { await this.run(() => this.mirror()); }
   async mirror() {
     const E = this.E || await this.ctx.storage.get("E"), uid = await this.ctx.storage.get("uid"); if (!E || !uid) return;
-    try { await fsPatch(this.env, uid, { econ: pub(E), trophies: E.trophies, maxTrophies: E.maxTrophies, lvl: E.lvl, wins: E.wins, losses: E.losses, draws: E.draws }); }
+    try { await fsPatch(this.env, uid, { econ: pub(E), ...(E.name ? { name: E.name } : {}), trophies: E.trophies, maxTrophies: E.maxTrophies, lvl: E.lvl, wins: E.wins, losses: E.losses, draws: E.draws }); }
     catch (e) { console.log("[cartera] " + e.message); await this.ctx.storage.setAlarm(Date.now() + 30000); }
   }
 }

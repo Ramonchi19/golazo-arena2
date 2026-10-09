@@ -6,7 +6,7 @@
   'use strict';
   const H = 3600e3, RORD = ['comun', 'rara', 'epica', 'legendaria'];
   // campos de la partida guardada que son "dinero" (solo el servidor los cambia cuando hay cuenta)
-  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc'];
+  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN'];
   const UNLOCK_H = { bronce: 1, plata: 3, oro: 8, leyenda: 24, legendario: 24 };
   const FREE_H = 4;
   const SHOP = { bronce: ['gold', 150], plata: ['gold', 400], oro: ['gems', 80], leyenda: ['gems', 250], legendario: ['gems', 500] };
@@ -57,6 +57,20 @@
     return { items, gold };
   }
 
+  // ---- nombre del jugador (v91): lo escribe el jugador, no se toma de Google; se puede cambiar una sola vez ----
+  const BAD = ['puta','puto','pendej','verga','chinga','mierda','culer','culo','pinche','joto','marica','maricon','zorra','cabron','coger','pene','vagina','sexo','nazi','hitler','fuck','shit','bitch','nigg','dick','pussy','cunt','whore','porn','idiot','imbecil','estupid','retrasad','mamon','panocha','ojete','perra','malparid','gonorrea','hijueputa'];
+  const nameKey = n => String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  function cleanName(n) {
+    n = String(n == null ? '' : n).replace(/\s+/g, ' ').trim();
+    if (n.length < 3) return { err: 'El nombre necesita al menos 3 letras' };
+    if (n.length > 16) return { err: 'Máximo 16 letras' };
+    if (!/^[\p{L}\p{N} _.\-]+$/u.test(n)) return { err: 'Solo letras, números, espacio, punto, guion y guion bajo' };
+    if (nameKey(n).length < 3) return { err: 'El nombre necesita al menos 3 letras' };
+    const k = nameKey(n).replace(/0/g, 'o').replace(/1/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/7/g, 't');
+    if (BAD.some(w => k.includes(w))) return { err: 'Ese nombre no está permitido' };
+    if (/^jugador\d*$/.test(k)) return { err: 'Escoge un nombre propio' };
+    return { name: n };
+  }
   // ---- acciones: cada una revisa que se pueda y cambia la cartera. {err} si no se puede ----
   const ok = out => ({ ok: true, out: out || {} }), err = e => ({ err: e });
   const has = (o, k) => typeof k === 'string' && k.length < 40 && o != null && Object.prototype.hasOwnProperty.call(o, k);   // nada de "__proto__" ni ids inventados
@@ -65,6 +79,13 @@
     const now = ctx.now, R = ctx.R;
     switch (a && a.t) {
       case 'get': return ok();
+      case 'name': {
+        const c = cleanName(a.n); if (c.err) return err(c.err);
+        if (E.name && nameKey(E.name) === nameKey(c.name) && E.name === c.name) return err('Ese ya es tu nombre');
+        if (E.name && (E.nameN || 0) >= 1) return err('Ya usaste tu cambio de nombre');
+        if (E.name) E.nameN = (E.nameN || 0) + 1;
+        E.name = c.name; return ok({ name: c.name, nameN: E.nameN || 0 });
+      }
       case 'match': {
         const A = int(a.a, 0, 30), B = int(a.b, 0, 30), res = A > B ? 'win' : A < B ? 'loss' : 'draw', li = lg(D, E.trophies);
         let dt = res === 'win' ? Math.round(28 + R() * 5) : res === 'loss' ? -Math.round(22 + R() * 5) : 0;
@@ -155,10 +176,12 @@
       cyc: { pos: n(c.pos, 0, 239, Math.floor(R() * 240)), n: n(c.n, 0, 1e7, 0), seed: n(c.seed, 0, 2 ** 31, Math.floor(R() * 1e9)), pend: !!c.pend }
     };
     E.maxTrophies = Math.max(E.trophies, n(s.maxTrophies, 0, lim.maxTrophies != null ? lim.maxTrophies : 8000, 0));
+    E.name = ''; E.nameN = 0;   // el nombre lo escoge el jugador (no se pasa el de antes ni el de Google)
     return E;
   }
   // ¿la cartera está sana? (números enteros, nada raro). El servidor no guarda nada que no pase esto
   function sane(D, E) {
+    if (typeof E.name !== 'string' || E.name.length > 16 || !(Number.isInteger(E.nameN) && E.nameN >= 0 && E.nameN < 100)) return false;
     const okN = v => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1e13;
     for (const k of ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'freeAt']) if (!okN(E[k])) return false;
     for (const [T, src] of [[E.players, D.PBY], [E.powers, D.CARDS]]) for (const k of Object.keys(T)) { const c = T[k]; if (!has(src, k) || !c || !okN(c.lvl) || !okN(c.copies)) return false; }
@@ -170,5 +193,5 @@
   }
   const pickE = s => { const o = {}; for (const k of EK) o[k] = s[k]; return JSON.parse(JSON.stringify(o)); };
 
-  root.ECON = { EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
+  root.ECON = { nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
 })(typeof window !== 'undefined' ? window : globalThis);

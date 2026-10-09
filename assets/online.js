@@ -69,7 +69,7 @@ const G_ICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d
 let ov=null,mode='inicio';
 function overlay(){if(ov)return ov;ov=document.createElement('div');ov.id='login';ov.className='hide';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Entrar a Titan Crashers');document.body.appendChild(ov);return ov;}
 function frame(inner){overlay().innerHTML=`<div class="lg-box"><div class="lg-logo"><img src="assets/ui/logo.webp?v=78" alt="Titan Crashers" style="width:min(78vw,380px);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,30,.45))" onerror="this.src='assets/ui/logo.png?v=78'"></div><div class="mpanel">${inner}</div></div>`;ov.classList.remove('hide');}
-function hideLogin(){if(ov)ov.classList.add('hide');}
+function hideLogin(){if(ov)ov.classList.add('hide');setTimeout(()=>{try{needName();}catch(e){}},500);}
 function msg(t,ok){const m=ov&&ov.querySelector('.lg-msg');if(m){m.textContent=t||'';m.classList.toggle('ok',!!ok);}}
 function busy(on){if(!ov)return;ov.querySelectorAll('button,input').forEach(b=>b.disabled=!!on);}
 
@@ -145,7 +145,7 @@ const score=s=>s?((s.maxTrophies||0)*3+(s.wins||0)*5+(s.losses||0)+(s.lvl||1)*20
 function clean(s){const o=JSON.parse(JSON.stringify(s));delete o.owner;return o;}
 function docData(){const s=save;
   if(NET.econOn){const sv=clean(s);for(const k of ECON.EK)sv[k]=FV.delete();   // se borra la economía vieja de la nube (ahora la tiene el servidor)
-    return{name:String(s.name||'Jugador').slice(0,16),avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),save:sv,updatedAt:FV.serverTimestamp()};}
+    return{avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),save:sv,updatedAt:FV.serverTimestamp()};}
   return{name:String(s.name||'Jugador').slice(0,16),avatar:String(s.avatar||'⚽').slice(0,8),color:String(s.color||'#2f7bff').slice(0,9),country:String(s.country||'MX').slice(0,3),
   trophies:Math.max(0,Math.floor(s.trophies||0)),maxTrophies:Math.max(0,Math.floor(s.maxTrophies||0)),lvl:Math.max(1,Math.floor(s.lvl||1)),
   wins:Math.floor(s.wins||0),losses:Math.floor(s.losses||0),draws:Math.floor(s.draws||0),save:clean(s),updatedAt:FV.serverTimestamp()};}
@@ -176,12 +176,12 @@ async function onLogin(u){NET.user=u;NET.offline=false;NET.state='sync';showWait
   if(NET.econOn&&pick!==local&&local.owner===u.uid){pick=JSON.parse(JSON.stringify(pick));for(const k of ECON.EK)if(local[k]!==undefined)pick[k]=local[k];}   // v79: la nube ya no guarda la economía en save (la tiene el servidor)
   let s;try{s=migrate(JSON.parse(JSON.stringify(pick)));}catch(e){s=migrate(defSave());}
   s.owner=u.uid;
-  if((!s.name||s.name==='Jugador')){const dn=(u.displayName||(u.email||'').split('@')[0]||'').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,16);if(dn.length>=3)s.name=dn;}
+  // v91: ya no se usa el nombre de Google: el jugador escribe el suyo
   window.save=s;
   await econLogin();
   try{orig.call(window);applySettings();renderTab();}catch(e){console.warn(e);}
   await upload();
-  hideLogin();if(snap.exists)say('¡Hola, '+save.name+'!');else say('Cuenta lista. ¡A jugar!');}
+  hideLogin();if(snap.exists&&save.name)say('¡Hola, '+save.name+'!');else say('Cuenta lista. ¡A jugar!');}
 
 function decide(){if(!NET.bootDone)return;
   if(NET.state==='sinred'){showOffline();return;}
@@ -216,7 +216,7 @@ function rowHTML(x,i){const L=LEAGUES[leagueIdx(x.trophies||0)];return `<div cla
 window.renderRank=function(){const el=document.getElementById('sc-rank');if(!el)return;
   const tab=rankTab==='local'?'local':'global',key=tab+(tab==='local'?save.country:'');
   const me={name:save.name,avatar:save.avatar,country:save.country,trophies:save.trophies,me:true};
-  const head=`<h2>Ranking</h2><div class="tabs"><button class="tab ${tab==='global'?'on':''}" data-t="global"><b>🌍 Global</b></button><button class="tab ${tab==='local'?'on':''}" data-t="local"><b>${flag(save.country)} Local</b></button></div>`;
+  const head=`<div class="tabs"><button class="tab ${tab==='global'?'on':''}" data-t="global"><b>🌍 Global</b></button><button class="tab ${tab==='local'?'on':''}" data-t="local"><b>${flag(save.country)} Local</b></button></div>`;
   const bind=()=>el.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{rankTab=b.dataset.t;renderRank();});
   if(!NET.user||!db){el.innerHTML=head+`<div class="rk">${rowHTML(me,'—')}</div><p class="note">${NET.offline||NET.state==='sinred'?'El ranking necesita conexión.':'Entra con tu cuenta para aparecer en el ranking.'}</p>${NET.user?'':'<div style="text-align:center"><button class="btn y sm" id="rkIn">Entrar</button></div>'}`;
     bind();const b=document.getElementById('rkIn');if(b)b.onclick=NET.login;return;}
