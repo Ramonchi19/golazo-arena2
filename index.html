@@ -1562,6 +1562,50 @@ function ikArm(m,sd,tgt,w){if(w<.01)return;const B=m.bones,I=ikV(),up=(sd==='l'?
     I.n.crossVectors(I.v,I.u);if(I.n.lengthSq()>1e-8){I.n.normalize();I.q.setFromAxisAngle(I.n,cur-want);rotW(lo.b,I.q);}
     h.getWorldPosition(I.W);I.a.subVectors(I.W,I.S).normalize();I.b.subVectors(I.Tw,I.S).normalize();I.q.setFromUnitVectors(I.a,I.b);rotW(up.b,I.q);}}
 // punto donde queda el balón agarrado: entre las dos palmas y, si están juntas, empujado hacia delante del cuerpo
+// ================== v81: atajadas con impacto (estilo Mario Strikers) ==================
+// destello en las manos, onda, estrellitas, el balón se aplasta, un instante congelado y temblor de cámara.
+// Se dispara con lo que ve el juego (sirve igual sin conexión y en línea, donde la atajada la decide el servidor).
+const JX={list:[],tex:null,v:null};
+function jxTex(){if(JX.tex)return JX.tex;const mk=f=>{const c=document.createElement('canvas');c.width=c.height=128;f(c.getContext('2d'));return new THREE.CanvasTexture(c);};
+  JX.tex={glow:mk(x=>{const g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.22,'rgba(255,252,220,.95)');g.addColorStop(.55,'rgba(255,210,90,.3)');g.addColorStop(1,'rgba(255,200,80,0)');x.fillStyle=g;x.fillRect(0,0,128,128);}),
+    star:mk(x=>{x.translate(64,64);x.beginPath();for(let i=0;i<10;i++){const r=i%2?21:56,a=i*Math.PI/5-Math.PI/2;x.lineTo(Math.cos(a)*r,Math.sin(a)*r);}x.closePath();x.shadowColor='#ffcc33';x.shadowBlur=12;x.fillStyle='#fff';x.fill();}),
+    ring:mk(x=>{x.strokeStyle='#fff';x.lineWidth=9;x.shadowColor='#fff';x.shadowBlur=8;x.beginPath();x.arc(64,64,50,0,7);x.stroke();}),
+    spark:mk(x=>{const g=x.createLinearGradient(0,64,128,64);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(.5,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.beginPath();x.ellipse(64,64,62,7,0,0,7);x.fill();})};
+  JX.v=new THREE.Vector3();return JX.tex;}
+function jxAdd(tex,col,x,y,z,o){const m=new THREE.SpriteMaterial({map:tex,color:col,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending});const sp=new THREE.Sprite(m);
+  sp.position.set(x,y,z);sp.renderOrder=12;sp.scale.setScalar(.01);scene.add(sp);JX.list.push(Object.assign({sp,t:0,vx:0,vy:0,vz:0,g:0,rot:0,op:1},o));}
+function jxBoom(x,y,z,big,catchIt){const T0=jxTex(),F=clamp(Math.hypot(camera.position.x-x,camera.position.y-y,camera.position.z-z)/9,1,2.6);   // de lejos (cámara del partido) se ve más grande
+  const add=(t,c,o)=>{o.s0*=F;o.s1*=F;if(o.vx!=null){o.vx*=F;o.vy*=F;o.vz*=F;o.g*=F;}jxAdd(t,c,x,y,z,o);};
+  add(T0.glow,0xffffff,{life:.22,s0:.5,s1:big?2.9:1.9});                                  // destello
+  add(T0.ring,big?0xffd23a:0xfff4c0,{life:.32,s0:.3,s1:big?4.2:2.8,op:.9});              // onda
+  if(big)add(T0.ring,0xffffff,{life:.42,s0:.2,s1:5.6,op:.55,delay:.06});
+  for(let i=0,n=big?9:6;i<n;i++){const a=i/n*6.283+rand(-.3,.3),up=rand(.2,1),v=rand(4,7.5)*(big?1.2:1);   // estrellitas que salen volando
+    add(T0.star,i%3?0xffe066:0xffffff,{life:rand(.45,.65),s0:big?1.1:.9,s1:.15,vx:Math.cos(a)*v,vy:up*v*.9,vz:Math.sin(a)*v,g:9,rot:rand(-12,12)});}
+  for(let i=0,n=big?6:4;i<n;i++)add(T0.spark,0xffffff,{life:.18,s0:.2,s1:big?2.6:1.8,rot0:rand(0,3.14),stretch:5,op:.85});   // rayitas de impacto
+  if(catchIt)ballSq=Math.max(ballSq,.12);
+  hitstop=Math.max(hitstop||0,big?.11:.065);shakeAmt=Math.max(shakeAmt,big?.55:.3);vib(big?45:25);
+  if(window.ONLINE)sfx(catchIt?'catch':'hit');}
+function gkJuice(dt){if(!ball)return;
+  for(const p of players){if(!p.gk)continue;
+    const st=p.saveT||0,kind=p.saveKind||'',held=ball.gk===p,free=!ball.owner&&!ball.gk;
+    if(free)p._jxSp=Math.hypot(ball.vx,ball.vy,ball.vz);
+    const newSave=st>(p._jxS||0)+.05&&kind&&kind!=='fallo',newCatch=held&&!p._jxG;
+    if((newSave||newCatch)&&!(T-(p._jxT||-9)<.35)&&(p._jxSp||0)>8){p._jxT=T;
+      const sp=p._jxSp||0,big=sp>24||kind==='punta'||kind==='travesano'||(kind==='desvio'&&sp>18),c=held&&p._grip?p._grip:(_IK&&_IK.has?_IK.disp:ball);
+      jxBoom(c.x,c.y,c.z,big,held);}
+    p._jxS=st;p._jxG=held;
+    // la estirada: polvo y golpe al caer al piso
+    const m=p.mesh,ca=m&&m.curA||'';
+    if(/^gk_dive/.test(ca)&&m.L&&m.L[ca]){const land=(ANIMMETA[ca]||{}).land||1.3;if(!p._jxL&&m.L[ca].time>=land){p._jxL=1;dust(p.x,p.z);dust(p.x+Math.sin(p.face)*.6,p.z+Math.cos(p.face)*.6);shakeAmt=Math.max(shakeAmt,.2);vib(20);}}
+    else p._jxL=0;
+    if(p.dive>0&&!p._jxD){p._jxD=1;dust(p.x,p.z);try{SFX.pkWhoosh&&SFX.pkWhoosh();}catch(e){}}
+    if(!(p.dive>0))p._jxD=0;}
+  for(let i=JX.list.length-1;i>=0;i--){const e=JX.list[i];e.t+=dt;if(e.delay){if(e.t<e.delay){e.sp.visible=false;continue;}e.sp.visible=true;}
+    const u=Math.min(1,(e.t-(e.delay||0))/e.life),k=1-Math.pow(1-u,3);
+    e.vy-=e.g*dt;e.sp.position.x+=e.vx*dt;e.sp.position.y+=e.vy*dt;e.sp.position.z+=e.vz*dt;
+    const sc=e.s0+(e.s1-e.s0)*k;if(e.stretch)e.sp.scale.set(sc,sc/e.stretch,1);else e.sp.scale.setScalar(sc);
+    e.sp.material.rotation=(e.rot0||0)+e.rot*e.t;e.sp.material.opacity=e.op*(1-u*u);
+    if(u>=1){scene.remove(e.sp);e.sp.material.dispose();JX.list.splice(i,1);}}}
 const gkFace=p=>p._vface==null?p.face:p._vface;
 function gripOf(p,m,o){const I=ikV(),B=m.bones,pl=B._palm;palmW(m,'l',I.PL);palmW(m,'r',I.PR);const sc=B.lh.matrixWorld.getMaxScaleOnAxis(),th=((pl.lth+pl.rth)/2)*sc,R=BR+th*.8;
   o.addVectors(I.PL,I.PR).multiplyScalar(.5);const half=I.PL.distanceTo(I.PR)/2;
@@ -1726,26 +1770,70 @@ function setupBloom(){try{if(!THREE.EffectComposer||!THREE.UnrealBloomPass||!THR
 function useBloom(){return composer&&typeof save!=='undefined'&&save.settings.quality==='alta';}
 
 // ================== MARCAS EN EL PASTO: HUECOS, CRÁTERES, QUEMADURAS ==================
-function craterGeo(R,depth,rim){const seg=40,rings=10,pos=[],col=[],idx=[],sd=Math.random()*10;
+// v82: cada arena tiene su piso (pasto, piedra, ladrillo, hielo, roca volcánica): los cráteres y quemaduras se ven del mismo material
+const GROUND=[{k:'pasto'},{k:'pasto'},{k:'pasto'},{k:'piedra',c:[.80,.74,.62],chip:0xbdb08e},{k:'piedra',c:[.76,.54,.32],chip:0xa8723f},{k:'hielo'},{k:'lava',c:[.56,.52,.50],chip:0x5a524e},{k:'pasto'}];
+const groundOf=()=>GROUND[Math.max(0,ARENAS.indexOf(ARENA))]||GROUND[0];
+function craterCol(G,t,k,n){
+  if(G.k==='hielo')return t<.62?[.10+.30*k,.32+.40*k,.48+.35*k]:t<.9?[.86+.04*n,.95,1]:[.62,.86,.94];
+  if(G.k==='piedra'||G.k==='lava'){const c=G.c,d=G.k==='lava';if(t<.62)return d?[.95-.6*k,.38-.25*k,.08]:[.07+.18*k*c[0],.06+.16*k*c[1],.06+.14*k*c[2]];
+    return t<.9?[c[0]*.72+.04*n,c[1]*.70+.03*n,c[2]*.68]:[c[0]*.92,c[1]*.92,c[2]*.92];}
+  return t<.62?[.10+.12*k,.06+.08*k,.04+.03*k]:t<.9?[.36+.05*n,.25+.03*n,.13]:[.24,.27,.11];}
+function craterGeo(R,depth,rim){const seg=40,rings=10,pos=[],col=[],idx=[],sd=Math.random()*10,G=groundOf();
   for(let i=0;i<=rings;i++){const t=i/rings;
     for(let j=0;j<=seg;j++){const a=j/seg*Math.PI*2,n=Math.sin(a*5+sd)*.5+Math.sin(a*11+sd*2)*.3,jr=t>.55?1+.09*n:1,r=t*R*jr;
       let h;if(t<.62)h=.02+depth*(t/.62)*(t/.62);else if(t<.82)h=.02+depth+(rim-depth)*((t-.62)/.2);else h=.015+rim*(1-(t-.82)/.18);
       if(t>.55&&t<1)h+=.05*rim*n;pos.push(Math.cos(a)*r,Math.max(.012,h),Math.sin(a)*r);
-      const k=Math.min(1,t/.62),c=t<.62?[.10+.12*k,.06+.08*k,.04+.03*k]:t<.9?[.36+.05*n,.25+.03*n,.13]:[.24,.27,.11];col.push(c[0],c[1],c[2]);}}
+      const k=Math.min(1,t/.62),c=craterCol(G,t,k,n);col.push(c[0],c[1],c[2]);}}
   for(let i=0;i<rings;i++)for(let j=0;j<seg;j++){const a=i*(seg+1)+j,b=a+seg+1;idx.push(a,a+1,b,b,a+1,b+1);}
   const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));gg.setAttribute('color',new THREE.Float32BufferAttribute(col,3));gg.setIndex(idx);gg.computeVertexNormals();return gg;}
-function craterFx(x,z,R,life,o){o=o||{};const grp=new THREE.Group();grp.position.set(x,0,z);
-  const mat=new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:1});
+function craterFx(x,z,R,life,o){o=o||{};const grp=new THREE.Group();grp.position.set(x,0,z);const G=groundOf();
+  const mat=G.k==='lava'?new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:1,emissive:0x5a1a00}):new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,opacity:1});
   const m=M(craterGeo(R,o.depth||.06,o.rim||R*.16),mat);m.receiveShadow=true;m.castShadow=false;grp.add(m);
-  const clodM=new THREE.MeshLambertMaterial({color:0x5a3d22,transparent:true});
-  for(let i=0;i<(o.clods||10);i++){const a=rand(0,6.28),d=R*rand(.85,1.5),c=M(new THREE.DodecahedronGeometry(rand(.07,.18)*Math.max(1,R/2),0),clodM);c.position.set(Math.cos(a)*d,.06,Math.sin(a)*d);c.rotation.set(rand(0,3),rand(0,3),0);c.castShadow=true;grp.add(c);}
+  const clodM=G.k==='hielo'?new THREE.MeshLambertMaterial({color:0xcff2ff,emissive:0x1a4a5a,transparent:true,opacity:.85}):new THREE.MeshLambertMaterial({color:G.chip||0x5a3d22,transparent:true});
+  for(let i=0;i<(o.clods||10);i++){const a=rand(0,6.28),d=R*rand(.85,1.5),sz=rand(.07,.18)*Math.max(1,R/2),c=M(G.k==='hielo'?new THREE.TetrahedronGeometry(sz*1.3,0):G.k==='pasto'?new THREE.DodecahedronGeometry(sz,0):new THREE.BoxGeometry(sz*1.5,sz*.8,sz*1.2),clodM);c.position.set(Math.cos(a)*d,.06,Math.sin(a)*d);c.rotation.set(rand(0,3),rand(0,3),0);c.castShadow=true;grp.add(c);}
   if(o.dir){grp.rotation.y=Math.atan2(o.dir.x,o.dir.z);grp.scale.set(o.sx||.65,1,o.sz||1.5);}
   scene.add(grp);effects.push({type:'crater',mesh:grp,mats:[mat,clodM],life,max:life});
-  effects.push({type:'flames',x,z,r:R*(o.flameR||.75),life:o.burn||3,max:o.burn||3,rate:o.rate||14});
-  {const rm=M(new THREE.RingGeometry(R*.95,R*1.45,40),new THREE.MeshBasicMaterial({color:0x1a1408,transparent:true,opacity:.5,depthWrite:false}));rm.rotation.x=-Math.PI/2;rm.position.set(x,.013,z);if(o.dir){rm.scale.set(1,o.sz||1.5,1);rm.rotation.z=-Math.atan2(o.dir.x,o.dir.z);}scene.add(rm);effects.push({type:'decal',mesh:rm,life:life*.9,op:.5});}}
+  if(G.k==='hielo')effects.push({type:'steam',x,z,r:R*.8,life:(o.burn||3)*1.2,max:(o.burn||3)*1.2,rate:(o.rate||14)*.7});
+  else effects.push({type:'flames',x,z,r:R*(o.flameR||.75),life:(o.burn||3)*(G.k==='lava'?1.6:1),max:(o.burn||3)*(G.k==='lava'?1.6:1),rate:o.rate||14});
+  if(G.k==='lava')embersFx(x,z,R*.7,life*.8,Math.round(R*7));
+  {const rm=M(new THREE.RingGeometry(R*.95,R*1.45,40),new THREE.MeshBasicMaterial({color:G.k==='hielo'?0x2a6a8a:0x1a1408,transparent:true,opacity:G.k==='hielo'?.3:.5,depthWrite:false}));rm.rotation.x=-Math.PI/2;rm.position.set(x,.013,z);if(o.dir){rm.scale.set(1,o.sz||1.5,1);rm.rotation.z=-Math.atan2(o.dir.x,o.dir.z);}scene.add(rm);effects.push({type:'decal',mesh:rm,life:life*.9,op:.5});}}
 function shotScar(x,z,dx,dz,sup){const l=Math.hypot(dx,dz)||1;craterFx(x-dx/l*.2,z-dz/l*.2,sup?.85:.6,sup?8:6,{dir:{x:dx/l,z:dz/l},sx:.6,sz:1.7,depth:.05,rim:.09,clods:sup?8:5,burn:sup?2.6:1.6,rate:sup?16:9,flameR:.5});
   for(let i=0;i<10;i++)part(x,.15,z,dx/l*rand(1,4)+rand(-1.5,1.5),rand(1.5,4),dz/l*rand(1,4)+rand(-1.5,1.5),i%2?0x3fa04a:0x5a3d22,rand(.5,.8),14,rand(.6,1));}
-function burnFx(x,z,r,life){decalFx(x,z,r,0x16100a,life);effects.push({type:'flames',x,z,r:r*.6,life:1.4,max:1.4,rate:8});smokeFx(x,z,r*.4,4);}
+function burnFx(x,z,r,life){scorchFx(x,z,r*2.3,Math.max(life,8));}
+// v82: lo que deja el rayo: pasto quemado con brasitas y llamitas que se van apagando (piedra: tizne y brasas; hielo: charco derretido con vapor)
+const SCORCH={};
+function scorchTex(k){if(SCORCH[k])return SCORCH[k];const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+  const blot=(cx,cy,r,col,a)=>{const g=x.createRadialGradient(cx,cy,0,cx,cy,r);g.addColorStop(0,`rgba(${col},${a})`);g.addColorStop(.55,`rgba(${col},${a*.85})`);g.addColorStop(1,`rgba(${col},0)`);x.fillStyle=g;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();};
+  const ice=k==='hielo',base=ice?'40,110,150':'18,12,8',mid=ice?'90,170,210':k==='pasto'?'60,42,20':'40,34,30';
+  blot(128,128,118,base,ice?.55:.9);for(let i=0;i<26;i++){const a=Math.random()*6.28,d=Math.random()*80;blot(128+Math.cos(a)*d,128+Math.sin(a)*d,rand(18,48),i%3?base:mid,ice?.35:.75);}
+  if(!ice){x.strokeStyle='rgba(10,6,4,.85)';x.lineWidth=3;for(let i=0;i<7;i++){let a=Math.random()*6.28,px=128,py=128;x.beginPath();x.moveTo(px,py);for(let j=0;j<6;j++){a+=rand(-.5,.5);px+=Math.cos(a)*16;py+=Math.sin(a)*16;x.lineTo(px,py);}x.stroke();}}   // grietas del rayo
+  else{x.strokeStyle='rgba(230,250,255,.7)';x.lineWidth=2;x.beginPath();x.arc(128,128,96,0,7);x.stroke();}
+  return SCORCH[k]=new THREE.CanvasTexture(c);}
+function scorchFx(x,z,r,life){const G=groundOf();
+  const m=M(new THREE.PlaneGeometry(r*2.8,r*2.8),new THREE.MeshBasicMaterial({map:scorchTex(G.k==='hielo'?'hielo':G.k==='pasto'?'pasto':'piedra'),transparent:true,opacity:1,depthWrite:false}));
+  m.rotation.x=-Math.PI/2;m.rotation.z=rand(0,6.28);m.position.set(x,.047,z);m.renderOrder=2;scene.add(m);effects.push({type:'decal',mesh:m,life:life+2,op:1});
+  if(G.k==='hielo'){effects.push({type:'steam',x,z,r:r*.7,life:4,max:4,rate:10});return;}
+  const grass=G.k==='pasto';
+  effects.push({type:'flames',x,z,r:r*.75,life:grass?life*.8:2.5,max:grass?life*.8:2.5,rate:grass?12:6,small:true});   // llamitas del pasto
+  embersFx(x,z,r*.9,life,grass?22:12);smokeFx(x,z,r*.4,6);
+  if(grass)flameletsFx(x,z,r*.8,life*.75,11);}
+// llamitas del pasto: lenguas de fuego que tiemblan y se van haciendo chiquitas hasta apagarse
+function flameletsFx(x,z,r,life,n){const T0=jxTex(),list=[];
+  for(let i=0;i<n;i++){const a=rand(0,6.28),d=Math.sqrt(Math.random())*r,mk=c=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:T0.glow,color:c,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));sp.renderOrder=4;scene.add(sp);return sp;};
+    list.push({x:x+Math.cos(a)*d,z:z+Math.sin(a)*d,o:mk(0xff6a10),i:mk(0xffd040),h:rand(1,1.8),ph:rand(0,6.28),end:life*rand(.45,1)});}
+  let t=0;effects.push({type:'upd',f:dt=>{t+=dt;let alive=false;
+    for(const e of list){const k=Math.max(0,1-t/e.end);if(k>0)alive=true;const fl=.75+.25*Math.sin(t*17+e.ph)+.12*Math.sin(t*31+e.ph*2),h=e.h*k*fl,w=h*.55;
+      e.o.scale.set(w,h,1);e.o.position.set(e.x,h*.42,e.z);e.o.material.opacity=Math.min(1,k*2.5);
+      e.i.scale.set(w*.55,h*.6,1);e.i.position.set(e.x,h*.3,e.z);e.i.material.opacity=Math.min(1,k*2.5);
+      if(k>0&&Math.random()<dt*2*k)part(e.x,h*.8,e.z,rand(-.15,.15),rand(1.5,2.6),rand(-.15,.15),0xffc040,rand(.3,.6),-1.2,rand(.15,.28));}
+    if(!alive)for(const e of list){for(const sp of [e.o,e.i]){scene.remove(sp);sp.material.dispose();}}return alive;}});}
+// brasitas naranjas que parpadean y se van apagando
+function embersFx(x,z,r,life,n){const T0=jxTex(),list=[];
+  for(let i=0;i<n;i++){const a=rand(0,6.28),d=Math.sqrt(Math.random())*r,sp=new THREE.Sprite(new THREE.SpriteMaterial({map:T0.glow,color:[0xff7a1a,0xffa030,0xff4a10][i%3],transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+    sp.position.set(x+Math.cos(a)*d,.08,z+Math.sin(a)*d);sp.scale.setScalar(rand(.25,.5));sp.renderOrder=3;scene.add(sp);list.push({sp,ph:rand(0,6.28),f:rand(4,9),end:life*rand(.55,1)});}
+  let t=0;effects.push({type:'upd',f:dt=>{t+=dt;let alive=false;for(const e of list){const k=Math.max(0,1-t/e.end);if(k>0)alive=true;
+      e.sp.material.opacity=k*(.55+.45*Math.sin(t*e.f+e.ph));if(Math.random()<dt*.6*k)part(e.sp.position.x,.15,e.sp.position.z,rand(-.2,.2),rand(1.2,2.4),rand(-.2,.2),0xffb040,rand(.4,.8),-1,rand(.18,.3));}
+    if(!alive){for(const e of list){scene.remove(e.sp);e.sp.material.dispose();}}return alive;}});}
 function puffFx(x,y,z,col,r,life,op){const m=M(new THREE.SphereGeometry(1,16,12),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op||.9,depthWrite:false}));m.position.set(x,y,z);m.scale.setScalar(.01);scene.add(m);effects.push({type:'puff',mesh:m,r,life,max:life,op:op||.9});}
 function decalFx(x,z,r,col,life){const m=M(new THREE.CircleGeometry(r,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.55,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.set(x,.045,z);scene.add(m);effects.push({type:'decal',mesh:m,life,op:.55});}
 function smokeFx(x,z,r,n){for(let i=0;i<n;i++){const a=rand(0,6.28),d=rand(0,r);part(x+Math.cos(a)*d,rand(.3,1.2),z+Math.sin(a)*d,rand(-.6,.6),rand(1,2.6),rand(-.6,.6),[0x555555,0x777777,0x3a3a3a][i%3],rand(1.2,2),-1.2,rand(2,3.4));}}
@@ -1998,8 +2086,12 @@ function updateFX(dt){
     if(e.type==='bolt'){e.life-=dt;e.mesh.material.opacity=Math.max(0,e.life/e.max);if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
     if(e.type==='puff'){e.life-=dt;const k=1-e.life/e.max;e.mesh.scale.setScalar(Math.max(.01,e.r*(.2+.8*Math.sqrt(k))));e.mesh.material.opacity=Math.max(0,e.op*e.life/e.max);if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
     if(e.type==='flames'){e.life-=dt;const k=Math.max(0,e.life/e.max),n=e.rate*k*dt;for(let q=0;q<n+(Math.random()<n%1?1:0);q++){const a=rand(0,6.28),d=Math.sqrt(Math.random())*e.r;
-        part(e.x+Math.cos(a)*d,.12,e.z+Math.sin(a)*d,rand(-.3,.3),rand(1.4,3),rand(-.3,.3),[0xffe066,0xffa020,0xff5a1a][q%3],rand(.3,.55),-1.5,rand(.45,.9)*(.6+.4*k));}
+        part(e.x+Math.cos(a)*d,.12,e.z+Math.sin(a)*d,rand(-.3,.3),rand(1.4,3)*(e.small?.6:1),rand(-.3,.3),[0xffe066,0xffa020,0xff5a1a][q%3],rand(.3,.55)*(e.small?.8:1),-1.5,rand(.45,.9)*(.6+.4*k)*(e.small?.7:1));}
       if(Math.random()<k*.15)part(e.x+rand(-e.r,e.r),.4,e.z+rand(-e.r,e.r),rand(-.2,.2),rand(.8,1.6),rand(-.2,.2),0x4a4a4a,rand(1,1.6),-.8,rand(.9,1.5));
+      if(e.life<=0)e.done=true;}
+    if(e.type==='upd'){if(!e.f(dt))e.done=true;}
+    if(e.type==='steam'){e.life-=dt;const k=Math.max(0,e.life/e.max),n=e.rate*k*dt;for(let q=0;q<n+(Math.random()<n%1?1:0);q++){const a=rand(0,6.28),d=Math.sqrt(Math.random())*e.r;
+        part(e.x+Math.cos(a)*d,.15,e.z+Math.sin(a)*d,rand(-.25,.25),rand(1,2),rand(-.25,.25),[0xffffff,0xe8f6ff,0xd0e8f0][q%3],rand(.9,1.5),-.6,rand(1,1.8));}
       if(e.life<=0)e.done=true;}
     if(e.type==='crater'){e.life-=dt;const k=e.life/e.max;if(k<.25){const f=Math.max(0,k/.25);e.mats.forEach(mm=>mm.opacity=f);e.mesh.position.y=-(1-f)*.15;}
       if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
@@ -2057,7 +2149,7 @@ function syncPlayer(p,dt){
 }
 function render(dt){
   for(const p of players)syncPlayer(p,dt);
-  gkHands(dt);const BD=_IK&&_IK.has?_IK.disp:ball;
+  gkHands(dt);gkJuice(dt);const BD=_IK&&_IK.has?_IK.disp:ball;
   if(ball&&ballGlow){const sp=Math.hypot(ball.vx,ball.vz),held=!!(ball.owner||ball.gk);ballGlow.position.set(BD.x,BD.y,BD.z);{const dx=camera.position.x-BD.x,dy=camera.position.y-BD.y,dz=camera.position.z-BD.z,dl=Math.hypot(dx,dy,dz)||1;ballGlow.position.x+=dx/dl*BR*1.4;ballGlow.position.y+=dy/dl*BR*1.4;ballGlow.position.z+=dz/dl*BR*1.4;}
     ballGlow.scale.setScalar(BR*(3.9+Math.min(1.2,sp*.04)));ballGlow.material.opacity=held?.32:.45;
     ballXray.visible=false;const h=ball.y-BR;
