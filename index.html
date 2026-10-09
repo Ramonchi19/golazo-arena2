@@ -407,6 +407,16 @@ body.def #bA span,body.def #bA{background:#9b4dff}body.def #bB{background:#ff7a1
 body.gkmode #bA span,body.gkmode #bA{background:#16a874}body.gkmode #bB{background:#ffb000}body.gkmode #bC{background:#2f7bff}
 body.zurdo #joy{left:auto;right:14px}body.zurdo #btns{right:auto;left:10px}
 body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo #bC{right:auto;left:70px}
+/* v83: partido acostado (prueba). Joystick abajo a la izquierda, botones abajo a la derecha, cartas abajo al centro */
+body.land #joy{left:calc(env(safe-area-inset-left,0px) + 26px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:132px;height:132px}
+body.land #btns{right:calc(env(safe-area-inset-right,0px) + 14px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+body.land.zurdo #joy{left:auto;right:calc(env(safe-area-inset-right,0px) + 26px)}body.land.zurdo #btns{right:auto;left:calc(env(safe-area-inset-left,0px) + 14px)}
+body.land #hand{left:50%;right:auto;transform:translateX(-50%);width:min(430px,46vw);padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 6px);background:linear-gradient(rgba(8,12,30,0),rgba(8,12,30,.7) 40%);border-radius:18px 18px 0 0;gap:4px}
+body.land #cards .card{width:54px;height:62px}body.land #cards .card .ic{font-size:22px}body.land #next{width:32px;height:42px}
+body.land #elix{height:13px}
+#rotL{position:fixed;inset:0;z-index:210;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#123177;color:#fff;font-size:22px;text-align:center;padding:20px}
+#rotL .ph{font-size:64px;animation:rot90 1.6s ease-in-out infinite}
+body.landwait #rotL{display:flex}body.landmode #rotate{display:none!important}
 #hand{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;padding:16px 8px calc(env(safe-area-inset-bottom,0px) + 8px);background:linear-gradient(rgba(8,12,30,0),rgba(8,12,30,.88) 35%)}
 #elix{position:relative;width:min(340px,92%);height:16px;border-radius:8px;background:#2a1640;overflow:hidden;border:2px solid #0a1636}
 #elixfill{height:100%;width:50%;background:repeating-linear-gradient(90deg,#d65cff 0 9.6%,#a92ee0 9.6% 10%)}
@@ -540,6 +550,7 @@ body.zurdo #bA{right:auto;left:0}body.zurdo #bB{right:auto;left:88px}body.zurdo 
     <button data-sc="rank"><span class="ni">🏅</span><span class="nl ct">Ranking</span></button>
   </nav>
 </div>
+<div id="rotL"><div class="ph">📱</div><b class="ct">Gira tu teléfono acostado</b><small class="sys">El partido se juega con el teléfono de lado</small></div>
 <div id="rotate"><div class="ph">📱</div><b class="ct">Gira tu teléfono en vertical</b><small class="sys">Titan Crashers se juega en modo vertical</small></div>
 <div class="modal hide" id="modal"><div id="mbox"></div></div>
 <div class="modal hide" id="confirm"></div>
@@ -2164,7 +2175,17 @@ function render(dt){
   if(gkCam&&state==='play'){const k=keeperOf(0);if(k){const d=dirOf(0);const tx=k.x+d*7.5,tz=k.z*.6+3.2;gcx+=(tx-gcx)*Math.min(1,dt*4);gcz+=(tz-gcz)*Math.min(1,dt*4);camera.position.set(gcx,3.3,gcz);camera.lookAt(k.x,1.1,k.z);
     if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
   // cámara que sigue al balón (donde está la jugada)
-  if(!camFit||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitWidthCam();
+  if(LAND){if(!camFit||!camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitLandCam();
+    const bx=ball?ball.x+clamp(ball.vx||0,-14,14)*.22:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.1:0,xLim=Math.max(0,L+3-camFit.span/2),zLim=Math.max(0,HW+1.5-camFit.zVis);
+    camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*3.2);camZ+=(clamp(bz*.6,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
+    if(goalCam>0&&ball)camX+=(clamp(ball.x,-xLim,xLim)-camX)*Math.min(1,dt*5);
+    const zoom=goalCam>0?.78:1,sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom,tz=camZ-camFit.cOffZ*zoom;
+    const px=camX+sx,py=Math.sin(CAM_ELL)*dd+sy,pz=tz+Math.cos(CAM_ELL)*dd;
+    if(cine&&cine.p){const p=cine.p,d=dirOf(p.team),k=Math.min(1,cine.t/.2),e=k*k*(3-2*k),cx=p.x-d*5.5,cy=2.6,cz=p.z+3.4;
+      camera.position.set(px+(cx-px)*e,py+(cy-py)*e,pz+(cz-pz)*e);camera.lookAt(camX+(p.x+d*2.5-camX)*e,1.2*e,tz+(p.z-tz)*e);}
+    else{camera.position.set(px,py,pz);camera.lookAt(camX,0,tz);}
+  }else{
+  if(!camFit||camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitWidthCam();
   // sigue al balón con un poco de anticipación; nunca deja de ver la portería cuando el balón se acerca
   const bx=ball?ball.x+clamp(ball.vx||0,-14,14)*.18:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.12:0;
   const xLim=Math.max(0,L+4-camFit.span/2),zLim=Math.max(0,HW+2.5-camFit.hwVis);
@@ -2175,7 +2196,7 @@ function render(dt){
     const fx=tx-Math.cos(CAM_EL2)*dd,fy=Math.sin(CAM_EL2)*dd,cx=p.x-d*5.5,cy=2.6,cz=p.z+3.4;
     camera.position.set(fx+(cx-fx)*e,fy+(cy-fy)*e,camZ+(cz-camZ)*e);camera.lookAt(tx+(p.x+d*2.5-tx)*e,1.2*e,camZ+(p.z-camZ)*e);}
   else{camera.position.set(tx-Math.cos(CAM_EL2)*dd+sy,Math.sin(CAM_EL2)*dd+sy,camZ+sx);
-  camera.lookAt(tx,0,camZ);}
+  camera.lookAt(tx,0,camZ);}}
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
   try{ballFx(dt);}catch(e){}
   netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}drawAim();offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
@@ -2210,6 +2231,20 @@ function fitWidthCam(){
   camFit={w,h,dist:hi,cOff,span,hwVis,yMin,yTop};
 }
 
+// v83: cámara de lado (partido acostado): la cancha va de izquierda a derecha, como en la tele
+const CAM_ELL=.95;
+function fitLandCam(){
+  const w=cvs.clientWidth||780,h=cvs.clientHeight||360,asp=w/Math.max(1,h);
+  const cam=new THREE.PerspectiveCamera(camera.fov,asp,.5,600),yMin=-1+Math.min(.3,64/h*2),yTop=.84;
+  const ground=(sx,sy)=>{const v=new THREE.Vector3(sx,sy,.5).unproject(cam).sub(cam.position);const t=-cam.position.y/v.y;return cam.position.clone().add(v.multiplyScalar(t));};
+  const view=d=>{cam.position.set(0,Math.sin(CAM_ELL)*d,Math.cos(CAM_ELL)*d);cam.lookAt(0,0,0);cam.updateMatrixWorld();cam.updateProjectionMatrix();
+    const n=ground(0,yMin),f=ground(0,yTop),m=ground(1,(yMin+yTop)/2);return {n:n.z,f:f.z,hx:Math.abs(m.x)};};
+  // que quepa todo el ancho de la cancha, pero sin ver más de ~70% del largo (para que los jugadores no se vean chiquitos)
+  const wantZ=2*(HW+1.4),maxX=L*.72;let lo=4,hi=300;
+  for(let k=0;k<28;k++){const mid=(lo+hi)/2,u=view(mid);if(u.n-u.f>wantZ)hi=mid;else lo=mid;}
+  let d=hi,v=view(d);if(v.hx>maxX){lo=4;hi=d;for(let k=0;k<28;k++){const mid=(lo+hi)/2;if(view(mid).hx>maxX)hi=mid;else lo=mid;}d=lo;v=view(d);}
+  camFit={w,h,land:true,dist:d,cOffZ:(v.n+v.f)/2,span:2*v.hx,zVis:(v.n-v.f)/2,yMin,yTop};
+}
 // v17: flechita en el borde para mis jugadores que no se ven en pantalla
 let offEls=null;const _ov=new THREE.Vector3();
 function offMarkers(){
@@ -2229,6 +2264,17 @@ function offMarkers(){
   }
   for(let i=n;i<(offEls?offEls.length:0);i++)offEls[i].style.display='none';
 }
+// v83: modo acostado. Con el ajuste prendido, el partido se juega de lado; los menús siguen parados por ahora
+let LAND=false;
+const SOplug=()=>{try{const C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform())return (C.Plugins&&C.Plugins.ScreenOrientation)||(C.registerPlugin&&C.registerPlugin('ScreenOrientation'));}catch(e){}return null;};
+function lockOri(o){try{const so=SOplug();if(so&&so.lock){so.lock({orientation:o}).catch(()=>{});return;}}catch(e){}
+  try{if(screen.orientation&&screen.orientation.lock){const go=()=>screen.orientation.lock(o).catch(()=>{});
+    if(o==='landscape'&&!document.fullscreenElement&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().then(go).catch(go);
+    else{go();if(o==='portrait'&&document.fullscreenElement&&document.exitFullscreen&&!SOplug())document.exitFullscreen().catch(()=>{});}}}catch(e){}}
+function updLand(){const B=document.body,want=!!(save.settings.land&&gameOn),wide=window.innerWidth>window.innerHeight;
+  const now=want&&wide;B.classList.toggle('landmode',want);B.classList.toggle('land',now);B.classList.toggle('landwait',want&&!wide);
+  if(now!==LAND){LAND=now;camFit=null;joy.x=joy.y=0;}}
+window.addEventListener('resize',()=>updLand());
 function resize(){if(!renderer)return;const w=cvs.clientWidth,h=cvs.clientHeight;renderer.setSize(w,h,false);if(composer){composer.setPixelRatio&&composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);bloomPass.resolution.set(Math.max(64,w/2),Math.max(64,h/2));}camera.aspect=w/Math.max(1,h);camera.fov=camera.aspect<1?40:34;camera.updateProjectionMatrix();camFit=null;}
 window.addEventListener('resize',resize);
 
@@ -2264,7 +2310,7 @@ joyEl.addEventListener('pointerdown',e=>{e.preventDefault();audio();joy.id=e.poi
 joyEl.addEventListener('pointermove',e=>{if(e.pointerId===joy.id)joyMove(e);});
 const joyEnd=e=>{if(e.pointerId!==joy.id)return;joy.id=null;joy.x=joy.y=0;knob.style.transform='';};
 joyEl.addEventListener('pointerup',joyEnd);joyEl.addEventListener('pointercancel',joyEnd);
-function joyMove(e){const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2-10;let dx=e.clientX-cx,dy=e.clientY-cy;const l=Math.hypot(dx,dy);if(l>R){dx=dx/l*R;dy=dy/l*R;}joy.x=dx/R;joy.y=dy/R;knob.style.transform=`translate(${dx}px,${dy}px)`;}
+function joyMove(e){const r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=r.width/2-10;let dx=e.clientX-cx,dy=e.clientY-cy;const l=Math.hypot(dx,dy);if(l>R){dx=dx/l*R;dy=dy/l*R;}if(LAND){joy.x=dy/R;joy.y=-dx/R;}else{joy.x=dx/R;joy.y=dy/R;}knob.style.transform=`translate(${dx}px,${dy}px)`;}
 // botones
 const btnPtr=new Map();
 function userDir(){return simDir(0);}
@@ -2281,7 +2327,7 @@ function btnUp(k){simBtnUp(0,k);}
 const keys={};
 window.addEventListener('keydown',e=>{if(keys[e.code])return;keys[e.code]=true;if(e.code==='KeyJ')btnDown('a');if(e.code==='KeyK')btnDown('b');if(e.code==='KeyL')btnDown('c');kbJoy();});
 window.addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyJ')btnUp('a');if(e.code==='KeyK')btnUp('b');if(e.code==='KeyL')btnUp('c');kbJoy();});
-function kbJoy(){if(joy.id!==null)return;let x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),y=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);const l=Math.hypot(x,y)||1;joy.x=x/l;joy.y=y/l;}
+function kbJoy(){if(joy.id!==null)return;let x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),y=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);const l=Math.hypot(x,y)||1;if(LAND){joy.x=y/l;joy.y=-x/l;}else{joy.x=x/l;joy.y=y/l;}}
 const s0=document.getElementById('s0'),s1=document.getElementById('s1'),clockEl=document.getElementById('clock'),fillEl=document.getElementById('elixfill'),numEl=document.getElementById('elixnum'),bA=document.getElementById('bA'),bB=document.getElementById('bB'),bC=document.getElementById('bC');
 let lastMode=null;
 let lastGk=false;
@@ -2316,7 +2362,7 @@ function loop(ts){
   requestAnimationFrame(loop);
   const dt=Math.min(.033,last?(ts-last)/1000:0);last=ts;T+=dt;
   if(!gameOn)return;
-  if(state==='play')update(dt*timeScaleNow(dt));
+  if(state==='play'&&!(LAND===false&&document.body.classList.contains('landwait')&&!window.ONLINE))update(dt*timeScaleNow(dt));   // v83: pausa mientras giras el teléfono
   updateFX(dt);render(dt);
   if(state==='play'){hud();crowdUpdate(dt);}
 }
@@ -2442,7 +2488,7 @@ function defSave(){return{v:2,name:'Jugador',avatar:'⚽',color:'#2f7bff',countr
   powers:{bomba:{lvl:1,copies:0},cascara:{lvl:1,copies:0},rayo:{lvl:1,copies:0},turbo:{lvl:1,copies:0},punetazo:{lvl:1,copies:0},tornado:{lvl:1,copies:0},meteorito:{lvl:1,copies:0}},
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
   packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},nums:{},equip:{kit:'clasico',boots:'negro'},seen:{},
-  settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
+  settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false,land:true},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
 const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"];
 function migrate(s){
   const d=defSave();
@@ -2806,7 +2852,7 @@ function openEditProfile(){let av=save.avatar,colr=save.color;
   $('#epS').onclick=()=>{const n=$('#epN').value.trim();if(n.length<3){toast('El nombre necesita al menos 3 letras');return;}save.name=n;save.avatar=av;save.color=colr;save.country=$('#epC').value;persist();closeModal();renderTab();toast('Perfil guardado');};}
 function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div><b class="ct">${l}</b><small>${d}</small></div><button class="tgl ${s[k]?'on':''}" data-k="${k}" role="switch" aria-checked="${s[k]}" aria-label="${l}"><i></i></button></div>`;
   showModal(`<div class="mpanel"><button class="mclose ct" id="mx">✕</button><div class="mtitle ct">Configuración</div>
-   ${tg('sound','Sonido','Efectos del partido y del menú')}${tg('vib','Vibración','Al chocar, explotar o abrir sobres')}${tg('shadows','Sombras','Apágalas si el teléfono se calienta')}${tg('zurdo','Modo zurdo','Joystick a la derecha, botones a la izquierda')}
+   ${tg('sound','Sonido','Efectos del partido y del menú')}${tg('vib','Vibración','Al chocar, explotar o abrir sobres')}${tg('shadows','Sombras','Apágalas si el teléfono se calienta')}${tg('land','Partido acostado (prueba)','Juega el partido con el teléfono de lado')}${tg('zurdo','Modo zurdo','Joystick a la derecha, botones a la izquierda')}
    <div class="set"><div><b class="ct">Gráficos</b><small>Alta = brillo en efectos · Baja = más fluido</small></div><div class="seg">${['baja','media','alta'].map(q=>`<button data-q="${q}" class="${s.quality===q?'on':''}">${q[0].toUpperCase()+q.slice(1)}</button>`).join('')}</div></div>
    <div class="set"><div><b class="ct">Modelo 3D de Zurdito</b><small>${statusTxt()} · también puedes cargar otro .glb</small></div><label class="btn b sm">Cargar<input type="file" accept=".glb,model/gltf-binary,application/octet-stream" id="glbIn" hidden></label></div>
    ${MODELS.zurdito?`<div class="set"><div><b class="ct">Girar modelo 180°</b><small>Si corre de espaldas</small></div><button class="tgl ${save.modelFlip&&save.modelFlip.zurdito?'on':''}" id="flipT" role="switch"><i></i></button></div><div class="set"><div><b class="ct">Quitar modelo</b><small>Vuelve al muñeco de código</small></div><button class="btn r sm" id="glbDel">Quitar</button></div>`:''}
@@ -2925,17 +2971,17 @@ async function startSpectate(){
   b.style.display='flex';
 }
 function spectRestore(){window.SPECT=false;AI0=false;for(const id of ['joy','btns','row']){const e=document.getElementById(id);if(e)e.style.display='';}const b=document.getElementById('spectTag');if(b)b.style.display='none';}
-function spectExit(){spectRestore();state='menu';gameOn=false;crowdStop(true);document.getElementById('end').classList.add('hide');document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');}
+function spectExit(){spectRestore();state='menu';gameOn=false;updLand();if(save.settings.land)lockOri('portrait');crowdStop(true);document.getElementById('end').classList.add('hide');document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');}
 function spectEnd(a,b){const end=document.getElementById('end');const t=document.getElementById('spectTag');if(t)t.style.display='none';
   end.innerHTML=`<div class="mpanel res-draw"><h2 class="ct">Fin del partido</h2><div class="rs">${a} - ${b}</div><small class="sys" style="display:block;text-align:center;margin-bottom:8px">IA contra IA · no cuenta para tus copas</small><div class="acts"><button class="btn b" id="spAgain">Ver otro</button><button class="btn y" id="spOk">Salir</button></div></div>`;
   end.classList.remove('hide');$('#spOk').onclick=spectExit;$('#spAgain').onclick=()=>{end.classList.add('hide');spectRestore();startSpectate();};}
 async function startMatch(opp){
-  try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait').catch(()=>{});}catch(e){}
+  lockOri(save.settings.land?'landscape':'portrait');
   if(typeof THREE==='undefined'){toast('No se pudo cargar el motor 3D');return;}
   if(MODEL_IDS.some(id=>MSTATUS[id]==='cargando')){toast('Cargando personajes 3D…');await Promise.race([modelsReady,sleep(8000)]);}
   document.getElementById('meta').classList.add('hide');document.getElementById('app').classList.add('on');
   const li=leagueIdx(save.trophies);if(!renderer)init3D();applyArena(save.testArena!=null?save.testArena:li);applySettings();
-  D=li===0?DIFF.easy:li<3?DIFF.normal:DIFF.hard;lastMode=null;newGame(opp);state='play';gameOn=true;resize();crowdStart();
+  D=li===0?DIFF.easy:li<3?DIFF.normal:DIFF.hard;lastMode=null;newGame(opp);state='play';gameOn=true;updLand();resize();crowdStart();
   if(!window.SPECT)econDo({t:'start'}).catch(()=>{});   // v79: el servidor anota cuándo empezó (para que nadie reclame victorias sin jugar)
 }
 // ================== CICLO DE SOBRES (v76) ==================
@@ -2981,7 +3027,7 @@ function showEnd(a,b,forfeit,r,errMsg){
     ${nl!==li?`<div class="newl ct">${nl>li?'¡Subiste a':'Bajaste a'} ${LEAGUES[nl].ic} ${LEAGUES[nl].n}!<br><small class="sys">Nuevo estadio: ${ARENAS[nl].n}</small></div>`:''}
     <button class="btn y" id="endOk">Continuar</button></div>`;
   end.classList.remove('hide');
-  $('#endOk').onclick=()=>{end.classList.add('hide');gameOn=false;state='menu';crowdStop(true);document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');};
+  $('#endOk').onclick=()=>{end.classList.add('hide');gameOn=false;updLand();if(save.settings.land)lockOri('portrait');state='menu';crowdStop(true);document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');};
 }
 
 // ================== ARRANQUE ==================
