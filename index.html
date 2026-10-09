@@ -623,6 +623,41 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 @keyframes arFloat{50%{transform:translateY(-8px)}}
 .hm-plat{bottom:14%;width:200px;margin-left:-100px;background:radial-gradient(ellipse,rgba(0,40,50,.35),transparent 70%)}
 .hm-rays{background:repeating-conic-gradient(rgba(255,255,255,.22) 0 9deg,transparent 9deg 22deg)}
+
+/* v93: perfil e historial */
+.mpanel.pf{padding:10px}
+.pf-top{position:relative;border-radius:14px;overflow:hidden;border:2px solid var(--ol);padding:14px 10px 10px;background:linear-gradient(160deg,var(--bc),#1a2350 75%);box-shadow:inset 0 2px 0 rgba(255,255,255,.25)}
+.pf-top::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 10px,transparent 10px 20px);pointer-events:none}
+.pf-crown{position:absolute;top:-2px;left:50%;transform:translateX(-50%);opacity:.9}
+.pf-id{position:relative;display:flex;align-items:center;gap:10px;margin-top:10px}
+.pf-av{width:62px;height:62px;flex:none;border-radius:12px;border:2px solid var(--ol);background:rgba(10,14,32,.45);display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:inset 0 2px 0 rgba(255,255,255,.25)}
+.pf-lv{position:absolute;left:44px;top:46px;min-width:26px;height:24px;border-radius:7px;background:linear-gradient(#5fb0ff,#2b6fe0);border:2px solid var(--ol);text-align:center;font-size:14px;line-height:20px}
+.pf-nm b{display:block;font-size:22px;font-weight:400}.pf-nm small{color:#dfe8ff;font-size:12px}
+.pf-row2{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pf-big{display:flex;align-items:center;gap:8px;background:rgba(10,14,32,.45);border:2px solid var(--ol);border-radius:10px;padding:6px 8px}
+.pf-big small{display:block;font-size:11px;color:#cfe0ff}.pf-big b{font-size:20px;font-weight:400}.pf-fire{font-size:22px}
+.pf-tabs{margin:10px 0 8px}
+.pf-road{display:flex;align-items:center;gap:10px;background:linear-gradient(var(--sl1),var(--sl2));border:2px solid var(--ol);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.pf-ar{font-size:30px}.pf-road small{display:block;font-size:11px;color:#9fe8ff}.pf-road b{font-size:16px;font-weight:400}.pf-road>span:nth-child(2){flex:1}
+.pf-tro{display:flex;align-items:center;gap:4px}.pf-tro b{font-size:20px;color:#ffd84a}
+.pf-sts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pf-st{display:flex;align-items:center;gap:8px;background:linear-gradient(rgba(54,66,110,.9),rgba(35,44,82,.9));border:2px solid var(--ol);border-radius:10px;padding:6px 8px}
+.pf-st b{display:block;font-size:17px;font-weight:400}.pf-st small{display:block;font-size:10.5px;color:#b9c9ee}
+.pf-h{margin:12px 0 6px;font-size:16px}
+.pf-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.pf-c .card{font-size:8px}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hr{display:grid;grid-template-columns:52px 54px 1fr auto;align-items:center;gap:6px;text-align:left;padding:6px 8px;border-radius:11px;border:2px solid var(--ol);background:linear-gradient(rgba(54,66,110,.95),rgba(35,44,82,.95));position:relative;overflow:hidden}
+.hr::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px}.hr-win::before{background:#3ccf5a}.hr-loss::before{background:#ff4d5e}.hr-draw::before{background:#9aa6c4}
+.hr-res{display:flex;flex-direction:column;align-items:center}.hr-res small{font-size:10px}
+.hr-sc{font-size:20px;text-align:center}
+.hr-op{min-width:0}.hr-op b{display:block;font-size:14px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hr-op small{display:flex;align-items:center;gap:2px;font-size:10.5px;color:#b9c9ee;white-space:nowrap}
+.hr-dt{font-size:16px;text-align:right}.hr-dt.up{color:#7dff9a}.hr-dt.dn{color:#ff9aa4}.hr-dt small{display:block;font-size:9.5px;color:#b9c9ee;-webkit-text-stroke:0;text-shadow:none}
+.hr-more{display:none;grid-column:1/-1;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.1)}.hr.open .hr-more{display:flex}
+.hr-more small{display:block;font-size:11px;color:#9fe8ff;margin-bottom:2px}
+.pw-row{display:flex;flex-wrap:wrap;gap:5px}.pw-u{position:relative;display:inline-flex}
+.pw-ic{width:30px;height:30px;border-radius:8px;background:linear-gradient(#6a4ad6,#3a2a90);border:2px solid var(--ol);display:flex;align-items:center;justify-content:center;font-size:17px}
+.pw-u b{position:absolute;right:-4px;bottom:-4px;font-size:11px}
+.pl-chip{font-size:11px;padding:2px 7px;border-radius:7px;background:rgba(10,14,32,.5);border:1px solid rgba(255,255,255,.15)}
 </style>
 </head>
 <body>
@@ -713,9 +748,9 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=65"></script>
 <script src="assets/sim/data.js?v=65"></script>
-<script src="assets/sim/match.js?v=77"></script>
+<script src="assets/sim/match.js?v=93"></script>
 <script src="assets/kits.js?v=68"></script>
-<script src="assets/econ.js?v=91"></script>
+<script src="assets/econ.js?v=93"></script>
 <script src="assets/icons.js?v=85"></script>
 <script>
 
@@ -742,7 +777,7 @@ let renderer,scene,camera,sun,fenceMat,ballMesh,ballShadow,ring,arrow,ghostMesh,
 const MATCH_T=120,X2T=45,OT_T=45; // v49: partido más corto
 let players=[],user=null,ball,score=[0,0],energy=[5,5],time=MATCH_T,overtime=false,otTime=OT_T,pause=0,pauseCb=null,state='menu',D=DIFF.normal,diff='normal';
 let hitstop=0,shakeAmt=0,superNext=[false,false],shield=[0,0],pressT=0,T=0,aiT=2,x2said=false,fenceFlash=0,camX=0,camZ=0,goalCam=0;
-let hands=[[],[]],queues=[[],[]],selCard=-1,cardPtr=null,ghost=null,effects=[],traps=[],zones=[],walls=[];
+let usedCards=[[],[]],hands=[[],[]],queues=[[],[]],selCard=-1,cardPtr=null,ghost=null,effects=[],traps=[],zones=[],walls=[];
 const joy={id:null,x:0,y:0};
 
 // ================== AUDIO ==================
@@ -1578,7 +1613,7 @@ function newGame(opp){
   score=[0,0];energy=[5,5];time=MATCH_T;overtime=false;otTime=OT_T;superNext=[false,false];shield=[0,0];pressT=0;aiT=2;x2said=false;hitstop=0;
   for(const e of effects)e.mesh&&scene.remove(e.mesh);for(const t of traps)scene.remove(t.mesh);for(const z of zones)scene.remove(z.mesh);for(const w of walls)scene.remove(w.mesh);
   effects=[];traps=[];zones=[];walls=[];
-  const md=shuffle(save.deck.slice());hands[0]=md.slice(0,4);queues[0]=md.slice(4);
+  usedCards=[[],[]];const md=shuffle(save.deck.slice());hands[0]=md.slice(0,4);queues[0]=md.slice(4);
   const od=shuffle(opp.deck.slice());hands[1]=od.slice(0,4);queues[1]=od.slice(4);
   selCard=-1;ghost=null;renderCards();
   kickoff(0);showBig('¡A jugar!');sfx('whistle');
@@ -2608,7 +2643,7 @@ const NAMEB=['FC','10','_7','MX','Pro','_99','Gol','23','Real','Kid','Jr','777',
 
 // ================== GUARDADO ==================
 const LS_KEY='golazo_save_v1';
-function defSave(){return{v:2,name:'',nameN:0,avatar:'⚽',color:'#2f7bff',country:'MX',lvl:1,xp:0,trophies:0,maxTrophies:0,gold:0,gold0:1,gems:50,wins:0,losses:0,draws:0,gf:0,ga:0,
+function defSave(){return{v:2,name:'',nameN:0,hist:[],streak:0,best:0,avatar:'⚽',color:'#2f7bff',country:'MX',lvl:1,xp:0,trophies:0,maxTrophies:0,gold:0,gold0:1,gems:50,wins:0,losses:0,draws:0,gf:0,ga:0,
   players:{zurdito:{lvl:1,copies:0},cazador:{lvl:1,copies:0},perro:{lvl:1,copies:0},sangre:{lvl:1,copies:0},coletazo:{lvl:1,copies:0},expreso:{lvl:1,copies:0},pausa:{lvl:1,copies:0},gigante:{lvl:1,copies:0},rey:{lvl:1,copies:0},gato:{lvl:1,copies:0},toro:{lvl:1,copies:0},vikingo:{lvl:1,copies:0},muralla:{lvl:1,copies:0},ciclon:{lvl:1,copies:0},malabares:{lvl:1,copies:0},ruleta:{lvl:1,copies:0},leon:{lvl:1,copies:0},turbo:{lvl:1,copies:0},zurdito:{lvl:1,copies:0},expreso:{lvl:1,copies:0},cazador:{lvl:1,copies:0},perro:{lvl:1,copies:0},sangre:{lvl:1,copies:0},coletazo:{lvl:1,copies:0},toro:{lvl:1,copies:0},zurdo:{lvl:1,copies:0},motor:{lvl:1,copies:0},chispa:{lvl:1,copies:0},muro:{lvl:1,copies:0},flecha:{lvl:1,copies:0},gato:{lvl:1,copies:0}},
   powers:{bomba:{lvl:1,copies:0},cascara:{lvl:1,copies:0},rayo:{lvl:1,copies:0},turbo:{lvl:1,copies:0},punetazo:{lvl:1,copies:0},tornado:{lvl:1,copies:0},meteorito:{lvl:1,copies:0}},
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
@@ -2989,15 +3024,44 @@ function openLeagues(){const li=leagueIdx(save.trophies);
   $$('[data-ta]').forEach(b=>b.onclick=()=>{save.testArena=+b.dataset.ta;persist();toast('Próximo partido en '+ARENAS[save.testArena].n);openLeagues();renderTab();});
   const ta=$('#taAuto');if(ta)ta.onclick=()=>{save.testArena=null;persist();toast('Estadio automático');openLeagues();renderTab();};}
 function winGold(i){return 20+i*10;}
-function openProfile(){const li=leagueIdx(save.trophies),tot=save.wins+save.losses+save.draws;
-  const col=Object.keys(save.players).filter(id=>READY.has(id)).length+Object.keys(save.powers).length,colT=PLAYERS.length+Object.keys(CARDS).length;
-  const PFI={'⭐':'star','✅':'win','❌':'loss','🤝':'draw','📈':'chart','⚽':'ball','🥅':'net','🃏':'cards','📊':'chart'};
-  const pfs=(i,l,v)=>`<div class="pfs"><span>${PFI[i]?ICON(PFI[i],30):i}</span><b class="ct">${v}</b><small>${l}</small></div>`;
-  showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button>
-   <div class="banner" style="--bc:${save.color};pointer-events:none"><div class="bn-art"><span class="bn-av">${save.avatar}</span></div><div class="bn-info"><div><b class="ct">${esc(save.name)}</b><small>${COUNTRIES[save.country]} · Nivel ${save.lvl}</small></div><span class="bn-tro ct">🏆 ${save.trophies}</span></div></div>
-   <div class="pf-grid">${pfs(LEAGUES[li].ic,'Arena',LEAGUES[li].n)}${pfs('⭐','Récord',save.maxTrophies)}${pfs('✅','Victorias',save.wins)}${pfs('❌','Derrotas',save.losses)}${pfs('🤝','Empates',save.draws)}${pfs('📈','% victorias',tot?Math.round(save.wins/tot*100)+'%':'—')}${pfs('⚽','Goles a favor',save.gf)}${pfs('🥅','Goles en contra',save.ga)}${pfs('🃏','Colección',col+'/'+colT)}${pfs('📊','Media equipo',teamOvr())}</div>
-   <div class="acts"><button class="btn b" id="epB">✏️ Editar perfil</button></div></div>`);
-  $('#mx').onclick=closeModal;$('#epB').onclick=openEditProfile;}
+// ================== v93: perfil (inspirado en Clash) e historial de partidos ==================
+function myView(){return{me:true,name:save.name||'Jugador',avatar:save.avatar,color:save.color,country:save.country,lvl:save.lvl,trophies:save.trophies,maxTrophies:save.maxTrophies,
+  wins:save.wins,losses:save.losses,draws:save.draws,gf:save.gf,ga:save.ga,streak:save.streak||0,best:save.best||0,hist:save.hist||[],squad:[save.squad.gk,...save.squad.f],deck:save.deck.slice(),
+  col:Object.keys(save.players).filter(id=>READY.has(id)).length+Object.keys(save.powers).length,colT:PLAYERS.length+Object.keys(CARDS).length};}
+function agoTxt(t){const s=Math.max(0,(nowS()-t)/1000);return s<60?'ahora':s<3600?'hace '+Math.floor(s/60)+' min':s<86400?'hace '+Math.floor(s/3600)+' h':'hace '+Math.floor(s/86400)+' d';}
+const pwIc=k=>`<span class="pw-ic" title="${esc((CARDS[k]||{}).name||k)}">${(CARDS[k]||{}).icon||'❔'}</span>`;
+function cardsUsed(list){if(!list||!list.length)return '<small class="note" style="margin:0">Ninguna</small>';const c={};list.forEach(k=>c[k]=(c[k]||0)+1);
+  return Object.entries(c).map(([k,n])=>`<span class="pw-u">${pwIc(k)}${n>1?`<b class="ct">x${n}</b>`:''}</span>`).join('');}
+function histRow(h,i){const R={win:['win','Victoria'],loss:['loss','Derrota'],draw:['draw','Empate']}[h.r]||['draw',''],o=h.o||{};
+  return `<button class="hr hr-${h.r}" data-h="${i}"><span class="hr-res">${ICON(R[0],26)}<small class="ct">${R[1]}</small></span>
+    <span class="hr-sc ct">${h.a} - ${h.b}</span>
+    <span class="hr-op"><b class="ct">${o.av?esc(o.av)+' ':''}${esc(o.n||'Rival')}</b><small>${o.c?flag(o.c)+' ':''}${ICON('trophy',13)} ${o.tr||0} · ${h.on?'En línea':'Contra bot'}${h.f?' · rendición':''}</small></span>
+    <span class="hr-dt ct ${h.dt>0?'up':h.dt<0?'dn':''}">${h.dt>0?'+':''}${h.dt||0}<small>${agoTxt(h.t)}</small></span>
+    <span class="hr-more"><span><small>Tus cartas</small><span class="pw-row">${cardsUsed(h.mc)}</span></span><span><small>Cartas del rival</small><span class="pw-row">${cardsUsed(h.oc)}</span></span>
+      ${h.ms&&h.ms.length?`<span><small>Tu equipo</small><span class="pw-row">${h.ms.map(id=>PBY[id]?`<span class="pl-chip">${esc(PBY[id].nick)}</span>`:'').join('')}</span></span>`:''}
+      ${h.os&&h.os.length?`<span><small>Equipo rival</small><span class="pw-row">${h.os.map(id=>PBY[id]?`<span class="pl-chip">${esc(PBY[id].nick)}</span>`:'').join('')}</span></span>`:''}</span></button>`;}
+function profileHTML(V,tab){const li=leagueIdx(V.trophies||0),L=LEAGUES[li],tot=(V.wins||0)+(V.losses||0)+(V.draws||0);
+  const st=(ic,v,l)=>`<div class="pf-st">${ICON(ic,26)}<span><b class="ct">${v}</b><small>${l}</small></span></div>`;
+  const head=`<div class="pf-top" style="--bc:${V.color||'#2f7bff'}"><div class="pf-crown">${ICON('star',30)}</div>
+    <div class="pf-id"><span class="pf-av">${esc(V.avatar||'⚽')}</span><span class="pf-lv ct">${V.lvl||1}</span>
+      <div class="pf-nm"><b class="ct">${esc(V.name||'Jugador')}</b><small>${V.country?flag(V.country)+' '+esc((COUNTRIES[V.country]||'').replace(/^\S+\s/,'')):''}</small></div></div>
+    <div class="pf-row2"><div class="pf-big">${ICON('win',22)}<span><small>Victorias</small><b class="ct">${V.wins||0}</b></span></div><div class="pf-big fire"><span class="pf-fire">🔥</span><span><small>Racha actual</small><b class="ct">${V.streak||0}</b></span></div></div></div>`;
+  const tabs=`<div class="tabs pf-tabs"><button class="tab ${tab!=='hist'?'on':''}" data-pt="pf"><b>Perfil</b></button><button class="tab ${tab==='hist'?'on':''}" data-pt="hist"><b>Historial</b></button></div>`;
+  if(tab==='hist'){const H=V.hist||[];return head+tabs+(H.length?`<div class="hist">${H.map(histRow).join('')}</div><p class="note">Toca un partido para ver las cartas y los equipos. Se guardan los últimos 25.</p>`:'<p class="note" style="padding:20px 0">Todavía no hay partidos. ¡Juega uno!</p>');}
+  return head+tabs+`<div class="pf-road"><span class="pf-ar">${L.ic}</span><span><small>Camino de trofeos</small><b class="ct">${esc(L.n)}</b></span><span class="pf-tro">${ICON('trophy',22)}<b class="ct">${V.trophies||0}</b></span></div>
+   <div class="pf-sts">${st('star',V.maxTrophies||0,'Récord de copas')}${st('chart',V.best||0,'Mejor racha')}${st('loss',V.losses||0,'Derrotas')}${st('draw',V.draws||0,'Empates')}${st('chart',tot?Math.round((V.wins||0)/tot*100)+'%':'—','% victorias')}${st('ball',V.gf||0,'Goles a favor')}${st('net',V.ga||0,'Goles en contra')}${V.col!=null?st('cards',V.col+'/'+V.colT,'Colección'):''}</div>
+   ${V.squad&&V.squad.length?`<h3 class="ct pf-h">Equipo</h3><div class="pf-cards">${V.squad.filter(id=>PBY[id]).map(id=>`<div class="pf-c">${cardHTML(id,{bar:false})}</div>`).join('')}</div>`:''}
+   ${V.deck&&V.deck.length?`<h3 class="ct pf-h">Mazo de poderes</h3><div class="pf-cards">${V.deck.filter(k=>CARDS[k]).map(k=>`<div class="pf-c">${cardHTML(k,{bar:false,kind:'power'})}</div>`).join('')}</div>`:''}
+   ${V.me?`<div class="acts"><button class="btn b" id="epB">✏️ Editar perfil</button></div>`:''}`;}
+function showProfile(V,tab){showModal(`<div class="mpanel pf"><button class="mclose" id="mx">${ICON("close",20)}</button><div id="pfBody">${profileHTML(V,tab)}</div></div>`);
+  const bind=()=>{$('#mx').onclick=closeModal;const e=$('#epB');if(e)e.onclick=openEditProfile;
+    $$('[data-pt]').forEach(b=>b.onclick=()=>{$('#pfBody').innerHTML=profileHTML(V,b.dataset.pt);bind();});
+    $$('.hr').forEach(b=>b.onclick=()=>b.classList.toggle('open'));};bind();}
+function openProfile(tab){showProfile(myView(),tab);}
+// perfil de otro jugador (desde el ranking): sus datos públicos de la nube
+window.openPlayerProfile=function(d){if(!d)return;const e=d.econ||{},sv=d.save||{},sq=sv.squad||{};
+  showProfile({name:d.name||e.name,avatar:d.avatar,color:d.color,country:d.country,lvl:d.lvl||e.lvl,trophies:d.trophies||0,maxTrophies:d.maxTrophies||e.maxTrophies,wins:d.wins||0,losses:d.losses||0,draws:d.draws||0,
+    gf:e.gf,ga:e.ga,streak:e.streak,best:e.best,hist:e.hist||[],squad:sq.gk?[sq.gk,...(sq.f||[])]:[],deck:sv.deck||[]});};
 function openEditProfile(){let av=save.avatar,colr=save.color;const canName=!save.name||!(save.nameN>=1);
   showModal(`<div class="mpanel ep"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Editar perfil</div>
    <label class="ct" for="epN">Nombre</label><input id="epN" maxlength="16" value="${esc(save.name)}" autocomplete="off" ${canName?'':'disabled'}>
@@ -3198,7 +3262,9 @@ function onMatchEnd(a,b,forfeit){
   const end=document.getElementById('end');
   end.innerHTML=`<div class="mpanel"><h2 class="ct">${a} - ${b}</h2><div class="lg-wait ct" style="margin:10px 0">Guardando resultado…</div></div>`;end.classList.remove('hide');
   // v79: el premio lo calcula el servidor (con cuenta) o el teléfono (sin cuenta), con las mismas reglas
-  econDo({t:'match',a,b,forfeit:!!forfeit}).then(r=>showEnd(a,b,forfeit,r,null)).catch(e=>showEnd(a,b,forfeit,null,(e&&e.message)||'No se pudo guardar'));}
+  const O=oppInfo||{},sqIds=sq=>sq?[sq.gk&&sq.gk.card&&sq.gk.card.id,...(sq.f||[]).map(x=>x&&x.card&&x.card.id)].filter(Boolean):[];
+  const h={on:!!O.online,ar:save.testArena!=null?save.testArena:leagueIdx(save.trophies),opp:{n:O.name,av:O.av,c:O.c,tr:O.trophies},mc:usedCards[0],oc:usedCards[1],ms:[save.squad.gk,...save.squad.f],os:sqIds(O.squad)};
+  econDo({t:'match',a,b,forfeit:!!forfeit,h}).then(r=>showEnd(a,b,forfeit,r,null)).catch(e=>showEnd(a,b,forfeit,null,(e&&e.message)||'No se pudo guardar'));}
 function showEnd(a,b,forfeit,r,errMsg){
   const res=r?r.res:a>b?'win':a<b?'loss':'draw',dt=r?r.dt:0,gold=r?r.gold:0,xp=r?r.xp:0,lu=r?r.lu:0,pack=r?r.pack:null,li=r?r.li:leagueIdx(save.trophies),nl=r?r.nl:li;
   const end=document.getElementById('end');
@@ -3275,8 +3341,8 @@ applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()
 document.addEventListener('pointerdown',()=>audio(),{once:true});
 
 </script>
-<script src="assets/online.js?v=91"></script>
-<script src="assets/online-play.js?v=68"></script>
+<script src="assets/online.js?v=93"></script>
+<script src="assets/online-play.js?v=93"></script>
 <script src="assets/packs.js?v=79"></script>
 </body>
 </html>

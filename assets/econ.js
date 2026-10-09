@@ -6,7 +6,7 @@
   'use strict';
   const H = 3600e3, RORD = ['comun', 'rara', 'epica', 'legendaria'];
   // campos de la partida guardada que son "dinero" (solo el servidor los cambia cuando hay cuenta)
-  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN'];
+  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN', 'hist', 'streak', 'best'];
   const UNLOCK_H = { bronce: 1, plata: 3, oro: 8, leyenda: 24, legendario: 24 };
   const FREE_H = 4;
   const SHOP = { bronce: ['gold', 150], plata: ['gold', 400], oro: ['gems', 80], leyenda: ['gems', 250], legendario: ['gems', 500] };
@@ -94,6 +94,13 @@
         const gold = res === 'win' ? winGold(li) : res === 'draw' ? 5 : 0; E.gold += gold;
         const xp = res === 'win' ? 30 : res === 'draw' ? 15 : 10, lu = addXp(E, xp);
         const pack = res === 'win' ? awardCycle(E) : null;
+        E.streak = res === 'win' ? (E.streak || 0) + 1 : 0; E.best = Math.max(E.best || 0, E.streak);
+        // v93: historial (últimos 25): rival, marcador, copas y las cartas que usó cada quien
+        const h = a.h && typeof a.h === 'object' ? a.h : {}, o = h.opp && typeof h.opp === 'object' ? h.opp : {};
+        const str = (v, m) => String(v == null ? '' : v).slice(0, m), ids = (v, T, m) => Array.isArray(v) ? v.filter(x => has(T, x)).slice(0, m) : [];
+        E.hist = [{ t: now, r: res, a: A, b: B, dt, f: !!a.forfeit, on: !!h.on, ar: int(h.ar, 0, 7),
+          o: { n: str(o.n, 16) || 'Rival', av: str(o.av, 8), c: /^[A-Z]{2,3}$/.test(o.c) ? o.c : '', tr: int(o.tr, 0, 99999) },
+          mc: ids(h.mc, D.CARDS, 30), oc: ids(h.oc, D.CARDS, 30), ms: ids(h.ms, D.PBY, 5), os: ids(h.os, D.PBY, 5) }, ...(Array.isArray(E.hist) ? E.hist : [])].slice(0, 25);
         return ok({ res, dt, gold, xp, lu, pack, li, nl: lg(D, E.trophies) });
       }
       case 'unlock': {
@@ -176,11 +183,12 @@
       cyc: { pos: n(c.pos, 0, 239, Math.floor(R() * 240)), n: n(c.n, 0, 1e7, 0), seed: n(c.seed, 0, 2 ** 31, Math.floor(R() * 1e9)), pend: !!c.pend }
     };
     E.maxTrophies = Math.max(E.trophies, n(s.maxTrophies, 0, lim.maxTrophies != null ? lim.maxTrophies : 8000, 0));
-    E.name = ''; E.nameN = 0;   // el nombre lo escoge el jugador (no se pasa el de antes ni el de Google)
+    E.name = ''; E.nameN = 0; E.hist = []; E.streak = 0; E.best = 0;   // el nombre lo escoge el jugador (no se pasa el de antes ni el de Google)
     return E;
   }
   // ¿la cartera está sana? (números enteros, nada raro). El servidor no guarda nada que no pase esto
   function sane(D, E) {
+    if (!Array.isArray(E.hist) || E.hist.length > 25 || !Number.isInteger(E.streak) || !Number.isInteger(E.best)) return false;
     if (typeof E.name !== 'string' || E.name.length > 16 || !(Number.isInteger(E.nameN) && E.nameN >= 0 && E.nameN < 100)) return false;
     const okN = v => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1e13;
     for (const k of ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'freeAt']) if (!okN(E[k])) return false;

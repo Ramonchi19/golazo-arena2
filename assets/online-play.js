@@ -84,7 +84,7 @@ function onMsg(m){if(!O)return;
   else if(m.t==='po'){const r=performance.now()-m.c;O.rtt=O.rtt?O.rtt*.7+r*.3:r;}
   else if(m.t==='ri'){joy1.x=m.j[0];joy1.y=m.j[1];}
   else if(m.t==='rb'){if(m.d)simBtnDown(1,m.k);else simBtnUp(1,m.k);}
-  else if(m.t==='rc'){if(CARDS[m.k])castSpell(m.k,1,m.x,m.z);}
+  else if(m.t==='rc'){if(CARDS[m.k]){castSpell(m.k,1,m.x,m.z);try{usedCards[1].push(m.k);}catch(e){}}}
   else if(m.t==='gol'){O.srvGoal=true;try{goal(m.equipo);}finally{O.srvGoal=false;}score=m.sc.slice();pauseCb=null;try{updateBoards();}catch(e){}}
   else if(m.t==='rivalSeFue'){say('Tu rival se desconectó…');}
   else if(m.t==='fin'){endOnline(m);}

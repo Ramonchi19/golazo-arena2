@@ -212,7 +212,7 @@ NET.login=function(){NET.offline=false;if(NET.state==='sinred'){showWait('Conect
 
 // ---------- ranking real ----------
 let rankCache={},rankBusy=false;
-function rowHTML(x,i){const L=LEAGUES[leagueIdx(x.trophies||0)];return `<div class="rrow ${x.me?'me':''}"><span class="pos ct">${i}</span><span class="av">${h(x.avatar||'⚽')}</span><span class="nm ct">${h(x.name||'Jugador')}<small>${flag(x.country||'MX')} ${L.ic} ${h(L.n)}</small></span><span class="tr ct">🏆 ${x.trophies||0}</span></div>`;}
+function rowHTML(x,i){const L=LEAGUES[leagueIdx(x.trophies||0)];return `<div class="rrow ${x.me?'me':''}" data-uid="${x.me?'me':h(x.id||'')}" role="button"><span class="pos ct">${i}</span><span class="av">${h(x.avatar||'⚽')}</span><span class="nm ct">${h(x.name||'Jugador')}<small>${flag(x.country||'MX')} ${L.ic} ${h(L.n)}</small></span><span class="tr ct">🏆 ${x.trophies||0}</span></div>`;}
 window.renderRank=function(){const el=document.getElementById('sc-rank');if(!el)return;
   const tab=rankTab==='local'?'local':'global',key=tab+(tab==='local'?save.country:'');
   const me={name:save.name,avatar:save.avatar,country:save.country,trophies:save.trophies,me:true};
@@ -224,7 +224,8 @@ window.renderRank=function(){const el=document.getElementById('sc-rank');if(!el)
     let html='';if(err)html=`<p class="note">${h(err)}</p>`;
     else{const i=list.findIndex(x=>x.id===NET.user.uid);const L=list.map(x=>Object.assign({},x,x.id===NET.user.uid?me:{}));
       html=`<div class="rk">${i<0?rowHTML(me,'50+'):''}${L.map((x,k)=>rowHTML(x,k+1)).join('')||''}</div>${L.length?'':'<p class="note">Todavía no hay nadie aquí. ¡Sé el primero!</p>'}`;}
-    el.innerHTML=head+html+`<p class="note">${tab==='local'?'Jugadores de tu país · cambia tu país en tu perfil.':'Los 50 mejores del mundo.'}</p>`;bind();};
+    el.innerHTML=head+html+`<p class="note">${tab==='local'?'Jugadores de tu país · cambia tu país en tu perfil.':'Los 50 mejores del mundo. Toca a alguien para ver su perfil.'}</p>`;bind()
+    el.querySelectorAll('.rrow[data-uid]').forEach(r=>r.onclick=()=>{const u=r.dataset.uid;if(u==='me'){openProfile();return;}const d=(list||[]).find(x=>x.id===u);if(d)openPlayerProfile(d);});};   // v93: ver el perfil de cualquiera
   const c=rankCache[key];if(c&&Date.now()-c.t<30000){draw(c.list);return;}
   el.innerHTML=head+`<div class="lg-wait ct" style="display:flex;justify-content:center;padding:30px 0;font-size:16px">Cargando ranking…</div>`;bind();
   if(rankBusy)return;rankBusy=true;

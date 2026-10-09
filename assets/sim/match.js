@@ -620,6 +620,7 @@ function updateObstacles(dt){
 function playCard(team,i,x,z){
   const k=hands[team][i],c=CARDS[k];if(!k||energy[team]<c.cost)return false;
   energy[team]-=c.cost;castSpell(k,team,clamp(x,-L,L),clamp(z,-HW,HW));
+  if(typeof usedCards!=='undefined'&&usedCards[team])usedCards[team].push(k);   /* v93: para el historial */
   queues[team].push(k);hands[team][i]=queues[team].shift();if(team===0)renderCards();return true;
 }
 function castSpell(k,team,x,z){

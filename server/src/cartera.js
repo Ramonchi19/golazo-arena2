@@ -136,6 +136,10 @@ export class Cartera extends DurableObject {
       }
       if (doc && doc.ajuste && typeof doc.ajuste === "object") { const key = JSON.stringify(doc.ajuste).slice(0, 500); if (key !== E.adj) { applyAdj(E, doc.ajuste); E.adj = key; fresh = true; } }
     }
+    // carteras guardadas antes de v91/v93: campos nuevos con su valor inicial
+    if (E && (typeof E.name !== "string" || !Number.isInteger(E.nameN) || !Array.isArray(E.hist) || !Number.isInteger(E.streak) || !Number.isInteger(E.best))) {
+      if (typeof E.name !== "string") E.name = ""; if (!Number.isInteger(E.nameN)) E.nameN = 0; if (!Array.isArray(E.hist)) E.hist = [];
+      if (!Number.isInteger(E.streak)) E.streak = 0; if (!Number.isInteger(E.best)) E.best = 0; fresh = true; }
     const save = async X => { if (!ECON.sane(ED, X)) throw new Error("cartera inválida"); this.E = X; await st.put("E", X); await st.put("uid", uid); await this.later(); };
     if (fresh) await save(E);                       // lo cargado/importado/ajustado queda guardado antes de cualquier acción
     const reply = r => ({ ...r, E: pub(this.E), now });
