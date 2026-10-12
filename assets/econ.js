@@ -6,7 +6,9 @@
   'use strict';
   const H = 3600e3, RORD = ['comun', 'rara', 'epica', 'legendaria'];
   // campos de la partida guardada que son "dinero" (solo el servidor los cambia cuando hay cuenta)
-  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN', 'hist', 'streak', 'best'];
+  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN', 'hist', 'streak', 'best', 'ads', 'lastG', 'lastL'];
+  // v94: premios por ver anuncios. Cada tipo tiene un tope por día (se reinicia a las 0 h UTC)
+  const AD_CAP = { pack: 16, gold2: 10, coins: 5, freep: 3, up: 5, tro: 3, free: 4 };
   const UNLOCK_H = { bronce: 1, plata: 3, oro: 8, leyenda: 24, legendario: 24 };
   const FREE_H = 4;
   const SHOP = { bronce: ['gold', 150], plata: ['gold', 400], oro: ['gems', 80], leyenda: ['gems', 250], legendario: ['gems', 500] };
@@ -79,6 +81,29 @@
     const now = ctx.now, R = ctx.R;
     switch (a && a.t) {
       case 'get': return ok();
+      case 'ad': {
+        const k = a.k; if (!has(AD_CAP, k)) return err('Ese premio no existe');
+        const day = Math.floor(now / 864e5); if (!E.ads || E.ads.d !== day) E.ads = { d: day, n: {} };
+        const used = E.ads.n[k] || 0; if (used >= AD_CAP[k]) return err('Ya viste todos los anuncios de hoy para esto. Vuelve mañana');
+        let out;
+        if (k === 'pack') {   // acelera un sobre que se está abriendo: quita 1/4 del tiempo total (mínimo 30 min)
+          const i = int(a.i, 0, 3), p = E.packs[i]; if (!p || !has(UNLOCK_H, p.t)) return err('No hay sobre ahí');
+          if (!p.at || now >= p.at) return err('Ese sobre no se está abriendo');
+          const cut = Math.max(30 * 60e3, UNLOCK_H[p.t] * H / 4); p.at = Math.max(now, p.at - cut); out = { i, at: p.at, cut };
+        } else if (k === 'gold2') { if (!(E.lastG > 0)) return err('No hay monedas que duplicar'); out = { gold: E.lastG }; E.gold += E.lastG; E.lastG = 0; }
+        else if (k === 'tro') { if (!(E.lastL > 0)) return err('No hay copas que recuperar'); const g = Math.ceil(E.lastL / 2); E.trophies += g; E.maxTrophies = Math.max(E.maxTrophies, E.trophies); E.lastL = 0; out = { tro: g }; }
+        else if (k === 'coins') { const g = 25 + lg(D, E.trophies) * 15; E.gold += g; out = { gold: g }; }
+        else if (k === 'freep') { out = { t: 'bronce', roll: roll(D, E, 'bronce', R) }; }
+        else if (k === 'free') { if (now >= (E.freeAt || 0)) return err('Tu sobre gratis ya está listo'); E.freeAt = Math.max(now, E.freeAt - H); out = { freeAt: E.freeAt }; }
+        else if (k === 'up') {   // sube de nivel con 30% menos monedas
+          const T = a.kd === 'power' ? E.powers : E.players; if (!has(a.kd === 'power' ? D.CARDS : D.PBY, a.id) || !has(T, a.id)) return err('No tienes esa carta');
+          const o = T[a.id]; if (o.lvl >= D.MAXLVL) return err('Ya está al nivel máximo');
+          const need = needOf(D, a.id, o.lvl), cost = Math.round(D.LVL_GOLD[o.lvl] * .7);
+          if (o.copies < need) return err('Te faltan cartas'); if (E.gold < cost) return err('Te faltan monedas');
+          E.gold -= cost; o.copies -= need; o.lvl++; out = { lvl: o.lvl, lu: addXp(E, 20), cost };
+        }
+        E.ads.n[k] = used + 1; out.left = AD_CAP[k] - used - 1; return ok(out);
+      }
       case 'name': {
         const c = cleanName(a.n); if (c.err) return err(c.err);
         if (E.name && nameKey(E.name) === nameKey(c.name) && E.name === c.name) return err('Ese ya es tu nombre');
@@ -94,6 +119,7 @@
         const gold = res === 'win' ? winGold(li) : res === 'draw' ? 5 : 0; E.gold += gold;
         const xp = res === 'win' ? 30 : res === 'draw' ? 15 : 10, lu = addXp(E, xp);
         const pack = res === 'win' ? awardCycle(E) : null;
+        E.lastG = gold; E.lastL = dt < 0 ? -dt : 0;   // para duplicar monedas o recuperar copas viendo un anuncio
         E.streak = res === 'win' ? (E.streak || 0) + 1 : 0; E.best = Math.max(E.best || 0, E.streak);
         // v93: historial (últimos 25): rival, marcador, copas y las cartas que usó cada quien
         const h = a.h && typeof a.h === 'object' ? a.h : {}, o = h.opp && typeof h.opp === 'object' ? h.opp : {};
@@ -183,11 +209,19 @@
       cyc: { pos: n(c.pos, 0, 239, Math.floor(R() * 240)), n: n(c.n, 0, 1e7, 0), seed: n(c.seed, 0, 2 ** 31, Math.floor(R() * 1e9)), pend: !!c.pend }
     };
     E.maxTrophies = Math.max(E.trophies, n(s.maxTrophies, 0, lim.maxTrophies != null ? lim.maxTrophies : 8000, 0));
-    E.name = ''; E.nameN = 0; E.hist = []; E.streak = 0; E.best = 0;   // el nombre lo escoge el jugador (no se pasa el de antes ni el de Google)
+    E.name = ''; E.nameN = 0; E.hist = []; E.streak = 0; E.best = 0; E.ads = { d: 0, n: {} }; E.lastG = 0; E.lastL = 0;   // el nombre lo escoge el jugador (no se pasa el de antes ni el de Google)
     return E;
   }
+  // v95: muro -> enredadera y barril -> ráfaga (nivel más alto y copias sumadas). Devuelve true si cambió algo
+  function fixPowers(D, E) { let ch = false; const MAPW = { muro: 'enredadera', barril: 'rafaga' };
+    for (const [a, b] of Object.entries(MAPW)) { const pa = E.powers && E.powers[a]; if (!pa) continue; ch = true;
+      const pb = E.powers[b] || { lvl: 1, copies: 0 }; E.powers[b] = { lvl: Math.max(pa.lvl, pb.lvl), copies: pa.copies + pb.copies }; delete E.powers[a]; }
+    for (const k of Object.keys(E.powers || {})) if (!has(D.CARDS, k)) { delete E.powers[k]; ch = true; }
+    for (const k of Object.keys(D.CARDS)) if (!E.powers[k]) { E.powers[k] = { lvl: 1, copies: 0 }; ch = true; }
+    return ch; }
   // ¿la cartera está sana? (números enteros, nada raro). El servidor no guarda nada que no pase esto
   function sane(D, E) {
+    if (!E.ads || typeof E.ads !== 'object' || !Number.isInteger(E.lastG) || !Number.isInteger(E.lastL)) return false;
     if (!Array.isArray(E.hist) || E.hist.length > 25 || !Number.isInteger(E.streak) || !Number.isInteger(E.best)) return false;
     if (typeof E.name !== 'string' || E.name.length > 16 || !(Number.isInteger(E.nameN) && E.nameN >= 0 && E.nameN < 100)) return false;
     const okN = v => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1e13;
@@ -201,5 +235,5 @@
   }
   const pickE = s => { const o = {}; for (const k of EK) o[k] = s[k]; return JSON.parse(JSON.stringify(o)); };
 
-  root.ECON = { nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
+  root.ECON = { fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
 })(typeof window !== 'undefined' ? window : globalThis);

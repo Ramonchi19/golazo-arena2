@@ -7,7 +7,7 @@
   const SIM = G.SIM || (G.SIM = {});
 
   // Medidas de la cancha y del balón (iguales en cliente y servidor)
-  const C = SIM.C = { L: 32, HW: 16, GW: 4.8, GH: 3.3, BR: .40, GRAV: 24, RUN: 8.2 };
+  const C = SIM.C = { L: 32, HW: 16, GW: 4.8, GH: 3.3, BR: .40, GRAV: 24, RUN: 9.4 };
   const { L, HW, GW, GH, BR, GRAV, RUN } = C;
   const clamp = SIM.clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   SIM.rand = (a, b) => a + Math.random() * (b - a);

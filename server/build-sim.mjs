@@ -47,6 +47,7 @@ ${data}
     renderCards = NO, reactUpdate = NO, ballInNet = NO, audio = NO,
     vxRemove = NO, vxAdd = NO, vxGlove = NO, vxGloveAfter = NO, vxTornado = NO, vxMeteor = NO, vxWallUp = NO, vxBarrelRoll = NO,
     vxZone = NO, vxPeelAnim = NO, vxBomb = NO;
+  const vfx = () => null;
   const vxMud = () => null, vxWallMesh = () => null, vxBarrelMesh = () => null, vxIceZone = () => null, vxGloveMesh = () => null,
     vxTornadoMesh = () => null, vxMeteorMesh = () => null, vxMeteorWarn = () => null, vxPeel = () => null;
   const fb = () => false, psfx = () => false, handPos = () => null;

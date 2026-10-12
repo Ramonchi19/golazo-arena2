@@ -11,8 +11,10 @@ const CARDS={
   tornado:{name:'Tornado',cost:4,icon:'🌪️',target:true,r:2.6},
   meteorito:{name:'Meteorito',cost:6,icon:'☄️',target:true,r:6.5},
   lodo:{name:'Lodo',cost:2,icon:'🟤',target:true,r:3.2},
-  muro:{name:'Muro',cost:3,icon:'🧱',target:true,r:3.6},
-  barril:{name:'Barril',cost:3,icon:'🛢️',target:true,r:1.3},
+  enredadera:{name:'Enredadera',cost:2,icon:'🌿',target:true,r:3.4},
+  rafaga:{name:'Ráfaga',cost:3,icon:'💨',target:true,r:3.2,dir:true},
+  iman:{name:'Imán',cost:4,icon:'🧲',target:false},
+  bolapicos:{name:'Bola de picos',cost:5,icon:'🦔',target:true,r:1.4,dir:true},
 };
 const FORMS={
  diamante:{n:'Diamante',t:'1-2-1',s:[{x:-16,z:0,r:'DEF'},{x:-9,z:-8,r:'MED'},{x:-9,z:8,r:'MED'},{x:-3,z:0,r:'DEL'}]},
