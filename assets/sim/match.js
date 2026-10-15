@@ -124,7 +124,7 @@ function contestBall(dt){
     if(doc<1.15){o.pressT2=(o.pressT2||0)+dt;if(o.pressT2>.7)rate+=.35*(o.defMul||1);}else o.pressT2=0;
     rate*=(1-(c.dodge||0));
     if(rate>0&&Math.random()<rate*dt){take(o);c.stun=Math.max(c.stun,.25);c.vx*=.4;c.vz*=.4;c.charging=false;
-      popText(Math.random()<.5?'¡Robo!':'¡Se la quitó!',o.x,2.5,o.z,'#bff');sfx('hit');return;}
+      popText(Math.random()<.5?'¡Robo!':'¡Se la quitó!',o.x,2.5,o.z,'#bff');sfx('steal');return;}
   }
 }
 
@@ -317,7 +317,7 @@ function resolveSave(k,G_){
   else{ball.vx=-ball.vx*rand(.2,.35);ball.vz=out*rand(4,8)*(s>27?.8:1);ball.vy=rand(1.5,4.5);k.saveKind='desvio';popText(big?'¡ATAJADÓN!':'¡Qué mano!',k.x,2.7,k.z,'#fff',big?20:16);}
   k.saveT=.7;k.saveY=y;k.saveZ=cz-k.z;if(!diving&&!down){k.blockT=Math.max(k.blockT||0,.45);k.catchY=y;}
   ball.lastTeam=k.team;ball.super=false;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;settle();
-  sfx('catch');if(!fb('impacto',ball.x,ball.y,ball.z,big?3.2:2,.35))burst(ball.x,ball.y,ball.z,0xffffff,10,5);if(big)bigSave();
+  sfx(k.saveKind==='travesano'||k.saveKind==='punta'||k.saveKind==='desvio'?'punch':'catch');if(!fb('impacto',ball.x,ball.y,ball.z,big?3.2:2,.35))burst(ball.x,ball.y,ball.z,0xffffff,10,5);if(big)bigSave();
 }
 function catchBall(k){k.catchY=ball.y;if(ball.y>1.75&&k.dive<=0)k.highT=.45;else if(k.dive<=0)k.blockT=.5;ball.gk=k;ball.owner=null;k.hold=(k.team===0||H1)?2.2:rand(.55,.95);if(k.dive>0||k.plan==='estirada')k.hold=Math.max(k.hold,rand(1.35,1.6));/* v77: tiempo para levantarse con el balón */k.distrib=null;ball.super=false;ball.passTo=null;ball.cross=false;ball.vx=ball.vy=ball.vz=0;sfx('catch');}
 function gkTargets(k,dir){
@@ -560,7 +560,7 @@ function applyStats(p){
   p.passErr=Math.max(0,(90-S('pas'))*.004);p.defReach=.85+S('def')*.003;p.defMul=.6+S('def')*.008;
   p.fisMul=.7+S('fis')*.006;p.knockRes=1.3-S('fis')*.006;p.aereo=!!(c&&c.trait==='aereo');p.keepMul=1;p.reachMul=1;p.salMul=1;
 }
-function launch(p,vy){p.flyVy=vy;p.flyY=Math.max(p.flyY||0,.01);p.flySpin=rand(7,12)*(Math.random()<.5?1:-1);p.flyRot=0;}
+function launch(p,vy){if(vy>=3&&!(p.flyY>.05))sfx('knock');p.flyVy=vy;p.flyY=Math.max(p.flyY||0,.01);p.flySpin=rand(7,12)*(Math.random()<.5?1:-1);p.flyRot=0;}
 
 // ================== v64: PODERES (lógica; el dibujo lo hacen las funciones vx*() del juego) ==================
 function updatePowers(dt){
@@ -639,7 +639,7 @@ function castSpell(k,team,x,z){
     vic.forEach((p,n)=>effects.push({type:'strike',t:.4+n*.22,p,team,S}));
     shakeAmt=Math.max(shakeAmt,.4);}
   else if(k==='hielo'){iceSpikes(x,z,CARDS.hielo.r*S,6*S);sfx('slip');fb('hielo',x,1.4,z,CARDS.hielo.r*S*1.7,.75);fb('onda',x,.12,z,CARDS.hielo.r*S*2.3,.5,{ground:true,tint:0xbff0ff});const r=CARDS.hielo.r*S,m=vxIceZone(x,z,r);zones.push({x,z,r,team,life:2.8*S,mesh:m,kind:'hielo'});
-    {let n=0;for(const p of opp){if(p.star>0||Math.hypot(p.x-x,p.z-z)>r)continue;p.frozen=Math.max(p.frozen||0,(p.gk?1.8:2.8)*S);p.stun=0;p.act=null;p.charging=false;p.vx=p.vz=0;if(ball.owner===p)loseBall(p,0,0);vfx('freeze',p,p.frozen);n++;}if(n)popText(n>1?'¡Congelados!':'¡Congelado!',x,2.6,z,'#bff3ff',22);}burst(x,.5,z,0xdff7ff,16,6);psfx('hielo');sfx('slip');}
+    {let n=0;for(const p of opp){if(p.star>0||Math.hypot(p.x-x,p.z-z)>r)continue;p.frozen=Math.max(p.frozen||0,(p.gk?1.8:2.8)*S);p.stun=0;p.act=null;p.charging=false;p.vx=p.vz=0;if(ball.owner===p)loseBall(p,0,0);vfx('freeze',p,p.frozen);n++;}if(n){popText(n>1?'¡Congelados!':'¡Congelado!',x,2.6,z,'#bff3ff',22);psfx('congelar');}}burst(x,.5,z,0xdff7ff,16,6);psfx('hielo');sfx('slip');}
   else if(k==='turbo'){turboTrails(team,5*S);for(const p of fieldOf(team)){p.star=5*S;burst(p.x,1,p.z,0xffe14d,10,5);}popText('¡Turbo!',x,2,z,'#ffe14d',22);psfx('turbo');sfx('power');}
   else if(k==='escudo'){if(!(shield[team]>0))shieldDome(team);shield[team]=7*S;const g=keeperOf(team);fb('onda',g.x,1.3,g.z,5,.7,{tint:0x9fe8ff});popText('¡Escudo!',g.x,2.8,g.z,'#7fe8ff',20);psfx('escudo');sfx('power');}
   else if(k==='punetazo'){let tgt=null,bd=CARDS.punetazo.r*S;for(const p of opp){const dd=Math.hypot(p.x-x,p.z-z);if(dd<bd){bd=dd;tgt=p;}}

@@ -96,8 +96,8 @@
           if (ball.y > GH - BR) { ball.y = GH - BR; ball.vy = -Math.abs(ball.vy) * .3; }
         } else if (xs < L + .3 && !inMouth) {
           const nearPost = Math.abs(Math.abs(ball.z) - GW) < .5 && ball.y < GH + .3, nearBar = Math.abs(ball.z) < GW + .3 && Math.abs(ball.y - GH) < .5;
-          ball.x = s * (L - BR); ball.vx = -ball.vx * (nearPost || nearBar ? .7 : .6);
-          if (nearPost || nearBar) { F.post(ball, nearBar); ball.tried = [false, false]; }
+          ball.x = s * (L - BR); const hv = Math.abs(ball.vx); ball.vx = -ball.vx * (nearPost || nearBar ? .7 : .6);
+          if (nearPost || nearBar) { F.post(ball, nearBar); ball.tried = [false, false]; } else if (hv > 10 && F.zap) F.zap(ball.x, ball.y, ball.z);   // v99: rebote en la pared del fondo
           else if (hs > 10) F.wide(s * L, ball);
         }
       }

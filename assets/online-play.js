@@ -107,7 +107,7 @@ function endOnline(m){if(!O||O.ended)return;O.ended=true;
   if(m.motivo==='abandono'||m.motivo==='rival_no_llego')say(won?'Tu rival abandonó: ¡ganas!':'Abandonaste el partido');
   try{tensEl.classList.remove('on','fast');clockEl.classList.remove('hot');}catch(e){}
   state='end';selCard=-1;ghost=null;try{updateSel();}catch(e){}
-  sfx('whistle');crowdStop(false);
+  if(!crowdShot('fx_buzzend',.65))sfx('whistle');crowdStop(false);
   H1=false;CTRL_LOCK[1]=false;window.ONLINE=null;const ws=O.ws;O=null;try{ws.close();}catch(e){}
   onMatchEnd(a,b,false);
 }
