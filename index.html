@@ -830,7 +830,7 @@ const SFX={
 };
 function sfx(n){if(AC&&AC.currentTime<pwQuiet&&(n==='boom'||n==='zap'||n==='slip'||n==='power'||n==='super'))return;
   if(n==='whistle'&&CRB.whistle&&CRB.whistle.length){crowdShot('whistle',.42,.3);return;}
-  if(state==='play'){if(n==='hit'||n==='boom'||n==='super'||n==='zap')crowdShot('whoa',.36,2.2);}   // v103: el público vuelve a reaccionar (sin el lamento "uuuh")
+  // v107: sin "uuuh" ni "wow" del público durante el partido
   if(n==='hit'||n==='boom'||n==='zap')vib(n==='boom'?70:35);
   {const R=FXREC[n];if(R&&AC&&!muted&&CRB[R[0]]&&CRB[R[0]].length){if(crowdShot(R[0],R[1],R[2]||0))return;if(R[3])return;}}
   try{SFX[n]&&SFX[n]();}catch(e){}}
