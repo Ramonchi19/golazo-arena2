@@ -136,7 +136,7 @@ function pass(p,m,mult){
   if(cine&&cine.p===p)return;
   if(qKick(p,'pass',[p,m,mult]))return;
   release(p);const t=d2(p,m)/16,tx=m.x+m.vx*t*.8,tz=m.z+m.vz*t*.8;
-  const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(clamp(l*1.45+13,16,30)*(mult||1),11,36);
+  const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(clamp(l*1.45+13,16,30)*(mult||1),11,36)*1.12;   /* v103: balón más rápido */
   const ea=rand(-1,1)*p.passErr,ca=Math.cos(ea),sa=Math.sin(ea);ball.vx=(dx*ca-dz*sa)/l*sp;ball.vz=(dx*sa+dz*ca)/l*sp;ball.vy=1.2;ball.passTo=m;ball.cross=false;ball.super=false;faceTo(p,dx,dz);p.kickPow=.55;sfx('pass');lastKickPow=.5;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,4,3);
   setCtrl(p.team,m);
 }
@@ -182,7 +182,7 @@ function shoot(p,power,kind,aim){
   const tx=d*(L+1),dx=tx-ball.x,dz=az-ball.z,l=Math.hypot(dx,dz);
   // v67: el súper tiro es letal de cerca y pierde fuerza con la distancia (desde media cancha es un tiro fuerte normal)
   const head=kind==='¡Cabezazo!';
-  const sp=(sup?44-clamp(l-18,0,26)*.7:(kind?(head?21:26):19+power*18))*p.shotMul*(perfect?1.12:1)*(sup?1:qSp),t=l/sp,g=sup?GRAV*(.15+clamp(l-18,0,26)*.02):GRAV;
+  const sp=(sup?44-clamp(l-18,0,26)*.7:(kind?(head?21:26):19+power*18))*p.shotMul*(perfect?1.12:1)*(sup?1:qSp)*1.1,t=l/sp,g=sup?GRAV*(.15+clamp(l-18,0,26)*.02):GRAV;
   ball.vx=dx/t;ball.vz=dz/t;ball.vy=(ay-ball.y)/t+.5*g*t;
   if(l>24&&!sup){const e=(l-24)*.09;ball.vz+=rand(-e,e)*sp/l*4;}
   ball.super=sup;ball.shotInfo={team,dist:l,press,turned:_tf,perfect,sup};ball.passTo=null;ball.cross=false;faceTo(p,dx,dz);p.kickPow=sup?1.15:1;
@@ -228,7 +228,7 @@ function passAim(p,pw,dir){
   const m=coneMate(p,dir,.6);
   if(m){pass(p,m,pw==null?1:.65+pw*.7);return;}
   const dist=5+(pw==null?.45:pw)*20,tx=clamp(p.x+dir.x*dist,-L+1,L-1),tz=clamp(p.z+dir.z*dist,-HW+1,HW-1);
-  release(p);const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(l*1.25+8,11,28);
+  release(p);const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(l*1.25+8,11,28)*1.12;
   ball.vx=dx/l*sp;ball.vz=dz/l*sp;ball.vy=1;ball.cross=false;ball.super=false;faceTo(p,dx,dz);p.kickPow=.55;sfx('pass');lastKickPow=.5;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,4,3);
   const r=nearestMateTo(p,tx,tz,9);ball.passTo=r;if(r)setCtrl(p.team,r);
 }

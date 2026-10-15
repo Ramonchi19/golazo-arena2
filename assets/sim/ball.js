@@ -80,7 +80,7 @@
     ball.vy -= g * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt; ball.z += ball.vz * dt;
     if (ball.y < BR) {
       ball.y = BR;
-      if (ball.vy < -2.5) { F.squash(Math.min(.12, -ball.vy * .009)); ball.vy = -ball.vy * .55; if (ball.vy > 3) F.bounce(ball.x, ball.z); }
+      if (ball.vy < -2.5) { const iv = -ball.vy; F.squash(Math.min(.12, iv * .009)); ball.vy = -ball.vy * .55; if (iv > 7 && F.land) F.land(ball.x, ball.z, iv); else if (ball.vy > 3) F.bounce(ball.x, ball.z); }   // v103: cae de alto = pasto y tierra
       else ball.vy = 0;
     }
     const onG = ball.y <= BR + .01, hs = Math.hypot(ball.vx, ball.vz);
