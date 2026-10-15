@@ -830,7 +830,7 @@ const SFX={
 };
 function sfx(n){if(AC&&AC.currentTime<pwQuiet&&(n==='boom'||n==='zap'||n==='slip'||n==='power'||n==='super'))return;
   if(n==='whistle'&&CRB.whistle&&CRB.whistle.length){crowdShot('whistle',.42,.3);return;}
-  if(state==='play'){if(n==='post')crowdShot('oooh',.5,1.5);else if(n==='catch')crowdShot('oooh',.34,2.5);else if(n==='hit'||n==='boom'||n==='super'||n==='zap')crowdShot('whoa',.3,2.2);}
+  // v102: sin lamentos del público (uuuh / whoa) durante el partido
   if(n==='hit'||n==='boom'||n==='zap')vib(n==='boom'?70:35);
   {const R=FXREC[n];if(R&&AC&&!muted&&CRB[R[0]]&&CRB[R[0]].length){if(crowdShot(R[0],R[1],R[2]||0))return;if(R[3])return;}}
   try{SFX[n]&&SFX[n]();}catch(e){}}
@@ -956,7 +956,7 @@ function drawFieldTex(th){
   g.strokeStyle=th.line;g.fillStyle=th.line;g.lineWidth=PX*.18;g.shadowColor=th.line;g.shadowBlur=2;
   g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,Math.PI*2);g.stroke();g.beginPath();g.arc(X(0),Z(0),PX*.3,0,Math.PI*2);g.fill();
-  for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);
+  for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-8.6),9*PX,17.2*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);
     g.beginPath();g.arc(X(s*(L-7)),Z(0),PX*.3,0,Math.PI*2);g.fill();g.beginPath();if(s>0)g.arc(X(L-7),Z(0),5*PX,Math.PI-.93,Math.PI+.93);else g.arc(X(-L+7),Z(0),5*PX,-.93,.93);g.stroke();
     for(const zz of [-1,1]){g.beginPath();g.arc(X(s*L),Z(zz*HW),PX*1,s>0?(zz>0?Math.PI:Math.PI*1.5):(zz>0?Math.PI*1.5:0),s>0?(zz>0?Math.PI*1.5:Math.PI*2):(zz>0?Math.PI*2:Math.PI*.5));g.stroke();}}
   g.shadowBlur=0;
@@ -1669,8 +1669,8 @@ function voxSay(p,a,prio,chance){if(!p||!p.card||!AC||muted||!VOX.buf[p.card.id]
   const L=VOX.buf[p.card.id][a];if(!L||!L.length)return false;const now=AC.currentTime;
   if(prio<2&&now<VOX.until)return false;if(prio<2&&(p._voxT||0)>now)return false;
   const key=p.card.id+a;let c=L.filter(x=>x.n!==VOX.last[key]);if(!c.length)c=L;const pick=c[Math.floor(Math.random()*c.length)];VOX.last[key]=pick.n;
-  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=pick.buf;g.gain.value=(p.team===0?1:.78)*(prio>1?1.1:1);s.connect(g);g.connect(voxBus());s.start();
-  VOX.until=now+pick.buf.duration*.85;p._voxT=now+pick.buf.duration+2.2;return true;}
+  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=pick.buf;g.gain.value=(p.team===0?1.35:1.05)*(prio>1?1.1:1);s.connect(g);g.connect(voxBus());s.start();
+  VOX.until=now+pick.buf.duration*.6;p._voxT=now+pick.buf.duration+2.2;return true;}
 function voxTick(){if(!AC||!players.length)return;
   const own=ball.owner||null;
   if(VOX.prev===null){VOX.prev=own;VOX.sc=score.slice();for(const p of players)VOX.st.set(p,{stun:p.stun>0,fly:p.flyY>0,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0});return;}
@@ -1678,19 +1678,21 @@ function voxTick(){if(!AC||!players.length)return;
   // quitó / perdió el balón (robo directo o lo dejó suelto y el rival lo agarró enseguida)
   if(own&&own!==prev){
     let victim=null;if(prev&&prev.team!==own.team)victim=prev;else if(!prev&&VOX.lostBy&&VOX.lostBy.team!==own.team&&T-VOX.lostT<1.4)victim=VOX.lostBy;
-    if(victim){voxSay(victim,'lost',1,.9);setTimeout(()=>voxSay(own,'steal',1,.85),350);}
-    VOX.lostBy=null;}
+    if(victim){if(!VOX.saidLost)voxSay(victim,'lost',1);setTimeout(()=>voxSay(own,'steal',2),380);}
+    else if(!prev&&ball.lastTeam!==undefined&&own.team!==VOX.lastTeam&&VOX.lastTeam!=null)voxSay(own,'steal',1,.5);   // intercepta un pase
+    VOX.lostBy=null;VOX.saidLost=false;}
+  if(own)VOX.lastTeam=own.team;
   if(!own&&prev){
-    if(ball.isShot||prev.kickT>0){if(ball.isShot){VOX.shooter=prev;if(ball.super)voxSay(prev,'super',2);else voxSay(prev,'shot',1,.55);}}
-    else{VOX.lostBy=prev;VOX.lostT=T;}}
+    if(ball.isShot||prev.kickT>0){if(ball.isShot){VOX.shooter=prev;if(ball.super)voxSay(prev,'super',2);else voxSay(prev,'shot',1,.9);}}
+    else{VOX.lostBy=prev;VOX.lostT=T;VOX.saidLost=players.some(o=>o.team!==prev.team&&!o.gk&&Math.hypot(o.x-prev.x,o.z-prev.z)<3.5)&&voxSay(prev,'lost',1);}}   // se la tumbaron: se queja de una vez
   VOX.prev=own;
   // gol: festeja el que tiró
   for(const t of [0,1])if(score[t]>VOX.sc[t]){const sh=VOX.shooter;if(sh&&sh.team===t)setTimeout(()=>voxSay(sh,'goal',2),450);VOX.shooter=null;}
   VOX.sc=score.slice();
   // golpes, congelado y atajadas
-  for(const p of players){const o=VOX.st.get(p)||{};const n={stun:p.stun>.3,fly:p.flyY>.05,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0};
+  for(const p of players){const o=VOX.st.get(p)||{};const n={stun:p.stun>.2,fly:p.flyY>.05,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0};
     if(n.fr&&!o.fr)voxSay(p,'frozen',1);
-    else if((n.fly&&!o.fly)||(n.stun&&!o.stun&&!n.fr))voxSay(p,'hit',1,.75);
+    else if((n.fly&&!o.fly)||(n.stun&&!o.stun&&!n.fr))voxSay(p,'hit',1);
     if(p.gk&&n.sv&&!o.sv&&p.saveKind&&p.saveKind!=='fallo')voxSay(p,'save',1,.8);
     VOX.st.set(p,n);}
 }
@@ -1848,7 +1850,7 @@ const SFX_BALL={
   runOver:u=>{burst(u.x,1,u.z,0xffb000,14,7);shakeAmt=.5;hitstop=.05;popText('¡ARROLLADO!',u.x,2.4,u.z,'#ffcc33');sfx('hit');},
   zap:(x,y,z)=>{zapFx(x,y,z);sfx('wall');},
   post:(b,bar)=>{sfx('post');sfx('hit');hitstop=Math.max(hitstop,.06);shakeAmt=Math.max(shakeAmt,.5);burst(b.x,b.y,b.z,0xffffff,12,7);vib(30);popText(bar?'¡Travesaño!':'¡Poste!',b.x,3,b.z,'#fff');},
-  wide:(x,b)=>{zapFx(x,b.y,b.z);if(Math.abs(b.z)<GW+2.8)crowdShot('oooh',.45,1.5);},
+  wide:(x,b)=>{zapFx(x,b.y,b.z);},
   sfx:n=>sfx(n)};
 const SIMW={get ball(){return ball;},get players(){return players;},get zones(){return zones;},get walls(){return walls;},get score(){return score;},get energy(){return energy;},
   fx:SFX_BALL,knock:(o,dx,dz,pw,st)=>knock(o,dx,dz,pw,st),onGoal:t=>goal(t)};
