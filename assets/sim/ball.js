@@ -7,10 +7,23 @@
   const SIM = G.SIM || (G.SIM = {});
 
   // Medidas de la cancha y del balón (iguales en cliente y servidor)
-  const C = SIM.C = { L: 32, HW: 16, GW: 4.8, GH: 3.3, BR: .40, GRAV: 24, RUN: 9.4 };
+  const C = SIM.C = { L: 32, HW: 16, GW: 4.8, GH: 3.3, BR: .40, GRAV: 24, RUN: 9.4, CR: 7 };   // CR: radio de las esquinas redondeadas (v100)
   const { L, HW, GW, GH, BR, GRAV, RUN } = C;
   const clamp = SIM.clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   SIM.rand = (a, b) => a + Math.random() * (b - a);
+  // v100: esquinas redondeadas tipo hockey. Si el objeto (radio rad) se sale por la curva, lo regresa y devuelve
+  // la normal hacia afuera y qué tan rápido iba contra la pared; e = cuánto rebota (0 = nada, 1 = todo)
+  SIM.corner = (o, rad, e) => {
+    const cx = L - C.CR, cz = HW - C.CR, ax = Math.abs(o.x), az = Math.abs(o.z);
+    if (ax <= cx || az <= cz) return null;
+    const dx = ax - cx, dz = az - cz, d = Math.hypot(dx, dz), lim = C.CR - rad;
+    if (d <= lim) return null;
+    const nx = dx / d * Math.sign(o.x), nz = dz / d * Math.sign(o.z);
+    o.x -= nx * (d - lim); o.z -= nz * (d - lim);
+    const vn = (o.vx || 0) * nx + (o.vz || 0) * nz;
+    if (vn > 0 && e != null) { o.vx -= (1 + e) * vn * nx; o.vz -= (1 + e) * vn * nz; }
+    return { nx, nz, vn };
+  };
 
   const NOFX = new Proxy({}, { get: () => () => {} });
   const fxOf = W => W.fx || NOFX;
@@ -56,6 +69,7 @@
     ball.x += ball.vx * dt; ball.z += ball.vz * dt; ball.y = BR; ball.vy = 0;
     if (Math.abs(ball.z) > HW - BR) { ball.z = Math.sign(ball.z) * (HW - BR); ball.vz *= -.5; }
     if (Math.abs(ball.x) > L - BR) { ball.x = Math.sign(ball.x) * (L - BR); ball.vx *= -.5; }
+    SIM.corner(ball, BR, .5);
     if (Math.hypot(ball.x - p.x, ball.z - p.z) > 3.2) { ball.owner = null; ball.lastTeam = p.team; ball.passTo = null; ball.tried = [false, false]; p.pcd = .3; }
   };
 
@@ -86,6 +100,7 @@
     }
     if (ball.z > HW - BR) { ball.z = HW - BR; ball.vz = -Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, HW); }
     if (ball.z < -HW + BR) { ball.z = -HW + BR; ball.vz = Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, -HW); }
+    { const k = SIM.corner(ball, BR, .75); if (k && k.vn > 10) F.zap(ball.x, ball.y, ball.z); }
     for (const s of [1, -1]) {
       const xs = ball.x * s;
       if (xs > L - BR) {

@@ -44,23 +44,23 @@ const css=document.createElement('style');css.textContent=`
 #login .lg-logo b{font-weight:400;font-size:clamp(52px,17vw,96px);background:linear-gradient(#fff6b8 0,#ffd23a 45%,#f39a12 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:5px #3a1d00;paint-order:stroke fill;filter:drop-shadow(0 5px 0 #3a1d00)}
 #login .lg-logo i{font-style:normal;margin-top:6px;font-size:clamp(24px,8vw,44px);letter-spacing:6px;padding:3px 18px 5px 24px;background:linear-gradient(#3d7bff,#1f4cc4);border:4px solid #0b1a3d;border-radius:12px;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill;box-shadow:0 5px 0 #0b1a3d;transform:rotate(-2deg);color:#fff}
 #login .mpanel{width:100%;max-width:360px;padding:16px 14px;text-align:center}
-#login .lg-sub{font-family:system-ui,sans-serif;font-size:13px;color:#d6e2ff;margin:0 0 12px}
+#login .lg-sub{font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:13px;color:#d6e2ff;margin:0 0 12px}
 #login .btn{width:100%;margin:0 0 10px}
 #login .btn.gg{background:#fff;color:#1f2a44;-webkit-text-stroke:0}
 #login .btn.gg svg{width:22px;height:22px;flex:none}
 #login form{display:flex;flex-direction:column;gap:8px;margin:2px 0 6px;text-align:left}
-#login input{width:100%;font-family:system-ui,sans-serif;font-size:16px;padding:11px 12px;border-radius:11px;border:3px solid #0a1636;background:#0f2659;color:#fff;box-sizing:border-box}
+#login input{width:100%;font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:16px;padding:11px 12px;border-radius:11px;border:3px solid #0a1636;background:#0f2659;color:#fff;box-sizing:border-box}
 #login input::placeholder{color:#8ea6dd}
 #login .lg-row{display:flex;gap:8px}#login .lg-row .btn{margin:0}
-#login .lg-link{background:none;border:0;color:#ffe066;font-family:system-ui,sans-serif;font-size:13px;text-decoration:underline;padding:6px;cursor:pointer}
-#login .lg-msg{min-height:1.2em;font-family:system-ui,sans-serif;font-size:13px;color:#ffd0d4;margin:4px 0 0}
+#login .lg-link{background:none;border:0;color:#ffe066;font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:13px;text-decoration:underline;padding:6px;cursor:pointer}
+#login .lg-msg{min-height:1.2em;font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:13px;color:#ffd0d4;margin:4px 0 0}
 #login .lg-msg.ok{color:#b9ffcf}
-#login .lg-or{display:flex;align-items:center;gap:8px;font-family:system-ui,sans-serif;font-size:12px;color:#b8c8f0;margin:2px 0 10px}
+#login .lg-or{display:flex;align-items:center;gap:8px;font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:12px;color:#b8c8f0;margin:2px 0 10px}
 #login .lg-or:before,#login .lg-or:after{content:'';flex:1;height:2px;background:rgba(255,255,255,.18);border-radius:2px}
 #login .lg-wait{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:18px;padding:8px 0}
 #login .lg-wait .sp{font-size:40px;animation:lgSpin 1s linear infinite}
 @keyframes lgSpin{to{transform:rotate(360deg)}}
-.set .acc{font-family:system-ui,sans-serif;font-size:12px;color:var(--muted,#b8c8f0);word-break:break-all}
+.set .acc{font-family:'Lilita One',"Arial Rounded MT Bold",sans-serif;letter-spacing:.2px;font-size:12px;color:var(--muted,#b8c8f0);word-break:break-all}
 `;document.head.appendChild(css);
 
 const G_ICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';

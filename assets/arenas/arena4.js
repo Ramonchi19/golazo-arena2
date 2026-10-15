@@ -51,7 +51,7 @@ function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas
     g.fillStyle='rgba(70,50,50,.10)';g.fillRect(x0+1.5,y0+S-4.5,S-3,3);g.fillRect(x0+S-4.5,y0+1.5,3,S-3);
     for(let k=0;k<3;k++){g.fillStyle=Math.random()<.5?'rgba(80,60,60,.04)':'rgba(255,255,255,.035)';g.beginPath();g.arc(x0+Math.random()*S,y0+Math.random()*S,4+Math.random()*10,0,7);g.fill();}}
   g.strokeStyle='rgba(246,232,206,.92)';g.lineWidth=PX*.22;
-  g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
+  (window.GZ_RR?GZ_RR(g,X(-L),Z(-HW),2*L*PX,2*HW*PX,(SIM.C.CR||0)*PX):g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX));g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
   for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}

@@ -454,6 +454,7 @@ function movePlayer(p,dt){
   const lim=L-.45;
   if(p.x>lim){p.x=lim;if(p.vx>7&&Math.abs(p.z)>GW)hit=true;p.vx=-Math.abs(p.vx)*.4;}
   if(p.x<-lim){p.x=-lim;if(p.vx<-7&&Math.abs(p.z)>GW)hit=true;p.vx=Math.abs(p.vx)*.4;}
+  {const k=SIM.corner(p,.5,.4);if(k&&k.vn>7)hit=true;}   /* v100: esquinas redondeadas */
   if(hit&&!p.gk&&p.zapcd<=0&&p.star<=0&&(p.stun>0||p.act))zapPlayer(p);
 }
 function startAct(p,type,dx,dz){
@@ -764,7 +765,7 @@ function updatePowers2(dt){
       vfx('magnetUpd',e,tgt,dt);
       if(e.life<=0||(ball.owner&&ball.owner.team===e.team)){e.done=true;vxRemove(e.mesh);}continue;}
     if(e.type==='spike'){e.life-=dt;e.x+=e.vx*dt;e.z+=e.vz*dt;let b=false;
-      if(Math.abs(e.x)>L-.9){e.x=Math.sign(e.x)*(L-.9);e.vx=-e.vx;b=true;}if(Math.abs(e.z)>HW-.9){e.z=Math.sign(e.z)*(HW-.9);e.vz=-e.vz;b=true;}
+      if(Math.abs(e.x)>L-.9){e.x=Math.sign(e.x)*(L-.9);e.vx=-e.vx;b=true;}if(Math.abs(e.z)>HW-.9){e.z=Math.sign(e.z)*(HW-.9);e.vz=-e.vz;b=true;}if(SIM.corner(e,.9,1))b=true;
       if(b){e.bounces++;e.hit.clear();fb('polvo',e.x,.6,e.z,2.4,.5);shakeAmt=Math.max(shakeAmt,.35);sfx('hit');}
       vfx('spikeUpd',e,dt);if(Math.random()<.5)part(e.x,.1,e.z,rand(-1,1),rand(.5,2),rand(-1,1),0xc8d6a0,.4,6,rand(.6,1));
       for(const p of players){if(p.team===e.team||e.hit.has(p)||p.star>0)continue;if(Math.hypot(p.x-e.x,p.z-e.z)<e.r+.5){e.hit.add(p);const sp=Math.hypot(e.vx,e.vz)||1;

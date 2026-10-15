@@ -51,11 +51,11 @@ function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas
   for(let k=0;k<900;k++){const edge=Math.random()<.7;let x=Math.random()*W,y=edge?(Math.random()<.5?Math.random()*PX*9:H-Math.random()*PX*9):Math.random()*H;
     g.save();g.translate(x,y);g.rotate(Math.random()*6.28);g.fillStyle=pickC(LC);g.globalAlpha=.55+Math.random()*.3;g.beginPath();g.ellipse(0,0,PX*.22,PX*.11,0,0,7);g.fill();g.restore();}
   g.globalAlpha=1;g.strokeStyle='rgba(236,232,210,.88)';g.lineWidth=PX*.22;
-  g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX);g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
+  (window.GZ_RR?GZ_RR(g,X(-L),Z(-HW),2*L*PX,2*HW*PX,(SIM.C.CR||0)*PX):g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX));g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
   for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-11),9*PX,22*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
-const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex(),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-4}));
+const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
 (function(){const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.fillStyle='#55772f';g.fillRect(0,0,S,S);
   for(let i=0;i<300;i++){g.fillStyle=pickC(['rgba(90,120,50,.4)','rgba(60,90,35,.4)','rgba(170,110,50,.35)']);g.beginPath();g.arc(Math.random()*S,Math.random()*S,4+Math.random()*20,0,7);g.fill();}
