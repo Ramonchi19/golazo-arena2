@@ -140,6 +140,12 @@
       for (const el of L.querySelectorAll('.nat[data-nat]')) if (el.offsetParent !== null && !el.classList.contains('nat-off')) return el;
       return null;
     }
+    const inGame = () => { try { return typeof gameOn !== 'undefined' && gameOn; } catch (e) { return false; } };
+    async function destroyAll() {
+      if (!feeds.size) return;
+      const all = [...feeds.values()]; feeds.clear(); paused = false;
+      for (const f of all) { try { f.el = null; f.feed && await f.feed.destroy(); } catch (e) {} }
+    }
     async function setPaused(p) {
       if (p === paused) return; paused = p;
       for (const f of feeds.values()) { if (!f.feed) continue; try { p ? await f.feed.pause() : f.feed.resume(); } catch (e) {} }
@@ -165,6 +171,8 @@
     async function sync() {
       if (!on || syncing) return; syncing = true;
       try {
+        // v122: en el partido no queda NINGÚN anuncio vivo (el gestor de Google mide la pantalla en cada toque y eso daba tirones)
+        if (inGame()) { await destroyAll(); return; }
         if (holds > 0) { await setPaused(true); return; }
         const el = visibleSlot();
         if (!el) { await setPaused(true); return; }
@@ -190,9 +198,9 @@
       el.innerHTML = `<div class="nat-mock"><span class="nat-ad">Anuncio</span><div class="nat-row"><i class="nat-ic"></i><div><b>Nombre del anunciante</b><small>Texto del anuncio de Google, se adapta a los colores del juego</small></div></div>${el.classList.contains('nat-s') ? '' : '<div class="nat-media"></div>'}<span class="nat-cta">Instalar</span></div>`;
     }
     function scan() { if (on) return; document.querySelectorAll('.nat[data-nat]').forEach(webMock); }
-    const kick = () => { if (timer) return; timer = setTimeout(() => { timer = 0; scan(); sync(); }, 300); };
+    const kick = () => { if (timer || (inGame() && !feeds.size)) return; timer = setTimeout(() => { timer = 0; scan(); sync(); }, 300); };
     // revisa seguido: ventanas, sobres y partidos cambian lo que hay encima
-    setInterval(() => { if (on) sync(); }, 1200);
+    setInterval(() => { if (on && (!inGame() || feeds.size)) sync(); }, 1200);
     if (typeof MutationObserver !== 'undefined') {
       const mo = new MutationObserver(kick);
       const start = () => { const b = document.body; if (b) mo.observe(b, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }); };

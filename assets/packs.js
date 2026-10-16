@@ -23,6 +23,11 @@ const css=`
 .pack2 .pk-ls{background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.2) 56%,transparent 64%) -150% 0/300% 100% no-repeat;mix-blend-mode:screen;animation:pkLs 3.4s ease-in-out infinite}
 @keyframes pkLs{0%,35%{background-position:-150% 0}75%,100%{background-position:150% 0}}
 @media (prefers-reduced-motion:reduce){.pack2 .pk-ls{animation:none}}   /* v110: logo en los sobres */
+/* v122: el brillo que recorre el logo y el holograma solo se animan en los sobres grandes (abrir, tienda en ventana, sobre listo); en las listas se quedan quietos para que todo vaya fluido */
+.pack2 .pk-ls,.pack2 .pk-holo,.pack2 .pk-shine{animation:none}
+#modal .pack2 .pk-ls,.po2 .pack2 .pk-ls,.pslot.ps-listo .pack2 .pk-ls{animation:pkLs 3.4s ease-in-out infinite}
+#modal .pack2 .pk-holo,.po2 .pack2 .pk-holo{animation:pk2holo 5s linear infinite}
+#modal .pack2 .pk-shine,.po2 .pack2 .pk-shine,.pslot.ps-listo .pack2 .pk-shine{animation:pk2shine 3.4s ease-in-out infinite}
 .pack2 .pk-emb{position:relative;z-index:1;width:54%;margin-top:3%;filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
 .pack2 .pk-emb svg{width:100%;display:block}
 .pack2 .pk-n{position:relative;z-index:1;margin-top:4%;font-size:clamp(8px,2.4vw,13px);letter-spacing:1px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
