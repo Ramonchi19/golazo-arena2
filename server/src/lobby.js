@@ -1,8 +1,9 @@
 // Wild Strikers · fila de búsqueda (lógica pura; index.js la conecta con WebSockets)
-// Empareja por copas como Clash: empieza buscando ±100 y el rango se abre con el tiempo.
+// v117: empareja por copas en una ventana FIJA de 100 (50 arriba y 50 abajo). El rango no se abre con el tiempo.
 // Si nadie aparece en BOT_MS, se le da un bot de su nivel (el teléfono juega contra la IA).
-export const BOT_MS = 18000;
-export const rangeFor = ms => Math.min(800, 100 + Math.floor(ms / 1000) * 50);
+export const BOT_MS = 20000;   // 20 s buscando rival real; si no hay, bot de su nivel
+export const RANGE = 50;
+export const rangeFor = () => RANGE;
 
 export class LobbyCore {
   constructor(hooks) {

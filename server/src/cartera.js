@@ -106,7 +106,7 @@ const pub = E => { const o = Object.assign({}, E); delete o.mt; delete o.wh; del
 // cambios a mano desde la consola de Firebase: escribe en players/{uid} un mapa "ajuste" (por ejemplo ajuste: {gold: 5000, gems: 300, n: 1}).
 // Se aplica una sola vez cuando el jugador entra; para volver a aplicarlo cambia cualquier valor (por ejemplo n: 2).
 const ADJ = ["gold", "gems", "trophies", "maxTrophies", "xp", "lvl"];
-function applyAdj(E, adj) { let n = 0; for (const k of ADJ) if (adj && typeof adj[k] === "number" && isFinite(adj[k])) { E[k] = Math.max(0, Math.floor(adj[k])); n++; } if (n) E.maxTrophies = Math.max(E.maxTrophies, E.trophies); return n; }
+function applyAdj(E, adj) { let n = 0; for (const k of ADJ) if (adj && typeof adj[k] === "number" && isFinite(adj[k])) { E[k] = Math.max(0, Math.floor(adj[k])); n++; } ECON.capE(E); if (n) E.maxTrophies = Math.max(E.maxTrophies, E.trophies); return n; }
 
 export class Cartera extends DurableObject {
   constructor(ctx, env) { super(ctx, env); this.E = null; this.q = Promise.resolve(); }

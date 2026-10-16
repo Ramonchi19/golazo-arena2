@@ -218,13 +218,13 @@ window.renderRank=function(){const el=document.getElementById('sc-rank');if(!el)
   const me={name:save.name,avatar:save.avatar,country:save.country,trophies:save.trophies,me:true};
   const head=`<div class="tabs"><button class="tab ${tab==='global'?'on':''}" data-t="global"><b>🌍 Global</b></button><button class="tab ${tab==='local'?'on':''}" data-t="local"><b>${flag(save.country)} Local</b></button></div>`;
   const bind=()=>el.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{rankTab=b.dataset.t;renderRank();});
-  if(!NET.user||!db){el.innerHTML=head+`<div class="rk">${rowHTML(me,'—')}</div><p class="note">${NET.offline||NET.state==='sinred'?'El ranking necesita conexión.':'Entra con tu cuenta para aparecer en el ranking.'}</p>${NET.user?'':'<div style="text-align:center"><button class="btn y sm" id="rkIn">Entrar</button></div>'}`;
+  if(!NET.user||!db){el.innerHTML=head+`<div class="rk">${rowHTML(me,'—')}</div><p class="note">${NET.offline||NET.state==='sinred'?'El ranking necesita conexión.':'Entra con tu cuenta para aparecer en el ranking.'}</p>${NET.user?'':'<div style="text-align:center"><button class="btn y sm" id="rkIn">Entrar</button></div>'}${window.ADS?ADS.slot('ranking'):''}`;
     bind();const b=document.getElementById('rkIn');if(b)b.onclick=NET.login;return;}
   const draw=(list,err)=>{if(metaTab!=='rank')return;
-    let html='';if(err)html=`<p class="note">${h(err)}</p>`;
-    else{const i=list.findIndex(x=>x.id===NET.user.uid);const L=list.map(x=>Object.assign({},x,x.id===NET.user.uid?me:{}));
-      html=`<div class="rk">${i<0?rowHTML(me,'50+'):''}${L.map((x,k)=>rowHTML(x,k+1)).join('')||''}</div>${L.length?'':'<p class="note">Todavía no hay nadie aquí. ¡Sé el primero!</p>'}`;}
-    el.innerHTML=head+html+`<p class="note">${tab==='local'?'Jugadores de tu país · cambia tu país en tu perfil.':'Los 50 mejores del mundo. Toca a alguien para ver su perfil.'}</p>`;bind()
+    let html='',L=[];if(err)html=`<p class="note">${h(err)}</p>`;
+    else{const i=list.findIndex(x=>x.id===NET.user.uid);L=list.map(x=>Object.assign({},x,x.id===NET.user.uid?me:{}));
+      html=`<div class="rk">${i<0?rowHTML(me,'50+'):''}${L.map((x,k)=>rowHTML(x,k+1)+(k===9&&L.length>12&&window.ADS?ADS.slot('ranking'):'')).join('')||''}</div>${L.length?'':'<p class="note">Todavía no hay nadie aquí. ¡Sé el primero!</p>'}`;}
+    el.innerHTML=head+html+`<p class="note">${tab==='local'?'Jugadores de tu país · cambia tu país en tu perfil.':'Los 50 mejores del mundo. Toca a alguien para ver su perfil.'}</p>${!err&&L.length<=12&&window.ADS?ADS.slot('ranking'):''}`;bind()
     el.querySelectorAll('.rrow[data-uid]').forEach(r=>r.onclick=()=>{const u=r.dataset.uid;if(u==='me'){openProfile();return;}const d=(list||[]).find(x=>x.id===u);if(d)openPlayerProfile(d);});};   // v93: ver el perfil de cualquiera
   const c=rankCache[key];if(c&&Date.now()-c.t<30000){draw(c.list);return;}
   el.innerHTML=head+`<div class="lg-wait ct" style="display:flex;justify-content:center;padding:30px 0;font-size:16px">Cargando ranking…</div>`;bind();

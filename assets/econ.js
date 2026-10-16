@@ -6,9 +6,9 @@
   'use strict';
   const H = 3600e3, RORD = ['comun', 'rara', 'epica', 'legendaria'];
   // campos de la partida guardada que son "dinero" (solo el servidor los cambia cuando hay cuenta)
-  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN', 'hist', 'streak', 'best', 'ads', 'lastG', 'lastL'];
+  const EK = ['gold', 'gems', 'xp', 'lvl', 'trophies', 'maxTrophies', 'wins', 'losses', 'draws', 'gf', 'ga', 'players', 'powers', 'kits', 'boots', 'packs', 'freeAt', 'cyc', 'name', 'nameN', 'hist', 'streak', 'best', 'ads', 'lastG', 'lastL', 'wk'];
   // v94: premios por ver anuncios. Cada tipo tiene un tope por día (se reinicia a las 0 h UTC)
-  const AD_CAP = { pack: 16, gold2: 10, coins: 5, freep: 3, up: 5, tro: 3, free: 4 };
+  const AD_CAP = { pack: 16, gold2: 10, coins: 5, freep: 3, up: 5, tro: 3, free: 4, int: 6 };   // int: video opcional cada 5 partidos (+30)
   const UNLOCK_H = { bronce: 1, plata: 3, oro: 8, leyenda: 24, legendario: 24 };
   const FREE_H = 4;
   const SHOP = { bronce: ['gold', 150], plata: ['gold', 400], oro: ['gems', 80], leyenda: ['gems', 250], legendario: ['gems', 500] };
@@ -77,7 +77,29 @@
   const ok = out => ({ ok: true, out: out || {} }), err = e => ({ err: e });
   const has = (o, k) => typeof k === 'string' && k.length < 40 && o != null && Object.prototype.hasOwnProperty.call(o, k);   // nada de "__proto__" ni ids inventados
   const int = (v, a, b) => Math.max(a, Math.min(b, Math.floor(+v || 0)));
-  function act(D, E, a, ctx) {
+  // v115: tope de 1,000,000 de monedas y de gemas (hay que gastarlas)
+  const CAP = 1000000;
+  // v115: ofertas de la semana. 3 cartas distintas para cada jugador; cambian cada lunes (hora UTC).
+  // Cada una se compra una vez por semana; con un video sale 25% más barata.
+  const WEEK = 7 * 864e5, OFF_DISC = .25;
+  const OFFER = { comun: { n: 10, cur: 'gold', p: 500 }, rara: { n: 4, cur: 'gold', p: 1000 }, epica: { n: 2, cur: 'gems', p: 150 }, legendaria: { n: 1, cur: 'gems', p: 450 } };
+  const weekOf = now => Math.floor((now - 4 * 864e5) / WEEK);   // semanas de lunes a domingo
+  const weekEnd = now => (weekOf(now) + 1) * WEEK + 4 * 864e5;
+  function offers(D, E, now) {
+    const w = weekOf(now), r = rng(((E.cyc && E.cyc.seed) || 1) ^ Math.imul(w + 7, 2654435761)), out = [], used = {};
+    const tiers = [[['comun', .7], ['rara', 1]], [['rara', .6], ['epica', 1]], [['epica', .7], ['legendaria', 1]]];
+    for (const t of tiers) {
+      const x = r(); const rar = t.find(([, c]) => x < c)[0];
+      let opts = D.POOL.filter(p => p.rar === rar && !used[p.id]); if (!opts.length) opts = D.POOL.filter(p => !used[p.id]);
+      const pk = opts[Math.floor(r() * opts.length)]; used[pk.id] = 1; const O = OFFER[pk.rar] || OFFER.comun;
+      out.push({ id: pk.id, kind: pk.k, rar: pk.rar, n: O.n, cur: O.cur, p: O.p, pd: Math.round(O.p * (1 - OFF_DISC)) });
+    }
+    return out;
+  }
+  function wkState(E, now) { const w = weekOf(now); if (!E.wk || E.wk.w !== w) E.wk = { w, b: [0, 0, 0], d: [0, 0, 0] }; return E.wk; }
+  function capE(E) { if (E.gold > CAP) E.gold = CAP; if (E.gems > CAP) E.gems = CAP; }
+  function act(D, E, a, ctx) { const r = act0(D, E, a, ctx); capE(E); return r; }
+  function act0(D, E, a, ctx) {
     const now = ctx.now, R = ctx.R;
     switch (a && a.t) {
       case 'get': return ok();
@@ -92,6 +114,7 @@
           const cut = Math.max(30 * 60e3, UNLOCK_H[p.t] * H / 4); p.at = Math.max(now, p.at - cut); out = { i, at: p.at, cut };
         } else if (k === 'gold2') { if (!(E.lastG > 0)) return err('No hay monedas que duplicar'); out = { gold: E.lastG }; E.gold += E.lastG; E.lastG = 0; }
         else if (k === 'tro') { if (!(E.lastL > 0)) return err('No hay copas que recuperar'); const g = Math.ceil(E.lastL / 2); E.trophies += g; E.maxTrophies = Math.max(E.maxTrophies, E.trophies); E.lastL = 0; out = { tro: g }; }
+        else if (k === 'int') { E.gold += 30; out = { gold: 30 }; }
         else if (k === 'coins') { const g = 25 + lg(D, E.trophies) * 15; E.gold += g; out = { gold: g }; }
         else if (k === 'freep') { out = { t: 'bronce', roll: roll(D, E, 'bronce', R) }; }
         else if (k === 'free') { if (now >= (E.freeAt || 0)) return err('Tu sobre gratis ya está listo'); E.freeAt = Math.max(now, E.freeAt - H); out = { freeAt: E.freeAt }; }
@@ -148,6 +171,18 @@
       case 'free': {
         if (now < (E.freeAt || 0)) return err('El sobre gratis todavía no está listo');
         E.freeAt = now + FREE_H * H; return ok({ t: 'bronce', roll: roll(D, E, 'bronce', R) });
+      }
+      case 'offerAd': {   // vio el video: esa oferta queda 25% más barata esta semana
+        const i = int(a.i, 0, 2), W = wkState(E, now); if (W.b[i]) return err('Ya compraste esa oferta'); if (W.d[i]) return err('Esa oferta ya tiene el descuento');
+        W.d[i] = 1; return ok({ i });
+      }
+      case 'buyOffer': {
+        const i = int(a.i, 0, 2), W = wkState(E, now), o = offers(D, E, now)[i]; if (!o) return err('Esa oferta no existe');
+        if (W.b[i]) return err('Ya compraste esa oferta esta semana');
+        const pr = W.d[i] ? o.pd : o.p; if (E[o.cur] < pr) return err('No te alcanza');
+        const T = o.kind === 'power' ? E.powers : E.players; E[o.cur] -= pr; W.b[i] = 1;
+        if (!T[o.id]) T[o.id] = { lvl: 1, copies: o.n - 1 }; else T[o.id].copies += o.n;
+        return ok({ id: o.id, kind: o.kind, n: o.n, cur: o.cur, paid: pr });
       }
       case 'buyPack': {
         if (!has(SHOP, a.p) || !has(D.PACKS, a.p)) return err('Ese sobre no existe');
@@ -231,9 +266,10 @@
     if (!Array.isArray(E.packs) || E.packs.length !== 4) return false;
     for (const p of E.packs) if (p !== null && (!p || !has(UNLOCK_H, p.t) || !okN(p.at))) return false;
     const c = E.cyc; if (!c || !okN(c.pos) || !okN(c.n) || !okN(c.seed)) return false;
+    if (E.wk != null && (typeof E.wk !== 'object' || !Number.isInteger(E.wk.w) || !Array.isArray(E.wk.b) || E.wk.b.length !== 3 || !Array.isArray(E.wk.d) || E.wk.d.length !== 3)) return false;
     return true;
   }
   const pickE = s => { const o = {}; for (const k of EK) o[k] = s[k]; return JSON.parse(JSON.stringify(o)); };
 
-  root.ECON = { fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
+  root.ECON = { CAP, capE, offers, weekOf, weekEnd, wkState, OFFER, OFF_DISC, fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
 })(typeof window !== 'undefined' ? window : globalThis);
