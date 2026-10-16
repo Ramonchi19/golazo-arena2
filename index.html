@@ -805,11 +805,11 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="assets/sim/ball.js?v=116"></script>
-<script src="assets/sim/data.js?v=116"></script>
-<script src="assets/sim/match.js?v=116"></script>
+<script src="assets/sim/ball.js?v=120"></script>
+<script src="assets/sim/data.js?v=120"></script>
+<script src="assets/sim/match.js?v=120"></script>
 <script src="assets/kits.js?v=68"></script>
-<script src="assets/econ.js?v=116"></script>
+<script src="assets/econ.js?v=120"></script>
 <script src="assets/icons.js?v=85"></script>
 <script src="assets/native-ads.js?v=118"></script>
 <script src="assets/ads.js?v=118"></script>
@@ -3426,8 +3426,11 @@ function askName(){if(askName.open)return;askName.open=1;
   const go2=()=>{const n=inp.value.replace(/\s+/g,' ').trim(),c=ECON.cleanName(n);if(c.err){er.textContent=c.err;return;}const b=$('#anS');b.disabled=true;
     econDo({t:'name',n}).then(()=>{askName.open=0;closeModal();renderTab();toast('¡Bienvenido, '+save.name+'!');}).catch(e=>{b.disabled=false;er.textContent=(e&&e.message)||'No se pudo';});};
   $('#anS').onclick=go2;inp.onkeydown=e=>{if(e.key==='Enter')go2();};}
-function needName(){if(save.name||askName.open||gameOn)return;const lg=document.getElementById('login');if(lg&&!lg.classList.contains('hide'))return;
-  if(window.NET&&NET.state==='sync'&&!NET.user)return;if(!$('#modal').classList.contains('hide'))return;askName();}
+// v120: el nombre solo se pide cuando ya se sabe quién eres: con cuenta (y el servidor ya respondió) o jugando sin conexión.
+// Antes podía salir mientras cargaba, y al entrar con una cuenta que ya tenía nombre se quedaba la ventana pidiéndolo otra vez.
+function needName(){if(save.name||askName.open||gameOn)return;if(document.getElementById('boot'))return;const lg=document.getElementById('login');if(lg&&!lg.classList.contains('hide'))return;
+  if(window.NET){if(!NET.user&&!NET.offline)return;if(NET.user&&!NET.econTried)return;if(NET.state==='sync'&&!NET.user)return;}
+  if(!$('#modal').classList.contains('hide'))return;askName();}
 function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div><b class="ct">${l}</b><small>${d}</small></div><button class="tgl ${s[k]?'on':''}" data-k="${k}" role="switch" aria-checked="${s[k]}" aria-label="${l}"><i></i></button></div>`;
   showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Configuración</div>
    ${tg('sound','Sonido','Efectos del partido y del menú')}${tg('vib','Vibración','Al chocar, explotar o abrir sobres')}${tg('shadows','Sombras','Apágalas si el teléfono se calienta')}${tg('zurdo','Modo zurdo','Joystick a la derecha, botones a la izquierda')}
@@ -3702,8 +3705,8 @@ document.addEventListener('pointerdown',()=>audio(),{once:true});
 document.addEventListener('pointerdown',()=>{try{audio();Object.keys(VOICEMAN).forEach(id=>voxLoad(id));}catch(e){}},{once:true});   // v98: las voces de tu equipo se cargan desde el menú
 
 </script>
-<script src="assets/online.js?v=116"></script>
-<script src="assets/online-play.js?v=116"></script>
-<script src="assets/packs.js?v=116"></script>
+<script src="assets/online.js?v=120"></script>
+<script src="assets/online-play.js?v=120"></script>
+<script src="assets/packs.js?v=120"></script>
 </body>
 </html>

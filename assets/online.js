@@ -138,7 +138,8 @@ NET.econCall=async function(a){if(!NET.user)throw new Error('Necesitas tu cuenta
 async function econLogin(){
   try{const j=await NET.econCall({t:'get'});
     if(j.E){NET.econOn=true;try{localStorage.setItem(ECON_KEY,'1');}catch(e){}if(j.now)window.SRV_DT=j.now-Date.now();applyE(j.E);orig.call(window);}
-  }catch(e){console.warn('[econ]',e.message);}}
+  }catch(e){console.warn('[econ]',e.message);}
+  NET.econTried=true;}
 
 // ---------- progreso en la nube ----------
 const score=s=>s?((s.maxTrophies||0)*3+(s.wins||0)*5+(s.losses||0)+(s.lvl||1)*20):0;
@@ -178,7 +179,14 @@ async function onLogin(u){NET.user=u;NET.offline=false;NET.state='sync';showWait
   s.owner=u.uid;
   // v91: ya no se usa el nombre de Google: el jugador escribe el suyo
   window.save=s;
-  await econLogin();
+  NET.econTried=false;await econLogin();
+  // v120: si el servidor tardó o falló, se reintenta una vez antes de dar por hecho que no tienes nombre
+  if(!save.name&&!NET.econOn){await new Promise(r=>setTimeout(r,1500));await econLogin();}
+  // v120: cuenta con nombre guardado en el ranking pero no en el servidor (cuentas viejas): se recupera ese nombre
+  const oldN=snap&&snap.exists?String(snap.data().name||''):'';
+  if(!save.name&&oldN&&oldN!=='Jugador'){try{if(NET.econOn)await econDo({t:'name',n:oldN});else save.name=oldN;}catch(e){console.warn('[online] nombre',e&&e.message);}}
+  // si la ventana de nombre se abrió antes de entrar y ya tienes nombre, se cierra
+  if(save.name&&askName.open){askName.open=0;try{closeModal();}catch(e){}}
   try{orig.call(window);applySettings();renderTab();}catch(e){console.warn(e);}
   await upload();
   hideLogin();if(snap.exists&&save.name)say('¡Hola, '+save.name+'!');else say('Cuenta lista. ¡A jugar!');}
