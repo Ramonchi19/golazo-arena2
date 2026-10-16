@@ -36,25 +36,22 @@ const origMatchmaking=window.matchmaking;
 window.matchmaking=function(){
   if(!(window.NET&&NET.user)||NET.offline){return origMatchmaking();}
   let fila=null,done=false,t0=Date.now();
-  showModal(`<div class="mm ct"><div class="spin">⚽</div><span id="mmT">Buscando rival...</span><small id="mmS">${LEAGUES[leagueIdx(save.trophies)].n} · 🏆 ${save.trophies}</small><button class="btn r sm" id="mmX">Cancelar</button></div>`,true,true);
-  const setT=(a,b)=>{const x=document.getElementById('mmT'),y=document.getElementById('mmS');if(x&&a)x.textContent=a;if(y&&b)y.textContent=b;};
+  // v121: pantalla de búsqueda con ilustración (como Clash) y luego el VS mientras carga la arena
   const finish=()=>{done=true;try{fila&&fila.close();}catch(e){}};
-  document.getElementById('mmX').onclick=()=>{finish();closeModal();};
-  const toBot=()=>{if(done)return;finish();const opp=makeOpponent();showVS(opp,()=>startMatch(opp));};
+  mmOpen(()=>{finish();});
+  const setT=(a,b)=>mmSet(a,b);
+  const toBot=()=>{if(done)return;finish();playBot(makeOpponent());};
   try{fila=new WebSocket(WS+'/fila');}catch(e){toBot();return;}
   const failT=setTimeout(()=>{if(!done&&(!fila||fila.readyState!==1))toBot();},6000);
   fila.onopen=()=>{clearTimeout(failT);fila.send(JSON.stringify(myInfo()));};
   fila.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(e){return;}if(done)return;
-    if(m.t==='buscando')setT('Buscando rival...',`🏆 ${save.trophies} · rango ±${m.rango} copas · ${m.seg||0} s`);
+    if(m.t==='buscando')setT('Buscando rival...',`${ICON('trophy',15)} ${save.trophies} · rango ±${m.rango} · ${m.seg||0} s`);
     else if(m.t==='bot')toBot();
-    else if(m.t==='rival'){finish();setT('¡Rival encontrado!','Conectando…');joinMatch(m);}};
+    else if(m.t==='rival'){finish();setT('¡Rival encontrado!','Conectando…');const x=document.getElementById('mmX');if(x)x.classList.add('hide');joinMatch(m);}};
   fila.onerror=()=>{if(!done&&Date.now()-t0<6000)toBot();};
   fila.onclose=()=>{if(!done){toBot();}};
 };
-function showVS(opp,go){sfx('whistle');
-  const box=document.getElementById('mbox');if(!box){go();return;}
-  box.innerHTML=`<div class="vs"><div class="vs-s"><span class="av" style="background:${save.color}">${save.avatar}</span><b class="ct">${h(save.name)}</b><small class="ct">${flag(save.country)} 🏆 ${save.trophies}</small></div><div class="vs-x ct">VS</div><div class="vs-s op"><span class="av" style="background:#ff3b4e">${h(opp.av)}</span><b class="ct">${h(opp.name)}</b><small class="ct">${flag(opp.c)} 🏆 ${opp.trophies}</small></div></div>`;
-  setTimeout(()=>{closeModal();go();},1700);}
+function showVS(opp,go){playBot(opp);}   // (ya no se usa: queda por compatibilidad)
 
 // ---------- conexión al partido ----------
 function joinMatch(m){
@@ -71,15 +68,16 @@ function connect(){
     else fail('Se perdió la conexión');};
 }
 function fail(msg){if(!O)return;const wasStarted=O.started;O.ended=true;window.ONLINE=null;H1=false;CTRL_LOCK[1]=false;
-  try{closeModal();}catch(e){}say(msg);
+  try{closeModal();}catch(e){}try{mmClose();}catch(e){}say(msg);
+  if(wasStarted&&state==='vs')state='play';
   if(wasStarted&&state==='play'){state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);}
   O=null;}
 function send(o){if(O&&O.ws&&O.ws.readyState===1)O.ws.send(JSON.stringify(o));}
 
 function onMsg(m){if(!O)return;
-  if(m.t==='sala'){O.retries=0;if(!O.rival){O.rival=oppFrom(m.rival);showVS(O.rival,()=>{});}}
-  else if(m.t==='cuenta'){startOnline();}
-  else if(m.t==='inicio'){if(!O.started)startOnline();O.go=true;pause=0;pauseCb=null;showBig('¡A jugar!');sfx('whistle');}
+  if(m.t==='sala'){O.retries=0;if(!O.rival){O.rival=oppFrom(m.rival);mmVS(O.rival);prepOnline();}else if(O.prepared)send({t:'listo'});}
+  else if(m.t==='cuenta'){O.count=true;if(O.prepared)goCount();}
+  else if(m.t==='inicio'){O.go=true;if(O.prepared&&O.counted){pause=0;pauseCb=null;showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}else if(O.prepared)goCount();}
   else if(m.t==='s'){applySnap(m);}
   else if(m.t==='po'){const r=performance.now()-m.c;O.rtt=O.rtt?O.rtt*.7+r*.3:r;}
   else if(m.t==='ri'){joy1.x=m.j[0];joy1.y=m.j[1];}
@@ -89,17 +87,25 @@ function onMsg(m){if(!O)return;
   else if(m.t==='rivalSeFue'){say('Tu rival se desconectó…');}
   else if(m.t==='fin'){endOnline(m);}
 }
-async function startOnline(){
-  if(O.started)return;O.started=true;
-  const opp=O.rival||oppFrom({});
-  await startMatch(opp);
-  if(!O)return;
-  H1=true;user1=fieldOf(1)[0];CTRL_LOCK[1]=true;
+// v121: se carga todo detrás del VS; al terminar se avisa 'listo' y el servidor arranca la cuenta para los dos al mismo tiempo
+async function prepOnline(){
+  if(!O||O.preparing)return;O.preparing=true;
+  try{await prepMatch(O.rival||oppFrom({}));}catch(e){console.warn('[online] carga',e);}
+  if(!O){mmClose();if(gameOn&&state==='vs')beginMatch();return;}   // se cayó la conexión mientras cargaba: se juega contra la IA
+  O.started=true;H1=true;user1=fieldOf(1)[0];CTRL_LOCK[1]=true;
   if(O.team===1)kickoff(1);          // el servidor saca con el equipo azul; desde el lado rojo eso es el rival
-  pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
-  if(!O.go){let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');sfx('touch');n--;setTimeout(c,1000);};c();}
+  O.prepared=true;send({t:'listo'});
+  if(O.count||O.go)goCount();else mmProg(1,'Esperando a tu rival…');
 }
+function goCount(){
+  if(!O||O.counted)return;O.counted=true;mmClose();
+  state='play';pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
+  if(O.go){showBig('¡A jugar!');sfx('whistle');return;}
+  let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');sfx('touch');n--;setTimeout(c,1000);};c();
+}
+async function startOnline(){if(O&&!O.preparing)return prepOnline();}
 function endOnline(m){if(!O||O.ended)return;O.ended=true;
+  try{mmClose();}catch(e){}if(O.started&&state==='vs')state='play';
   if(!O.started){const ws=O.ws;O=null;window.ONLINE=null;try{ws.close();}catch(e){}try{closeModal();}catch(e){}say(m.motivo==='rival_no_llego'?'El rival no llegó. Intenta de nuevo.':'Partido cancelado');return;}
   const sc=m.sc||score,won=m.gana===true,lost=m.gana===false;
   let a=sc[0],b=sc[1];

@@ -694,6 +694,50 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 .ads-play{font-size:46px;width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
 .ads-bar{width:100%;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}.ads-bar i{display:block;height:100%;width:0;background:#ffd84a}
 .ads-skip{font-size:12px;color:#b9c9ee;text-decoration:underline;background:none}
+
+/* v121: buscar rival + VS */
+#mmx{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;overflow:hidden;background:#123177;animation:fadeIn .25s;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#mmx.out{opacity:0;transform:scale(1.06);transition:opacity .4s,transform .4s}
+#mmx .mm-art{position:absolute;inset:0;background:#47a1ee center 30%/cover no-repeat;animation:mmZoom 14s ease-out both}
+@keyframes mmZoom{from{transform:scale(1.12)}to{transform:scale(1)}}
+#mmx .mm-shade{position:absolute;inset:0;background:linear-gradient(rgba(6,18,48,.55),rgba(6,18,48,0) 22%,rgba(6,18,48,0) 62%,rgba(6,18,48,.75));transition:background .4s}
+#mmx.vs-on .mm-shade{background:rgba(6,14,40,.62)}
+.mm-head{position:relative;flex:none;margin:12px 12px 0;display:flex;align-items:center;gap:6px;background:linear-gradient(rgba(10,22,54,.92),rgba(10,22,54,.82));border:3px solid #0a1636;border-radius:14px;padding:6px 14px 6px 6px;box-shadow:0 4px 0 rgba(0,0,0,.35);animation:sL .35s ease-out}
+.mm-lupa{flex:none;width:52px;height:52px;margin:-14px 0 -14px -8px;display:flex;align-items:center;justify-content:center;animation:mmLupa 1.6s ease-in-out infinite}
+@keyframes mmLupa{0%,100%{transform:rotate(-12deg) translate(0,0)}25%{transform:rotate(8deg) translate(4px,-3px)}50%{transform:rotate(-4deg) translate(-2px,2px)}75%{transform:rotate(10deg) translate(3px,1px)}}
+#mmx.vs-on .mm-lupa{animation:none}
+.mm-ht b{display:block;font-size:24px;color:#ffb21e;line-height:1.05}.mm-ht small{display:flex;align-items:center;gap:4px;font-size:13px;color:#dbe8ff}
+.mm-vs{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:6px 10px;min-height:0}
+.mm-foot{position:relative;flex:none;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 12px 14px}
+.mm-x{min-width:170px;font-size:22px;padding:12px 26px}
+.mm-load{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.mm-bar{width:100%;height:18px;border-radius:10px;background:rgba(10,22,54,.85);border:3px solid #0a1636;overflow:hidden}
+.mm-bar i{display:block;height:100%;width:0;background:linear-gradient(#ffe066,#ffb21e);box-shadow:inset 0 -3px 0 rgba(0,0,0,.18);transition:width .2s}
+.mm-load small{font-size:15px;color:#fff}
+.mm-tip{width:100%;max-width:440px;margin-top:8px;background:linear-gradient(#e9f4ff,#c9defa);border:3px solid #0a1636;border-radius:12px;padding:6px 12px 8px;text-align:center;color:#13306a}
+.mm-tip b{display:block;font-size:17px;color:#fff;margin-top:-20px}.mm-tip p{margin:2px 0 0;font-size:13.5px;font-weight:700;line-height:1.25;transition:opacity .28s}.mm-tip p.fade{opacity:0}
+.vx-side{display:flex;flex-direction:column;gap:6px;padding:10px 8px;border-radius:16px;border:3px solid #0a1636;box-shadow:0 5px 0 rgba(0,0,0,.35)}
+.vx-side.op{background:linear-gradient(160deg,rgba(255,92,92,.92),rgba(168,24,44,.92));animation:vxR .45s cubic-bezier(.2,1.3,.4,1) both}
+.vx-side.me{background:linear-gradient(200deg,rgba(80,170,255,.92),rgba(24,72,190,.92));animation:vxL .45s .08s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes vxR{from{transform:translateX(110%)}}@keyframes vxL{from{transform:translateX(-110%)}}
+.vx-tag{display:flex;align-items:center;gap:8px}.vx-side.op .vx-tag{flex-direction:row-reverse;text-align:right}
+.vx-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:24px;border:3px solid #0a1636;flex:none}
+.vx-tag b{display:block;font-size:19px;line-height:1.05}.vx-tag small{display:flex;align-items:center;gap:3px;font-size:13px;color:#ffe066}.vx-side.op .vx-tag small{justify-content:flex-end}
+.vx-team{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.vx-c{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;animation:vxPop .35s calc(.35s + var(--i)*.07s) cubic-bezier(.2,1.5,.4,1) both}
+@keyframes vxPop{from{transform:scale(.3);opacity:0}}
+.vx-ci{position:relative;width:100%;aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:3px solid #0a1636;background:linear-gradient(170deg,#6f9ae8,#2a4fa8);box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.vx-c.r-rara .vx-ci{background:linear-gradient(170deg,#ffb35c,#b8561a)}.vx-c.r-epica .vx-ci{background:linear-gradient(170deg,#c27bff,#5a1ea8)}.vx-c.r-legendaria .vx-ci{background:linear-gradient(170deg,#ffe27a,#c97a00 70%,#7a3ad8)}
+.vx-ci img{width:100%;height:100%;object-fit:cover;object-position:50% 12%}.vx-face{width:100%;height:100%;display:flex;align-items:center;justify-content:center}.vx-face svg{width:80%;height:80%}
+.vx-pos{position:absolute;left:2px;top:2px;font-size:9px;padding:0 3px;border-radius:4px;background:rgba(10,22,54,.75)}
+.vx-lv{font-size:11px;color:#fff;margin-top:1px}
+.vx-c b{font-size:10.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vx-mid{position:relative;height:64px;display:flex;align-items:center;justify-content:center}
+.vx-x{font-size:62px;color:#ffd23f;-webkit-text-stroke:6px #0a1636;paint-order:stroke fill;text-shadow:0 5px 0 #0a1636;animation:vxSlam .5s .3s cubic-bezier(.2,1.6,.4,1) both;position:relative;z-index:1}
+@keyframes vxSlam{from{transform:scale(3.2) rotate(-12deg);opacity:0}}
+.vx-flash{position:absolute;left:-10%;right:-10%;top:50%;height:10px;margin-top:-5px;background:linear-gradient(90deg,transparent,#fff 30%,#ffe066 50%,#fff 70%,transparent);transform:skewY(-6deg);opacity:0;animation:vxFl .7s .35s ease-out both}
+@keyframes vxFl{0%{opacity:0;transform:skewY(-6deg) scaleX(.2)}30%{opacity:1}100%{opacity:.0;transform:skewY(-6deg) scaleX(1.1)}}
+@media (orientation:landscape) and (max-height:520px){.mm-vs{flex-direction:row;align-items:center}.vx-side{flex:1}.vx-mid{width:80px;height:auto}.mm-head{margin-top:6px}.mm-tip{display:none}.vx-x{font-size:48px}}
 /* v116: anuncios nativos acomodados en las pantallas (Google pinta encima del hueco) */
 .nat-wrap{margin:14px 0 6px}
 .nat{height:320px;border-radius:16px;background:#0b3550;border:2px solid #3fd3e0;box-shadow:0 4px 0 rgba(4,26,40,.45);overflow:hidden;position:relative}
@@ -805,11 +849,11 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="assets/sim/ball.js?v=120"></script>
-<script src="assets/sim/data.js?v=120"></script>
-<script src="assets/sim/match.js?v=120"></script>
+<script src="assets/sim/ball.js?v=121"></script>
+<script src="assets/sim/data.js?v=121"></script>
+<script src="assets/sim/match.js?v=121"></script>
 <script src="assets/kits.js?v=68"></script>
-<script src="assets/econ.js?v=120"></script>
+<script src="assets/econ.js?v=121"></script>
 <script src="assets/icons.js?v=85"></script>
 <script src="assets/native-ads.js?v=118"></script>
 <script src="assets/ads.js?v=118"></script>
@@ -1686,7 +1730,7 @@ function newGame(opp){
   usedCards=[[],[]];const md=shuffle(((window.SPECT&&window.SPECT_DK)?SPECT_DK[0]:save.deck).slice());hands[0]=md.slice(0,4);queues[0]=md.slice(4);
   const od=shuffle(((window.SPECT&&window.SPECT_DK)?SPECT_DK[1]:opp.deck).slice());hands[1]=od.slice(0,4);queues[1]=od.slice(4);
   selCard=-1;ghost=null;renderCards();
-  kickoff(0);showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');
+  kickoff(0);if(!VS_HOLD){showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}
 }
 // v96: la primera vez que salía cada poder el teléfono tenía que preparar sus gráficos a medio partido (tirón).
 // Ahora se preparan todos antes del saque inicial, sin sonido y sin que se vea.
@@ -3539,17 +3583,76 @@ function makeOpponent(){
   // v68: el rival usa cualquier uniforme (también los de la tienda); si se confunde con el tuyo se pone el visitante
   const ok2=Object.keys(KITS).filter(k=>k!==save.equip.kit),kk=ok2[Math.floor(Math.random()*ok2.length)];
   const bk=Object.keys(BOOTS)[Math.floor(Math.random()*6)];
-  return{name:botName(Math.random),av:AVATARS[Math.floor(Math.random()*AVATARS.length)],c:Object.keys(COUNTRIES)[Math.floor(Math.random()*17)],trophies:Math.max(0,save.trophies+Math.round(rand(-60,60))),
+  return{name:botName(Math.random),av:AVATARS[Math.floor(Math.random()*AVATARS.length)],c:Object.keys(COUNTRIES)[Math.floor(Math.random()*17)],trophies:Math.max(0,save.trophies+Math.round(rand(-50,50))),
     squad:{form,kit:kitColors(kk,bk),gk:{card:pick('POR'),lvl},f:FORMS[form].s.map(s=>({card:pick(s.r),lvl}))},deck:shuffle(Object.keys(CARDS)).slice(0,6),plvl:lvl,li};
 }
 function matchmaking(){
-  const opp=makeOpponent();
-  showModal(`<div class="mm ct"><div class="spin">⚽</div>Buscando rival...<small>${LEAGUES[leagueIdx(save.trophies)].n}</small><button class="btn r sm" id="mmX">Cancelar</button></div>`,true,true);
-  let cancel=false;$('#mmX').onclick=()=>{cancel=true;closeModal();};
-  setTimeout(()=>{if(cancel)return;sfx('whistle');
-    $('#mbox').innerHTML=`<div class="vs"><div class="vs-s"><span class="av" style="background:${save.color}">${save.avatar}</span><b class="ct">${esc(save.name)}</b><small class="ct">${flag(save.country)} 🏆 ${save.trophies}</small></div><div class="vs-x ct">VS</div><div class="vs-s op"><span class="av" style="background:#ff3b4e">${opp.av}</span><b class="ct">${esc(opp.name)}</b><small class="ct">${flag(opp.c)} 🏆 ${opp.trophies}</small></div></div>`;
-    setTimeout(()=>{if(cancel)return;closeModal();startMatch(opp);},1700);},1600);
+  const opp=makeOpponent();let cancel=false;
+  mmOpen(()=>{cancel=true;});
+  setTimeout(()=>{if(!cancel)playBot(opp);},1600+Math.random()*1200);
 }
+// ================== v121: BUSCAR RIVAL + PANTALLA VS ==================
+// Una sola pantalla: primero "Buscando rival..." con una ilustración grande (como Clash), y al encontrar rival
+// se convierte en el VS con los dos equipos mientras se carga la arena. En línea, el partido arranca hasta que los dos cargaron.
+const MM_ART=['assets/ui/buscar1.webp','assets/ui/buscar2.webp','assets/ui/buscar3.webp','assets/ui/buscar4.webp','assets/ui/buscar5.webp'];
+let MM=null;
+function mmTip(){const T=window.GAME_TIPS||[];return T.length?T[Math.floor(Math.random()*T.length)]:'';}
+function mmOpen(onCancel){mmClose(true);
+  const el=document.createElement('div');el.id='mmx';el.className='mm-search';
+  const pick=MM_ART[Math.floor(Math.random()*MM_ART.length)];
+  el.innerHTML=`<div class="mm-art" style="background-image:url(assets/ui/carga.webp?v=108)"></div><div class="mm-shade"></div>
+   <div class="mm-head"><span class="mm-lupa">${MM_LUPA}</span><div class="mm-ht"><b class="ct" id="mmT">Buscando rival...</b><small class="ct" id="mmS">${esc(LEAGUES[leagueIdx(save.trophies)].n)} · ${ICON('trophy',15)} ${save.trophies}</small></div></div>
+   <div class="mm-vs" id="mmVS"></div>
+   <div class="mm-foot"><button class="btn r mm-x" id="mmX"><b class="ct">Cancelar</b></button>
+     <div class="mm-load hide" id="mmL"><div class="mm-bar"><i id="mmB"></i></div><small class="ct" id="mmLT">Cargando arena…</small></div>
+     <div class="mm-tip"><b class="ct">Dato</b><p id="mmTip">${esc(mmTip())}</p></div></div>`;
+  document.body.appendChild(el);
+  const im=new Image();im.onload=()=>{const a=el.querySelector('.mm-art');if(a)a.style.backgroundImage=`url(${pick})`;};im.src=pick;
+  MM={el,cancel:onCancel,t0:performance.now(),vs:false};
+  el.querySelector('#mmX').onclick=()=>{audio();sfx('touch');const c=MM&&MM.cancel;mmClose();if(c)c();};
+  clearInterval(mmOpen.tt);mmOpen.tt=setInterval(()=>{const t=document.getElementById('mmTip');if(!t){clearInterval(mmOpen.tt);return;}t.classList.add('fade');setTimeout(()=>{t.textContent=mmTip();t.classList.remove('fade');},280);},5000);
+  return el;}
+function mmSet(a,b){const x=document.getElementById('mmT'),y=document.getElementById('mmS');if(x&&a!=null)x.textContent=a;if(y&&b!=null)y.innerHTML=b;}
+const MM_LUPA='<svg viewBox="0 0 64 64" width="46" height="46"><circle cx="26" cy="26" r="17" fill="#bfeaff" stroke="#0a1636" stroke-width="5"/><path d="M17 20a11 11 0 0 1 9-7" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M38 38l15 15" stroke="#0a1636" stroke-width="12" stroke-linecap="round"/><path d="M38 38l15 15" stroke="#c9852e" stroke-width="6" stroke-linecap="round"/></svg>';
+function vsCard(id,lvl,i){const pl=PBY[id];if(!pl)return '';const art=window.CARDIMG&&CARDIMG[id];
+  return `<div class="vx-c r-${pl.rar}" style="--i:${i}"><div class="vx-ci">${art?`<img src="${art.c}" alt="">`:`<div class="vx-face">${faceSVG(pl)}</div>`}<span class="vx-pos p-${pl.pos} ct">${pl.pos}</span></div><span class="vx-lv ct">Nv ${lvl}</span><b class="ct">${esc(pl.nick)}</b></div>`;}
+function vsSide(cls,P){return `<div class="vx-side ${cls}"><div class="vx-tag"><span class="vx-av" style="background:${P.color}">${esc(P.av)}</span><div><b class="ct">${esc(P.name)}</b><small class="ct">${flag(P.c)} ${ICON('trophy',15)} ${P.tr}</small></div></div>
+   <div class="vx-team">${P.ids.map(([id,l],i)=>vsCard(id,l,i)).join('')}</div></div>`;}
+// cambia la pantalla de búsqueda al VS (rival arriba, tú abajo)
+function mmVS(opp){if(!MM)mmOpen();MM.vs=true;MM.cancel=null;const el=MM.el;el.classList.add('vs-on');
+  const sq=save.squad,lv=id=>(save.players[id]||{}).lvl||1;
+  const me={name:save.name||'Tú',av:save.avatar,color:save.color,c:save.country,tr:save.trophies,ids:[sq.gk,...sq.f].map(id=>[id,lv(id)])};
+  const os=opp.squad||{},rv={name:opp.name||'Rival',av:opp.av||'⚽',color:'#ff3b4e',c:opp.c,tr:opp.trophies|0,
+    ids:[os.gk,...(os.f||[])].filter(x=>x&&x.card).map(x=>[x.card.id,x.lvl||1])};
+  const ai=save.testArena!=null?save.testArena:leagueIdx(save.trophies),A=ARENAS[ai]||ARENAS[0];
+  mmSet('¡Rival encontrado!',`${LEAGUES[ai]?LEAGUES[ai].ic+' ':''}${esc(A.n)}`);
+  el.querySelector('#mmVS').innerHTML=vsSide('op',rv)+`<div class="vx-mid"><i class="vx-flash"></i><span class="vx-x ct">VS</span></div>`+vsSide('me',me);
+  el.querySelector('#mmX').classList.add('hide');el.querySelector('#mmL').classList.remove('hide');
+  sfx('power');setTimeout(()=>{sfx('boom');vib(30);},380);
+  mmProg(0,'Cargando arena…');}
+function mmProg(k,txt){const b=document.getElementById('mmB'),t=document.getElementById('mmLT');if(b&&k!=null)b.style.width=Math.round(Math.max(0,Math.min(1,k))*100)+'%';if(t&&txt!=null)t.textContent=txt;}
+function mmClose(now){clearInterval(mmOpen.tt);const el=MM&&MM.el||document.getElementById('mmx');MM=null;if(!el)return;
+  if(now){el.remove();return;}el.classList.add('out');setTimeout(()=>el.remove(),420);}
+window.mmOpen=mmOpen;window.mmSet=mmSet;window.mmVS=mmVS;window.mmProg=mmProg;window.mmClose=mmClose;
+// carga todo el partido detrás del VS y lo deja congelado, listo para el saque (state='vs')
+let VS_HOLD=false;
+async function prepMatch(opp){VS_HOLD=true;
+  try{const need=[save.squad.gk,...save.squad.f,...[(opp.squad||{}).gk,...((opp.squad||{}).f||[])].filter(x=>x&&x.card).map(x=>x.card.id)].filter(id=>MODEL_IDS.includes(id));
+    const t0=performance.now();
+    while(need.some(id=>MSTATUS[id]==='cargando')&&performance.now()-t0<9000){const k=need.filter(id=>MSTATUS[id]!=='cargando').length/(need.length||1);mmProg(.1+k*.45,'Cargando personajes…');await sleep(120);}
+    mmProg(.6,'Cargando arena…');await sleep(30);
+    await startMatch(opp);state='vs';
+    // se dibujan varios cuadros escondidos para que el teléfono prepare la arena, los personajes y los efectos
+    for(let i=0;i<24;i++){await new Promise(r=>requestAnimationFrame(r));mmProg(.6+.4*(i+1)/24,i<12?'Cargando arena…':'Preparando efectos…');}
+  }finally{VS_HOLD=false;}}
+function beginMatch(){state='play';showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}
+// partido contra la IA (cuando no hay rival real)
+async function playBot(opp){mmVS(opp);const t0=performance.now();
+  try{await prepMatch(opp);}catch(e){console.warn(e);}
+  if(!gameOn){mmClose();return;}
+  mmProg(1,'¡Listo!');const wait=2600-(performance.now()-t0);if(wait>0)await sleep(wait);
+  mmClose();setTimeout(beginMatch,250);}
+window.prepMatch=prepMatch;window.playBot=playBot;window.beginMatch=beginMatch;
 // v69: ver un partido de la IA contra la IA (sin premios ni copas)
 window.SPECT=false;
 // v99: partido de prueba con los personajes que ya tienen voz (repartidos en los dos equipos) y todos los poderes
@@ -3688,7 +3791,7 @@ bgfxStart();
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
 // v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
 (function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=108)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=108';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
-  const TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
+  const TIPS=window.GAME_TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
   let ti=Math.floor(Math.random()*TIPS.length);tip.textContent=TIPS[ti];
   const tipT=setInterval(()=>{tip.style.opacity=0;setTimeout(()=>{ti=(ti+1)%TIPS.length;tip.textContent=TIPS[ti];tip.style.opacity=1;},300);},3200);
   const t0=performance.now();let shown=0,done=false;
@@ -3705,8 +3808,8 @@ document.addEventListener('pointerdown',()=>audio(),{once:true});
 document.addEventListener('pointerdown',()=>{try{audio();Object.keys(VOICEMAN).forEach(id=>voxLoad(id));}catch(e){}},{once:true});   // v98: las voces de tu equipo se cargan desde el menú
 
 </script>
-<script src="assets/online.js?v=120"></script>
-<script src="assets/online-play.js?v=120"></script>
-<script src="assets/packs.js?v=120"></script>
+<script src="assets/online.js?v=121"></script>
+<script src="assets/online-play.js?v=121"></script>
+<script src="assets/packs.js?v=121"></script>
 </body>
 </html>

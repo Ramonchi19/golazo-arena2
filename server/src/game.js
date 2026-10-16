@@ -35,6 +35,8 @@ export function cleanDeck(d) {
   return ok.length >= 4 ? ok.slice(0, 8) : ["bomba", "cascara", "rayo", "turbo"];
 }
 
+export const READY_MS = 15000;
+
 export class GameCore {
   // info = { id, players: [ {uid,name,avatar,country,trophies,squad,deck,plvl,kit}, {...} ] }
   constructor(info, send, opts = {}) {
@@ -46,6 +48,7 @@ export class GameCore {
     this.decks = info.players.map(p => cleanDeck(p.deck));
     this.joined = [false, false]; this.phase = 'espera'; this.tickN = 0; this.created = this.now();
     this.startAt = 0; this.goneAt = [0, 0]; this.result = null;
+    this.ready = [false, false]; this.bothAt = 0;   // v121: los dos avisan 'listo' cuando ya cargaron la arena
   }
   // ---- espejo para el equipo rojo ----
   mir(team, x) { return team === 1 ? -x : x; }
@@ -53,13 +56,23 @@ export class GameCore {
     this.joined[team] = true; this.goneAt[team] = 0;
     const me = this.info.players[team], rv = this.info.players[1 - team];
     this.send(team, { t: 'sala', id: this.id, equipo: team, yo: pub(me), rival: pub(rv), fase: this.phase });
-    if (this.phase === 'espera' && this.joined[0] && this.joined[1]) { this.phase = 'cuenta'; this.startAt = this.now() + 3000; this.both({ t: 'cuenta', ms: 3000 }); }
+    if (this.phase === 'espera' && this.joined[0] && this.joined[1] && !this.bothAt) this.bothAt = this.now();
+    this.tryCount();
     if (this.phase === 'juego') this.send(team, this.snap(team));
+  }
+  // v121: la cuenta 3-2-1 empieza al mismo tiempo para los dos cuando ambos cargaron todo
+  // (si un teléfono tarda más de READY_MS, se empieza de todos modos para no dejar esperando al otro)
+  tryCount() {
+    if (this.phase !== 'espera' || !(this.joined[0] && this.joined[1])) return;
+    if ((this.ready[0] && this.ready[1]) || this.now() - this.bothAt > READY_MS) {
+      this.phase = 'cuenta'; this.startAt = this.now() + 3000; this.both({ t: 'cuenta', ms: 3000 });
+    }
   }
   leave(team) { this.joined[team] = false; this.goneAt[team] = this.now(); this.send(1 - team, { t: 'rivalSeFue' }); }
   both(o) { this.send(0, o); this.send(1, o); }
   input(team, m) {
     if (m.t === 'p') { this.send(team, { t: 'po', c: m.c }); return; }   // medir el ping
+    if (m.t === 'listo') { this.ready[team] = true; this.tryCount(); return; }
     if (this.phase !== 'juego') return;
     const M = this.M;
     if (m.t === 'in' && Array.isArray(m.j)) {
@@ -81,7 +94,8 @@ export class GameCore {
   tick() {
     const now = this.now();
     if (this.phase === 'espera') {
-      if (now - this.created > 20000) { const w = this.joined[0] ? 0 : this.joined[1] ? 1 : -1; this.finish(w, 'rival_no_llego'); }
+      this.tryCount(); if (this.phase !== 'espera') return;
+      if (!(this.joined[0] && this.joined[1]) && now - this.created > 20000) { const w = this.joined[0] ? 0 : this.joined[1] ? 1 : -1; this.finish(w, 'rival_no_llego'); }
       return;
     }
     if (this.phase === 'cuenta') { if (now >= this.startAt) { this.phase = 'juego'; this.both({ t: 'inicio' }); } return; }
