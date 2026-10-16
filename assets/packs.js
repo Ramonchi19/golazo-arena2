@@ -16,7 +16,14 @@ const css=`
 @keyframes pk2shine{0%,55%{left:-60%}100%{left:130%}}
 .pack2 .pk-strip{position:absolute;left:0;right:0;top:0;height:15%;background:linear-gradient(var(--c3),var(--c2));border-bottom:2px dashed rgba(255,255,255,.55);z-index:2}
 .pack2 .pk-strip::after{content:'';position:absolute;left:0;right:0;bottom:-5px;height:6px;background:radial-gradient(circle at 4px -1px,transparent 3px,var(--c2) 3.5px) 0 0/8px 6px repeat-x}
-.pack2 .pk-emb{position:relative;z-index:1;width:62%;margin-top:8%;filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
+.pack2 .pk-logo{position:relative;z-index:3;width:82%;margin:auto 0;isolation:isolate;filter:drop-shadow(0 2px 0 rgba(0,0,0,.35));pointer-events:none}   /* v112: logo del color del sobre y brilloso */
+.pack2 .pk-logo img{display:block;width:100%;height:auto}
+.pack2 .pk-logo i{position:absolute;inset:0;-webkit-mask:url(assets/ui/logo_mono.webp?v=112) center/100% 100% no-repeat;mask:url(assets/ui/logo_mono.webp?v=112) center/100% 100% no-repeat}
+.pack2 .pk-lt{background:linear-gradient(#fff 0%,var(--c1) 22%,var(--c2) 78%,var(--c3) 100%);mix-blend-mode:multiply}
+.pack2 .pk-ls{background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.2) 56%,transparent 64%) -150% 0/300% 100% no-repeat;mix-blend-mode:screen;animation:pkLs 3.4s ease-in-out infinite}
+@keyframes pkLs{0%,35%{background-position:-150% 0}75%,100%{background-position:150% 0}}
+@media (prefers-reduced-motion:reduce){.pack2 .pk-ls{animation:none}}   /* v110: logo en los sobres */
+.pack2 .pk-emb{position:relative;z-index:1;width:54%;margin-top:3%;filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
 .pack2 .pk-emb svg{width:100%;display:block}
 .pack2 .pk-n{position:relative;z-index:1;margin-top:4%;font-size:clamp(8px,2.4vw,13px);letter-spacing:1px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
 .pack2 .pk-holo{position:absolute;inset:0;background:conic-gradient(from var(--ha,0deg),#ff5ec4,#ffd84a,#5affb0,#4ab8ff,#b26bff,#ff5ec4);mix-blend-mode:color-dodge;opacity:.42;animation:pk2holo 5s linear infinite;pointer-events:none}
@@ -98,7 +105,7 @@ function emblem(type){const t=TIER[type]||TIER.bronce;
 window.packHTML=function(type,label){
   const p=type==='leyenda'||type==='legendario'?Array.from({length:6},(_,i)=>`<i class="pk-p" style="left:${12+i*15}%;bottom:${8+(i%3)*10}%;animation-delay:${(i*.53)%3}s"></i>`).join(''):'';
   return `<div class="pack pack2 pk-${type}"><div class="pk-foil"></div>${type==='leyenda'||type==='legendario'?'<div class="pk-holo"></div>':''}<div class="pk-shine"></div><div class="pk-strip"></div>
-    <div class="pk-emb">${emblem(type)}</div>${label===true?`<div class="pk-n">${(TIER[type]||TIER.bronce).n}</div>`:''}${p}</div>`;};
+    <div class="pk-logo"><img src="assets/ui/logo_mono.webp?v=112" alt=""><i class="pk-lt"></i><i class="pk-ls"></i></div>${label===true?`<div class="pk-n">${(TIER[type]||TIER.bronce).n}</div>`:''}${p}</div>`;};
 // inclinar el sobre con el dedo (en el menú y en la apertura)
 function tiltAt(el,x,y){const r=el.getBoundingClientRect(),u=(x-r.left)/r.width-.5,v=(y-r.top)/r.height-.5;
   el.style.setProperty('--ry',(u*22).toFixed(1)+'deg');el.style.setProperty('--rx',(-v*22).toFixed(1)+'deg');el.style.setProperty('--sx',(u*120+20).toFixed(0)+'%');el.classList.add('tilting');}
@@ -133,7 +140,7 @@ const POSI={POR:['Portero','<path d="M30 70 Q24 40 34 24 Q38 18 44 22 L46 40 L48
 const GEM='<path d="M30 30 L50 14 L70 30 L60 80 L40 80 Z" fill="var(--cc)" stroke="#0a1636" stroke-width="5" stroke-linejoin="round"/><path d="M30 30 L70 30 M40 80 L50 30 L60 80" stroke="#0a1636" stroke-width="3" fill="none" opacity=".6"/>';
 const CROWN='<path d="M14 72 L20 30 L36 50 L50 20 L64 50 L80 30 L86 72 Z" fill="var(--cc)" stroke="#0a1636" stroke-width="5" stroke-linejoin="round"/><rect x="14" y="70" width="72" height="12" rx="3" fill="var(--cc)" stroke="#0a1636" stroke-width="5"/>';
 const nameOf=it=>it.kind==='kit'?KITS[it.id].n:it.kind==='boots'?BOOTS[it.id].n:isPower(it.id)?CARDS[it.id].name:PBY[it.id].nick;
-function cardBack(type){return `<div class="pack pack2 pk-${type}" style="width:100%;height:100%;border:none;box-shadow:none"><div class="pk-foil"></div>${type==='leyenda'||type==='legendario'?'<div class="pk-holo"></div>':''}<div class="pk-emb" style="margin-top:22%">${emblem(type)}</div></div>`;}
+function cardBack(type){return `<div class="pack pack2 pk-${type}" style="width:100%;height:100%;border:none;box-shadow:none"><div class="pk-foil"></div>${type==='leyenda'||type==='legendario'?'<div class="pk-holo"></div>':''}<div class="pk-logo" style="margin:auto"><img src="assets/ui/logo_mono.webp?v=112" alt=""><i class="pk-lt"></i><i class="pk-ls"></i></div></div>`;}
 function papers(host,x,y,col,n){for(let i=0;i<n;i++){const p=document.createElement('i');p.className='paper';p.style.left=x+'px';p.style.top=y+'px';p.style.background=i%3?col:'#fff';
   p.style.setProperty('--x',(Math.random()*240-60)+'px');p.style.setProperty('--y',(-Math.random()*180-20)+'px');p.style.setProperty('--r',(Math.random()*720-360)+'deg');host.appendChild(p);setTimeout(()=>p.remove(),1100);}}
 window.openPack=function(type,pre){

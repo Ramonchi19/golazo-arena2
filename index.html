@@ -686,7 +686,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <!-- v57: pantalla de carga -->
 <div id="boot" aria-label="Cargando Titan Crashers">
   <div class="bt-art"></div><div class="bt-shade"></div>
-  <div class="bt-logo"><img class="bt-img" src="assets/ui/logo.webp?v=78" alt="Titan Crashers" onerror="this.src='assets/ui/logo.png?v=78'"></div>
+  <div class="bt-logo"><img class="bt-img" src="assets/ui/logo.webp?v=109" alt="Titan Crashers" onerror="this.src='assets/ui/logo.png?v=109'"></div>
   <div class="bt-bottom">
     <p class="bt-tip" id="btTip">Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!</p>
     <div class="bt-bar"><i id="btFill"></i><b id="btPct">0%</b></div>
@@ -697,9 +697,13 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 #boot{position:fixed;inset:0;z-index:9999;background:#0d1f4a;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;font-family:'Lilita One',"Arial Rounded MT Bold",system-ui,sans-serif;color:#fff;transition:opacity .45s ease,transform .45s ease}
 #boot.out{opacity:0;transform:scale(1.04);pointer-events:none}
 #boot .bt-art{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(120,180,255,.45),rgba(120,180,255,0) 60%),repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),linear-gradient(#2f66d6,#1b3f9e);animation:btZoom 14s ease-out forwards}
-#boot .bt-art.img{background:#2a5cc0 var(--art) center 40%/cover no-repeat}
+#boot .bt-art.img{background:var(--art) center 6%/cover no-repeat,#47a1ee}
+@media (min-aspect-ratio:1080/1935){#boot .bt-img{width:min(70vw,360px)}}
+/* v108: en teléfonos alargados se ve la imagen completa de lado a lado y arriba sigue el cielo */
+@media (max-aspect-ratio:1080/1935){#boot .bt-art.img{background:var(--art) center bottom/100% auto no-repeat,#47a1ee}}
 @keyframes btZoom{from{transform:scale(1.08)}to{transform:scale(1)}}
-#boot .bt-shade{position:absolute;inset:0;background:linear-gradient(rgba(8,18,52,.55) 0,rgba(8,18,52,0) 26%,rgba(8,18,52,0) 70%,rgba(8,18,52,.85) 100%)}
+#boot .bt-shade{position:absolute;inset:0;background:linear-gradient(rgba(8,18,52,0) 0,rgba(8,18,52,0) 78%,rgba(8,18,52,.55) 100%)}
+#boot .bt-tip,#boot .bt-st{display:none}   /* v108: solo la barra de carga */
 #boot .bt-img{width:min(86vw,440px);height:auto;filter:drop-shadow(0 8px 14px rgba(0,0,30,.45))}
 #boot .bt-logo{position:relative;margin-top:calc(env(safe-area-inset-top,0px) + 7vh);display:flex;flex-direction:column;align-items:center;line-height:.86;animation:btIn .8s cubic-bezier(.2,1.5,.4,1) both}
 #boot .bt-g{font-size:clamp(58px,19vw,120px);letter-spacing:1px;background:linear-gradient(#fff6b8 0,#ffd23a 45%,#f39a12 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:5px #3a1d00;paint-order:stroke fill;filter:drop-shadow(0 6px 0 #3a1d00) drop-shadow(0 10px 14px rgba(0,0,0,.45))}
@@ -3592,7 +3596,7 @@ bgfxStart();
 // ================== ARRANQUE ==================
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
 // v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
-(function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=57)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=57';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
+(function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=108)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=108';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
   const TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
   let ti=Math.floor(Math.random()*TIPS.length);tip.textContent=TIPS[ti];
   const tipT=setInterval(()=>{tip.style.opacity=0;setTimeout(()=>{ti=(ti+1)%TIPS.length;tip.textContent=TIPS[ti];tip.style.opacity=1;},300);},3200);

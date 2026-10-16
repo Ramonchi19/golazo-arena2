@@ -68,7 +68,7 @@ const G_ICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d
 // ---------- pantalla de entrada ----------
 let ov=null,mode='inicio';
 function overlay(){if(ov)return ov;ov=document.createElement('div');ov.id='login';ov.className='hide';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Entrar a Titan Crashers');document.body.appendChild(ov);return ov;}
-function frame(inner){overlay().innerHTML=`<div class="lg-box"><div class="lg-logo"><img src="assets/ui/logo.webp?v=78" alt="Titan Crashers" style="width:min(78vw,380px);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,30,.45))" onerror="this.src='assets/ui/logo.png?v=78'"></div><div class="mpanel">${inner}</div></div>`;ov.classList.remove('hide');}
+function frame(inner){overlay().innerHTML=`<div class="lg-box"><div class="lg-logo"><img src="assets/ui/logo.webp?v=109" alt="Titan Crashers" style="width:min(78vw,380px);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,30,.45))" onerror="this.src='assets/ui/logo.png?v=109'"></div><div class="mpanel">${inner}</div></div>`;ov.classList.remove('hide');}
 function hideLogin(){if(ov)ov.classList.add('hide');setTimeout(()=>{try{needName();}catch(e){}},500);}
 function msg(t,ok){const m=ov&&ov.querySelector('.lg-msg');if(m){m.textContent=t||'';m.classList.toggle('ok',!!ok);}}
 function busy(on){if(!ov)return;ov.querySelectorAll('button,input').forEach(b=>b.disabled=!!on);}
