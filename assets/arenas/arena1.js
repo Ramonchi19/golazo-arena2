@@ -35,13 +35,15 @@ const pickC=v=>Array.isArray(v)?v[Math.floor(Math.random()*v.length)]:v;
 // ===== cancha (igual al v18) =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX,q=4;
+  const STK=!!window.strikersGrass;   // v128: césped estilo Strikers
+  if(STK)strikersGrass(g,W,H,PX,X,Z);else
   for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){g.fillStyle=(i+j)%2?'#9db150':'#89a444';g.fillRect(X(x),Z(z),q*PX+1,q*PX+1);}
   const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*6;d[k]+=n;d[k+1]+=n*1.1;d[k+2]+=n*.8;}g.putImageData(id,0,0);
-  g.strokeStyle='rgba(240,234,214,.9)';g.lineWidth=PX*.22;
+  g.strokeStyle=STK?'#f6faf0':'rgba(240,234,214,.9)';g.lineWidth=PX*(STK?.25:.22);
   (window.GZ_RR?GZ_RR(g,X(-L),Z(-HW),2*L*PX,2*HW*PX,(SIM.C.CR||0)*PX):g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX));g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
   for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-8.6),9*PX,17.2*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
-  const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
+  const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();if(STK)strikersFinish(g,W,H,X(0),Z(0),PX,t);return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
 // suelo de alrededor con manchas de pasto y tierra

@@ -42,19 +42,21 @@ function vGrad(top,bot){const c=document.createElement('canvas');c.width=8;c.hei
 // ===== cancha: verde más profundo con musgo y hojas caídas =====
 function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
   const X=x=>(x+36)*PX,Z=z=>(z+24)*PX,q=4;
+  const STK=!!window.strikersGrass;   // v128: césped estilo Strikers
+  if(STK)strikersGrass(g,W,H,PX,X,Z);else
   for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){g.fillStyle=(i+j)%2?'#86a64a':'#76983f';g.fillRect(X(x),Z(z),q*PX+1,q*PX+1);}
-  for(let k=0;k<140;k++){const x=Math.random()*W,y=Math.random()*H,r=20+Math.random()*90,gr=g.createRadialGradient(x,y,0,x,y,r);
+  if(!STK)for(let k=0;k<140;k++){const x=Math.random()*W,y=Math.random()*H,r=20+Math.random()*90,gr=g.createRadialGradient(x,y,0,x,y,r);
     gr.addColorStop(0,Math.random()<.6?'rgba(40,80,30,.10)':'rgba(220,230,150,.06)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
   const id=g.getImageData(0,0,W,H),d=id.data;for(let k=0;k<d.length;k+=4){const n=(Math.random()-.5)*6;d[k]+=n;d[k+1]+=n*1.1;d[k+2]+=n*.8;}g.putImageData(id,0,0);
   // hojas caídas: más en las orillas
   const LC=['#c9822f','#d9a441','#a8652a','#b8b04a'];
   for(let k=0;k<900;k++){const edge=Math.random()<.7;let x=Math.random()*W,y=edge?(Math.random()<.5?Math.random()*PX*9:H-Math.random()*PX*9):Math.random()*H;
     g.save();g.translate(x,y);g.rotate(Math.random()*6.28);g.fillStyle=pickC(LC);g.globalAlpha=.55+Math.random()*.3;g.beginPath();g.ellipse(0,0,PX*.22,PX*.11,0,0,7);g.fill();g.restore();}
-  g.globalAlpha=1;g.strokeStyle='rgba(236,232,210,.88)';g.lineWidth=PX*.22;
+  g.globalAlpha=1;g.strokeStyle=STK?'#f6faf0':'rgba(236,232,210,.88)';g.lineWidth=PX*(STK?.25:.22);
   (window.GZ_RR?GZ_RR(g,X(-L),Z(-HW),2*L*PX,2*HW*PX,(SIM.C.CR||0)*PX):g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX));g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();
   for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-8.6),9*PX,17.2*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
-  const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
+  const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();if(STK)strikersFinish(g,W,H,X(0),Z(0),PX,t);return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
 (function(){const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.fillStyle='#55772f';g.fillRect(0,0,S,S);
