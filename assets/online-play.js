@@ -98,7 +98,7 @@ async function prepOnline(){
   if(O.count||O.go)goCount();else mmProg(1,'Esperando a tu rival…');
 }
 function goCount(){
-  if(!O||O.counted)return;O.counted=true;mmClose();
+  if(!O||O.counted)return;O.counted=true;mmClose();try{crowdStart();}catch(e){}
   state='play';pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
   if(O.go){showBig('¡A jugar!');sfx('whistle');return;}
   let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');sfx('touch');n--;setTimeout(c,1000);};c();

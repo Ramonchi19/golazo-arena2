@@ -134,7 +134,8 @@ S.pkLeg=()=>{[392,523,659,784].forEach((f,i)=>setTimeout(()=>{tone(f,.5,'sawtoot
 S.pkClue=()=>{tone(220,.35,'sawtooth',.06,440);noiseF(.35,.08,300,'bandpass',2500,2);};
 S.pkCoin=()=>{tone(1975,.08,'square',.04);setTimeout(()=>tone(2637,.12,'square',.035),45);};
 const RSND={comun:'pkComun',rara:'pkRara',epica:'pkEpica',legendaria:'pkLeg'};
-const play=n=>{try{S[n]&&S[n]();}catch(e){}};
+const UIMAP={pkRip:'sobre',pkFlip:'carta'};   // v124: sonidos nuevos de ElevenLabs; si no cargaron, el de antes
+const play=n=>{try{if(UIMAP[n]&&window.uiSnd&&uiSnd(UIMAP[n]))return;S[n]&&S[n]();}catch(e){}};
 
 // ---------------- apertura ----------------
 const RC={comun:'rgba(200,215,255,.32)',rara:'rgba(255,170,60,.45)',epica:'rgba(200,110,255,.5)',legendaria:'rgba(255,215,80,.6)'};

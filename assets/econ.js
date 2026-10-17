@@ -79,6 +79,9 @@
   const int = (v, a, b) => Math.max(a, Math.min(b, Math.floor(+v || 0)));
   // v115: tope de 1,000,000 de monedas y de gemas (hay que gastarlas)
   const CAP = 1000000;
+  // v124: MODO PRUEBA — las cuentas NUEVAS empiezan con 1 millón de monedas y de gemas para probar sobres.
+  // Antes de publicar el juego cambia esto a false.
+  const PRUEBA_INICIO = true;
   // v115: ofertas de la semana. 3 cartas distintas para cada jugador; cambian cada lunes (hora UTC).
   // Cada una se compra una vez por semana; con un video sale 25% más barata.
   const WEEK = 7 * 864e5, OFF_DISC = .25;
@@ -271,5 +274,5 @@
   }
   const pickE = s => { const o = {}; for (const k of EK) o[k] = s[k]; return JSON.parse(JSON.stringify(o)); };
 
-  root.ECON = { CAP, capE, offers, weekOf, weekEnd, wkState, OFFER, OFF_DISC, fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
+  root.ECON = { PRUEBA_INICIO, CAP, capE, offers, weekOf, weekEnd, wkState, OFFER, OFF_DISC, fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
 })(typeof window !== 'undefined' ? window : globalThis);

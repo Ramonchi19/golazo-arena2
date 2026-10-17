@@ -131,7 +131,8 @@ export class Cartera extends DurableObject {
         if (doc && doc.econ && doc.econ.cyc) E = Object.assign(ECON.fromSave(ED, {}, now, R), doc.econ);   // copia que escribió este mismo servidor
         else if (doc && doc.save && doc.trophies != null)   // cuenta de antes (v78 o menos): se pasa su partida una sola vez, con topes
           E = ECON.fromSave(ED, doc.save, now, R, { trophies: doc.trophies, maxTrophies: doc.maxTrophies, wins: doc.wins, lvl: doc.lvl });
-        else E = ECON.fromSave(ED, {}, now, R);   // cuenta nueva: empieza de cero (lo del teléfono no se cree)
+        else { E = ECON.fromSave(ED, {}, now, R);   // cuenta nueva: empieza de cero (lo del teléfono no se cree)
+          if (ECON.PRUEBA_INICIO) { E.gold = ECON.CAP; E.gems = ECON.CAP; } }   // v124: modo prueba
         fresh = true;
       }
       if (doc && doc.ajuste && typeof doc.ajuste === "object") { const key = JSON.stringify(doc.ajuste).slice(0, 500); if (key !== E.adj) { applyAdj(E, doc.ajuste); E.adj = key; fresh = true; } }
