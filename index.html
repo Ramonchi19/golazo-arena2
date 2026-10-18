@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#47a1ee">
+<meta name="theme-color" content="#000000">
 <title>Titan Crashers</title>
 <link rel="preload" as="image" href="assets/ui/carga.webp?v=140">
 <link rel="prefetch" as="image" href="assets/ui/espera.webp?v=140">
@@ -951,7 +951,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 #boot .bt-st{font-family:var(--gf);letter-spacing:.2px;font-size:13px;color:#c9d6ff;text-shadow:0 1px 2px #000}
 @media (prefers-reduced-motion:reduce){#boot .bt-art,#boot .bt-logo,#boot .bt-bar i{animation:none}}
 </style>
-<style>html{background:#47a1ee}</style>
+<style>html{background:#000}</style>
 </head>
 <body>
 <!-- v57: pantalla de carga -->
@@ -965,10 +965,14 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
   im.src='assets/ui/carga.webp?v=140';
   var startT=function(){if(!sp.classList.contains('wait'))return;sp.classList.remove('wait');setTimeout(function(){anim=true;fin();},2600);};window.__spStart=startT;setTimeout(startT,900);
   // v141: sonido de Castle Studios (el grave), sincronizado con el logo que empieza a aparecer a los 0.35 s
-  try{var snd=new Audio('assets/sfx/castle_intro.ogg?v=2');snd.volume=.85;snd.preload='auto';
+  try{var snd={_buf:null,_ok:[],addEventListener:function(n,f){this._ok.push(f);},currentTime:0,
+      play:function(){var C=window.__AC;if(!C||!this._buf)return;try{if(C.state!=='running')C.resume();var src=C.createBufferSource(),g=C.createGain();g.gain.value=.85;src.buffer=this._buf;src.connect(g);g.connect(C.destination);src.start();}catch(e){}}};
+    try{window.__AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+    if(window.__AC)fetch('assets/sfx/castle_intro.ogg?v=2').then(function(r){return r.arrayBuffer();}).then(function(b){return new Promise(function(res,rej){window.__AC.decodeAudioData(b,res,rej);});}).then(function(buf){snd._buf=buf;snd._ok.forEach(function(f){f();});}).catch(function(){snd._ok.forEach(function(f){f();});});
+    else setTimeout(function(){snd._ok.forEach(function(f){f();});},0);
     var muted0=false;try{var sv=JSON.parse(localStorage.getItem('golazo_save_v1')||'null');muted0=!!(sv&&sv.settings&&sv.settings.sound===false);}catch(e){}
-    if(!muted0){var played=false,svgE=sp.querySelector('.sp-svg'),go=function(){if(played)return;played=true;try{snd.currentTime=0;var pr=snd.play();if(pr&&pr.catch)pr.catch(function(){});}catch(e){}};
-      if(svgE)svgE.addEventListener('animationstart',function(ev){if(ev.animationName==='spReveal')go();});setTimeout(go,2200);snd.addEventListener('canplaythrough',function(){window.__spStart&&window.__spStart();},{once:true});}else{window.__spStart&&window.__spStart();}}catch(e){window.__spStart&&window.__spStart();}
+    if(!muted0){var played=false,svgE=sp.querySelector('.sp-svg'),go=function(){if(played)return;played=true;try{snd.play();}catch(e){}};
+      if(svgE)svgE.addEventListener('animationstart',function(ev){if(ev.animationName==='spReveal')go();});setTimeout(go,2200);snd.addEventListener('ready',function(){window.__spStart&&window.__spStart();});}else{window.__spStart&&window.__spStart();}}catch(e){window.__spStart&&window.__spStart();}
   setTimeout(function(){img=true;anim=true;fin();},7000);})();
 </script>
 <div id="boot" aria-label="Cargando Titan Crashers">
@@ -1074,7 +1078,10 @@ const joy={id:null,x:0,y:0};
 
 // ================== AUDIO ==================
 let AC=null,muted=false;
-function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();}
+function audio(){if(!AC){try{AC=window.__AC||new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state!=='running'&&AC.state!=='closed'){try{AC.resume();}catch(e){}}}
+// v145: si Android pausa el audio (llamada, otra app, pantalla apagada), se reanuda en el siguiente toque o al volver a la app
+['pointerdown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(AC&&AC.state!=='running')audio();},{passive:true,capture:true}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AC&&AC.state!=='running')audio();});
 function tone(f,d,type,v,f2){if(!AC||muted)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(v||.08,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02);}
 function noise(d,v){if(!AC||muted)return;const t=AC.currentTime,n=Math.floor(AC.sampleRate*d),b=AC.createBuffer(1,n,AC.sampleRate),ch=b.getChannelData(0);for(let i=0;i<n;i++)ch[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;g.gain.value=v||.15;s.connect(g);g.connect(AC.destination);s.start(t);}
 // v47: ruido filtrado (para golpes con cuerpo, chasquidos y zumbidos)
