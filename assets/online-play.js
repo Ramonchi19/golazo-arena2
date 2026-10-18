@@ -77,7 +77,7 @@ function send(o){if(O&&O.ws&&O.ws.readyState===1)O.ws.send(JSON.stringify(o));}
 function onMsg(m){if(!O)return;
   if(m.t==='sala'){O.retries=0;if(!O.rival){O.rival=oppFrom(m.rival);mmVS(O.rival);prepOnline();}else if(O.prepared)send({t:'listo'});}
   else if(m.t==='cuenta'){O.count=true;if(O.prepared)goCount();}
-  else if(m.t==='inicio'){O.go=true;if(O.prepared&&O.counted){pause=0;pauseCb=null;showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}else if(O.prepared)goCount();}
+  else if(m.t==='inicio'){O.go=true;if(O.prepared&&O.counted){pause=0;pauseCb=null;showBig('¡A jugar!');}else if(O.prepared)goCount();}
   else if(m.t==='s'){applySnap(m);}
   else if(m.t==='po'){const r=performance.now()-m.c;O.rtt=O.rtt?O.rtt*.7+r*.3:r;}
   else if(m.t==='ri'){joy1.x=m.j[0];joy1.y=m.j[1];}
@@ -100,8 +100,8 @@ async function prepOnline(){
 function goCount(){
   if(!O||O.counted)return;O.counted=true;mmClose();try{crowdStart();}catch(e){}
   state='play';pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
-  if(O.go){showBig('¡A jugar!');sfx('whistle');return;}
-  let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');sfx('touch');n--;setTimeout(c,1000);};c();
+  if(O.go){showBig('¡A jugar!');return;}
+  let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');n--;setTimeout(c,1000);};c();
 }
 async function startOnline(){if(O&&!O.preparing)return prepOnline();}
 function endOnline(m){if(!O||O.ended)return;O.ended=true;

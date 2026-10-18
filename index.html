@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#47a1ee">
 <title>Titan Crashers</title>
-<link rel="preload" as="image" href="assets/ui/carga.webp?v=108">
+<link rel="preload" as="image" href="assets/ui/carga.webp?v=140">
+<link rel="prefetch" as="image" href="assets/ui/espera.webp?v=140">
 <link rel="preload" as="image" href="assets/ui/logo.webp?v=109">
 <link rel="preload" as="font" href="assets/fonts/LilitaOne-Regular.ttf" type="font/ttf" crossorigin>
 <style>
@@ -853,7 +854,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 /* v121: buscar rival + VS */
 #mmx{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;overflow:hidden;background:#123177;animation:fadeIn .25s;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 #mmx.out{opacity:0;transform:scale(1.06);transition:opacity .4s,transform .4s}
-#mmx .mm-art{position:absolute;inset:0;background:#47a1ee center 30%/cover no-repeat;animation:mmZoom 14s ease-out both}
+#mmx .mm-art{position:absolute;inset:0;background:#2a1a12 32% 75%/cover no-repeat;animation:mmZoom 14s ease-out both}
 @keyframes mmZoom{from{transform:scale(1.12)}to{transform:scale(1)}}
 #mmx .mm-shade{position:absolute;inset:0;background:linear-gradient(rgba(6,18,48,.55),rgba(6,18,48,0) 22%,rgba(6,18,48,0) 62%,rgba(6,18,48,.75));transition:background .4s}
 #mmx.vs-on .mm-shade{background:rgba(6,14,40,.62)}
@@ -923,15 +924,15 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 #boot{position:fixed;inset:0;z-index:9999;background:#0d1f4a;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;font-family:'Lilita One',"Arial Rounded MT Bold",system-ui,sans-serif;color:#fff;transition:opacity .45s ease,transform .45s ease}
 #boot.out{opacity:0;transform:scale(1.04);pointer-events:none}
 #boot .bt-art{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(120,180,255,.45),rgba(120,180,255,0) 60%),repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,255,255,.07) 0 2px,transparent 2px 46px),linear-gradient(#2f66d6,#1b3f9e);animation:btZoom 14s ease-out forwards}
-#boot .bt-art,#boot .bt-art.img{background:url(assets/ui/carga.webp?v=108) center 6%/cover no-repeat,#47a1ee;animation:none}
-@media (min-aspect-ratio:1080/1935){#boot .bt-img{width:min(70vw,360px)}}
+#boot .bt-art,#boot .bt-art.img{background:url(assets/ui/carga.webp?v=140) center bottom/cover no-repeat,#1c2333;animation:none}
+@media (min-aspect-ratio:2/3){#boot .bt-art,#boot .bt-art.img{background-position:center top}}   /* v142: en pantallas anchas la copa no sube */
 /* v108: en teléfonos alargados se ve la imagen completa de lado a lado y arriba sigue el cielo */
-@media (max-aspect-ratio:1080/1935){#boot .bt-art,#boot .bt-art.img{background:url(assets/ui/carga.webp?v=108) center bottom/100% auto no-repeat,#47a1ee}}
+
 @keyframes btZoom{from{transform:scale(1.08)}to{transform:scale(1)}}
 #boot .bt-shade{position:absolute;inset:0;background:linear-gradient(rgba(8,18,52,0) 0,rgba(8,18,52,0) 78%,rgba(8,18,52,.55) 100%)}
 #boot .bt-tip,#boot .bt-st{display:none}   /* v108: solo la barra de carga */
-#boot .bt-img{width:min(86vw,440px);height:auto;filter:drop-shadow(0 8px 14px rgba(0,0,30,.45))}
-#boot .bt-logo{position:relative;margin-top:calc(env(safe-area-inset-top,0px) + 7vh);display:flex;flex-direction:column;align-items:center;line-height:.86;animation:btIn .8s cubic-bezier(.2,1.5,.4,1) both}
+#boot .bt-img{width:min(72vw,27vh,380px);height:auto;   /* v142: más chico, nunca tapa la copa */filter:drop-shadow(0 8px 14px rgba(0,0,30,.45))}
+#boot .bt-logo{position:relative;margin-top:calc(env(safe-area-inset-top,0px) + 3.5vh);display:flex;flex-direction:column;align-items:center;line-height:.86;animation:btIn .8s cubic-bezier(.2,1.5,.4,1) both}
 #boot .bt-g{font-size:clamp(58px,19vw,120px);letter-spacing:1px;background:linear-gradient(#fff6b8 0,#ffd23a 45%,#f39a12 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:5px #3a1d00;paint-order:stroke fill;filter:drop-shadow(0 6px 0 #3a1d00) drop-shadow(0 10px 14px rgba(0,0,0,.45))}
 #boot .bt-a{margin-top:6px;font-size:clamp(28px,9vw,56px);letter-spacing:8px;padding:4px 22px 6px 30px;background:linear-gradient(#3d7bff,#1f4cc4);border:4px solid #0b1a3d;border-radius:12px;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill;box-shadow:0 5px 0 #0b1a3d;transform:rotate(-2deg)}
 @keyframes btIn{from{transform:scale(.3) rotate(-8deg);opacity:0}to{transform:none;opacity:1}}
@@ -955,7 +956,11 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 (function(){var sp=document.getElementById('splash'),t0=Date.now(),img=false,anim=false,gone=false;
   function fin(){if(gone||!img||!anim)return;gone=true;sp.classList.add('out');setTimeout(function(){sp.remove();window.SPLASH_DONE=true;},560);}
   var im=new Image();im.onload=im.onerror=function(){var d=im.decode?im.decode():null;if(d&&d.then)d.then(function(){img=true;fin();},function(){img=true;fin();});else{img=true;fin();}};
-  im.src='assets/ui/carga.webp?v=108';
+  im.src='assets/ui/carga.webp?v=140';
+  // v141: sonido de Castle Studios (el grave), sincronizado con el logo que empieza a aparecer a los 0.35 s
+  try{var snd=new Audio('assets/sfx/castle_intro.ogg?v=1');snd.volume=.85;snd.preload='auto';
+    var muted0=false;try{var sv=JSON.parse(localStorage.getItem('golazo_save_v1')||'null');muted0=!!(sv&&sv.settings&&sv.settings.sound===false);}catch(e){}
+    if(!muted0)setTimeout(function(){var pr=snd.play();if(pr&&pr.catch)pr.catch(function(){});},350);}catch(e){}
   setTimeout(function(){anim=true;fin();},2600);
   setTimeout(function(){img=true;anim=true;fin();},7000);})();
 </script>
@@ -2164,7 +2169,7 @@ function newGame(opp){
   usedCards=[[],[]];const md=shuffle(((window.SPECT&&window.SPECT_DK)?SPECT_DK[0]:save.deck).slice());hands[0]=md.slice(0,4);queues[0]=md.slice(4);
   const od=shuffle(((window.SPECT&&window.SPECT_DK)?SPECT_DK[1]:opp.deck).slice());hands[1]=od.slice(0,4);queues[1]=od.slice(4);
   selCard=-1;ghost=null;renderCards();
-  kickoff(0);if(!VS_HOLD){showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}
+  kickoff(0);if(!VS_HOLD){showBig('¡A jugar!');}
 }
 // v96: la primera vez que salía cada poder el teléfono tenía que preparar sus gráficos a medio partido (tirón).
 // Ahora se preparan todos antes del saque inicial, sin sonido y sin que se vea.
@@ -4116,7 +4121,7 @@ function mmTip(){const T=window.GAME_TIPS||[];return T.length?T[Math.floor(Math.
 function mmOpen(onCancel){mmClose(true);
   const el=document.createElement('div');el.id='mmx';el.className='mm-search';
   const pick=MM_ART[Math.floor(Math.random()*MM_ART.length)];
-  el.innerHTML=`<div class="mm-art" style="background-image:url(assets/ui/carga.webp?v=108)"></div><div class="mm-shade"></div>
+  el.innerHTML=`<div class="mm-art" style="background-image:url(assets/ui/espera.webp?v=140)"></div><div class="mm-shade"></div>
    <div class="mm-head"><span class="mm-lupa">${MM_LUPA}</span><div class="mm-ht"><b class="ct" id="mmT">Buscando rival...</b><small class="ct" id="mmS">${esc(LEAGUES[leagueIdx(save.trophies)].n)} · ${ICON('trophy',15)} ${save.trophies}</small></div></div>
    <div class="mm-vs" id="mmVS"></div>
    <div class="mm-foot"><button class="btn r mm-x" id="mmX"><b class="ct">Cancelar</b></button>
@@ -4160,7 +4165,7 @@ async function prepMatch(opp){VS_HOLD=true;
     // se dibujan varios cuadros escondidos para que el teléfono prepare la arena, los personajes y los efectos
     for(let i=0;i<24;i++){await new Promise(r=>requestAnimationFrame(r));mmProg(.6+.4*(i+1)/24,i<12?'Cargando arena…':'Preparando efectos…');}
   }finally{VS_HOLD=false;}}
-function beginMatch(){state='play';crowdStart();showBig('¡A jugar!');if(!crowdShot('fx_buzzstart',.6))sfx('whistle');}
+function beginMatch(){state='play';crowdStart();showBig('¡A jugar!');}   // v140: sin bocina/silbato al empezar
 // partido contra la IA (cuando no hay rival real)
 async function playBot(opp){mmVS(opp);const t0=performance.now();
   try{await prepMatch(opp);}catch(e){console.warn(e);}
@@ -4316,7 +4321,7 @@ bgfxStart();
 // ================== ARRANQUE ==================
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
 // v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
-(function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=108)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=108';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
+(function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=140)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=140';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
   const TIPS=window.GAME_TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
   let ti=Math.floor(Math.random()*TIPS.length);tip.textContent=TIPS[ti];
   const tipT=setInterval(()=>{tip.style.opacity=0;setTimeout(()=>{ti=(ti+1)%TIPS.length;tip.textContent=TIPS[ti];tip.style.opacity=1;},300);},3200);
