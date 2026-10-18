@@ -37,7 +37,7 @@ const errTxt=e=>ERR[e&&e.code]||((e&&e.message)?String(e.message).replace(/^Fire
 
 // ---------- estilos de la pantalla de entrada ----------
 const css=document.createElement('style');css.textContent=`
-#login{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 30%,rgba(120,180,255,.35),rgba(120,180,255,0) 60%),repeating-linear-gradient(45deg,rgba(255,255,255,.06) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 2px,transparent 2px 46px),linear-gradient(#2f66d6,#1b3f9e);overflow-y:auto}
+#login{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(90% 55% at 50% 40%,#e0fff6 0%,#8ff4e0 22%,#2fd8c8 48%,#11a0a8 72%,#063e52 100%);overflow-y:auto}
 #login.hide{display:none}
 #login .lg-box{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:14px}
 #login .lg-logo{font-family:"Lilita One","Arial Rounded MT Bold",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;line-height:.86;margin-bottom:4px}
