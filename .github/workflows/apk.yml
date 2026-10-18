@@ -32,6 +32,8 @@ jobs:
           npx cap sync android
           # pantalla siempre vertical y a pantalla completa
           sed -i 's#<activity#<activity android:screenOrientation="portrait"#' android/app/src/main/AndroidManifest.xml
+          # v137: arranque en negro (sin la imagen de inicio por defecto) para que entre directo el logo de Castle Studios
+          sed -i 's#@drawable/splash#@android:color/black#g' android/app/src/main/res/values/styles.xml || true
           # v118: anuncios (AdMob). Si assets/ads.js tiene "const PRUEBA = true" se usa el ID de app de PRUEBA de Google; si no, el real
           if grep -q "const PRUEBA = true" assets/ads.js; then ADMOB_APP="ca-app-pub-3940256099942544~3347511713"; else ADMOB_APP="ca-app-pub-3351017803207592~9109168365"; fi
           echo "AdMob app: $ADMOB_APP"
