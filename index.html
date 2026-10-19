@@ -496,6 +496,49 @@ body.landwait #rotL{display:flex}body.landmode #rotate{display:none!important}
 .rpack{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:12px}.rpack .pack{width:70px}.rpack small,.full{color:var(--muted)}
 .newl{margin-top:12px;font-size:18px;color:#8af0a8}
 #end .btn{margin-top:16px}
+/* v146: pantalla de resultado */
+#app.rx-on>*:not(#c):not(#end){visibility:hidden!important}   /* v147: sin marcador, cartas ni joystick detrás del resultado */
+#end.rx-end{display:block;overflow-y:auto;overflow-x:hidden;padding:calc(14px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));
+  background:radial-gradient(130% 80% at 50% 45%,rgba(4,10,30,.58),rgba(4,10,30,.85) 75%);backdrop-filter:none;-webkit-backdrop-filter:none}   /* v147: se ve la arena detrás, oscurecida */
+.rx{position:relative;z-index:2;max-width:420px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.rx-p{opacity:0;transition:opacity .25s,transform .35s cubic-bezier(.2,1.4,.4,1)}
+.rx-p.in{opacity:1;transform:none}
+.rx-ban{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;border:3px solid #0a1636;box-shadow:0 5px 0 #0a1636,inset 0 3px 0 rgba(255,255,255,.25)}
+.rx-opp{background:linear-gradient(#d8405a,#9a1f3a);transform:translateX(-110%)}
+.rx-me{background:linear-gradient(#3d9bff,#1d58c4);transform:translateX(110%)}
+.rx-av{width:52px;height:52px;flex:none;border-radius:14px;background:rgba(10,22,54,.45);border:3px solid rgba(10,22,54,.7);display:flex;align-items:center;justify-content:center;font-size:32px}
+.rx-nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rx-nm b{font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-text-stroke:4px #0a1636;paint-order:stroke fill}
+.rx-nm small{font-size:13px;color:#e6eeff;display:flex;align-items:center;gap:4px}
+.rx-sc{flex:none;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff;
+  background:radial-gradient(circle at 35% 30%,#fff7c2,#ffc92e 45%,#d98a00);border:4px solid #0a1636;box-shadow:0 4px 0 #0a1636,0 0 18px rgba(255,214,64,.55);
+  -webkit-text-stroke:5px #0a1636;paint-order:stroke fill;transform:scale(2.6)}
+.rx-dt{position:absolute;right:84px;bottom:-14px;padding:3px 10px;border-radius:10px;border:3px solid #0a1636;background:#162c63;font-size:16px;display:flex;align-items:center;gap:4px;transform:scale(.4);
+  -webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.rx-dt.up{color:var(--gold)}.rx-dt.dn{color:#ff9aa4}
+.rx-mid{display:flex;flex-direction:column;align-items:center;gap:2px;margin:2px 0}
+.rx-vs{font-size:24px;color:#cfd8ef;-webkit-text-stroke:4px #0a1636;paint-order:stroke fill;transform:scale(.5)}
+.rx-ti{font-size:50px;line-height:1;letter-spacing:1px;-webkit-text-stroke:7px #0a1636;paint-order:stroke fill;transform:scale(3);color:#fff}
+.res-win .rx-ti{color:#8ff4e0;text-shadow:0 0 22px rgba(47,216,200,.8)}
+.res-loss .rx-ti{color:#ff9aa4}.res-draw .rx-ti{color:#ffe46a}
+.rx-rw{transform:translateY(20px);display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:8px}
+.rx-xp{width:100%;display:flex;align-items:center;gap:8px;background:rgba(10,22,54,.6);border:3px solid #0a1636;border-radius:14px;padding:8px 10px}
+.rx-lv{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;background:linear-gradient(#7fd0ff,#2f8cff);border:3px solid #0a1636;border-radius:12px;transform:rotate(45deg) scale(.82);-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.rx-lv.pop{animation:rxLv .5s}
+@keyframes rxLv{40%{transform:rotate(45deg) scale(1.25)}}
+.rx-bar{flex:1;position:relative;height:22px;border-radius:11px;background:#0a1636;overflow:hidden}
+.rx-bar i{display:block;height:100%;background:linear-gradient(#8fe0ff,#2f8cff);box-shadow:inset 0 3px 0 rgba(255,255,255,.35)}
+.rx-bar span{position:absolute;inset:0;text-align:center;line-height:22px;font-size:13px;-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.rx-xpg{flex:none;font-size:17px;color:#8fe0ff;-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.rx-chips{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;font-size:20px}
+.rx-chips>span{-webkit-text-stroke:3px #0a1636;paint-order:stroke fill;display:flex;align-items:center;gap:4px}
+.rx-pk{flex-direction:column}.rx-pk .pack{width:58px}.rx-pk small{font-size:13px}
+.rx-acts{display:flex;gap:12px;justify-content:center;transform:translateY(20px);margin-top:6px}
+#end .rx-acts .btn{flex:1;max-width:170px;margin:0}
+.rx-conf{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.rx-conf i{position:absolute;top:-20px;border-radius:2px;animation:rxConf linear forwards}
+@keyframes rxConf{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),110vh) rotate(var(--rz))}}
+
 .offmk{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45);pointer-events:none;display:none;z-index:7;color:#fff;font:15px/28px 'Lilita One',sans-serif;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .offmk.me{width:42px;height:42px;margin:-21px 0 0 -21px;line-height:36px;color:#3a2500;text-shadow:none;animation:offp 1s ease-in-out infinite}
 .offmk b{font-weight:400;font-size:13px}.offmk.me b{font-size:15px}
@@ -950,6 +993,65 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 #boot .bt-bar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:400;font-size:16px;-webkit-text-stroke:3px #0b1a3d;paint-order:stroke fill}
 #boot .bt-st{font-family:var(--gf);letter-spacing:.2px;font-size:13px;color:#c9d6ff;text-shadow:0 1px 2px #000}
 @media (prefers-reduced-motion:reduce){#boot .bt-art,#boot .bt-logo,#boot .bt-bar i{animation:none}}
+/* ================== v148: más brillo (botones tipo Clash, destellos en el inicio) y pantalla de arenas ================== */
+.btn.y{background:linear-gradient(#ffdc5a 0,#ffd03e 49%,#fbb520 51%,#f6a80e 100%);box-shadow:0 3px 0 rgba(10,14,32,.85),0 6px 12px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.65),inset 0 -5px 0 #cf7a00}
+.btn.b{background:linear-gradient(#6cc0ff 0,#55aef9 49%,#3b8ff0 51%,#2f7ee6 100%);box-shadow:0 3px 0 rgba(10,14,32,.85),0 6px 12px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.55),inset 0 -5px 0 #1d55b0}
+.btn.g{background:linear-gradient(#7ff07a 0,#5fde5e 49%,#3fc447 51%,#2fb23c 100%);box-shadow:0 3px 0 rgba(10,14,32,.85),0 6px 12px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.55),inset 0 -5px 0 #1d7d2a}
+.btn.r{background:linear-gradient(#ff8a93 0,#ff6b76 49%,#ec4153 51%,#d8293c 100%);box-shadow:0 3px 0 rgba(10,14,32,.85),0 6px 12px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.5),inset 0 -5px 0 #9a1426}
+.btn.y::before,.btn.b::before,.btn.g::before,.btn.r::before{content:'';position:absolute;top:5px;right:7px;width:6px;height:6px;border-radius:50%;background:#fff;opacity:.9;box-shadow:0 0 4px #fff;pointer-events:none}
+.btn.sm::before{top:4px;right:5px;width:4px;height:4px}
+/* inicio: arena más grande, luz detrás y destellos */
+.hm-arena{width:min(300px,calc(100% - 136px));z-index:1}   /* v149: lo más grande posible sin tocar los botones de los lados */
+.hm-glow{position:absolute;left:50%;top:44%;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,230,.65),rgba(255,236,150,.25) 35%,transparent 65%);animation:hmGlow 3.2s ease-in-out infinite}
+@keyframes hmGlow{50%{transform:scale(1.12);opacity:.75}}
+.hm-rays{background:repeating-conic-gradient(rgba(255,250,210,.3) 0 8deg,transparent 8deg 20deg)!important;animation:spin 28s linear infinite}
+.hm-spk{position:absolute;inset:0;pointer-events:none;z-index:2}
+.spk{position:absolute;width:var(--s,18px);height:var(--s,18px);background:#fff;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);
+  filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 10px #fff6b0);opacity:0;animation:spk var(--d,2.4s) ease-in-out infinite;animation-delay:var(--w,0s)}
+@keyframes spk{0%,100%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1) rotate(45deg)}70%{opacity:.2;transform:scale(.5) rotate(90deg)}}
+.hm-arname{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:3;white-space:nowrap;font-size:15px;padding:4px 14px;border-radius:12px;color:#fff;
+  background:linear-gradient(#2b4a9e,#1a2f6e);border:2px solid #0a1636;box-shadow:0 3px 0 rgba(10,14,32,.8),inset 0 2px 0 rgba(255,255,255,.3);-webkit-text-stroke:3px #0a1636;paint-order:stroke fill;pointer-events:none}
+#goBattle .spk{z-index:2}
+.pslot.ps-listo{animation:psReady 1.2s ease-in-out infinite}
+@keyframes psReady{50%{box-shadow:0 0 0 3px #fff6b0,0 0 22px 6px rgba(255,214,64,.9)}}
+/* pantalla de arenas (se desliza a los lados) */
+#arv{position:fixed;inset:0;z-index:48;display:flex;flex-direction:column;background:radial-gradient(120% 80% at 50% 30%,#2fd8c8,#11a0a8 45%,#063e52);padding-top:env(safe-area-inset-top)}
+#arv.hide{display:none}
+.arv-top{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.arv-top .ct{flex:1;text-align:center;font-size:26px;-webkit-text-stroke:5px #0a1636;paint-order:stroke fill;margin-right:46px}
+.arv-back{width:46px;height:42px;border-radius:12px;border:3px solid #0a1636;background:linear-gradient(#ff8a93,#d8293c);color:#fff;box-shadow:0 3px 0 #0a1636;font-size:22px;display:flex;align-items:center;justify-content:center}
+.arv-sc{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.arv-sc::-webkit-scrollbar{display:none}
+.arv-pg{flex:none;width:100%;scroll-snap-align:center;overflow-y:auto;padding:0 16px 24px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.arv-num{font-size:16px;color:#fff;opacity:.9;-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.arv-nm{font-size:30px;line-height:1;text-align:center;color:#fff;-webkit-text-stroke:6px #0a1636;paint-order:stroke fill}
+.arv-img{position:relative;width:min(300px,78vw);aspect-ratio:1}
+.arv-img img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 14px 16px rgba(0,40,50,.45));animation:arFloat 4s ease-in-out infinite}
+.arv-img .arv-lk{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:70px;filter:drop-shadow(0 4px 0 #0a1636)}
+.arv-pg.locked .arv-img img{filter:grayscale(1) brightness(.55) drop-shadow(0 14px 16px rgba(0,0,0,.4))}
+.arv-pg.locked .arv-nm{color:#c9d2e6}
+.arv-st{width:100%;max-width:380px;border-radius:16px;border:3px solid #0a1636;background:linear-gradient(#22408f,#162c63);box-shadow:0 4px 0 #0a1636;padding:10px 12px;text-align:center}
+.arv-st b{display:block;font-size:19px;-webkit-text-stroke:4px #0a1636;paint-order:stroke fill}
+.arv-st small{display:block;color:#cfe0ff;font-size:13px;margin-top:2px}
+.arv-st.cur{background:linear-gradient(#ffcf3f,#f39c0b);color:#3a2000}.arv-st.cur b{color:#fff}.arv-st.cur small{color:#5a3300}
+.arv-st.lk{background:linear-gradient(#4a5577,#2c3552)}
+.arv-bar{position:relative;height:18px;border-radius:9px;background:#0a1636;overflow:hidden;margin-top:8px}
+.arv-bar i{display:block;height:100%;background:linear-gradient(#ffe46a,#ffb21a)}
+.arv-bar span{position:absolute;inset:0;font-size:12px;line-height:18px;color:#fff;-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.arv-h{font-size:18px;color:#fff;-webkit-text-stroke:4px #0a1636;paint-order:stroke fill;margin-top:4px}
+.arv-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:380px}
+.arv-cards .cw{width:auto}.arv-cards .cname{font-size:11px}
+.arv-pg.locked .arv-cards .card{filter:grayscale(1) brightness(.7)}
+.arv-gold{font-size:15px;color:#fff;-webkit-text-stroke:3px #0a1636;paint-order:stroke fill}
+.arv-dots{display:flex;justify-content:center;gap:7px;padding:8px 0 calc(10px + env(safe-area-inset-bottom))}
+.arv-dots i{width:10px;height:10px;border-radius:50%;background:rgba(10,22,54,.45);border:2px solid #0a1636}
+.arv-dots i.on{background:#ffd84a;transform:scale(1.25)}
+.arv-dots i.cur{background:#8ff4e0}
+.arv-dots i.on.cur{background:#ffd84a}
+.arv-arr{position:absolute;top:40%;z-index:2;width:40px;height:56px;border-radius:12px;border:3px solid #0a1636;background:rgba(10,22,54,.55);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center}
+.arv-arr.l{left:6px}.arv-arr.r{right:6px}
+.arv-test{font-size:12px;color:#d9f6ff;opacity:.85;text-align:center}
 </style>
 <style>html{background:#000}</style>
 </head>
@@ -1135,14 +1237,14 @@ function crowdLoad(){if(!AC)return Promise.resolve();if(crowdLoading)return crow
 // Archivos: assets/music/lobby.ogg y assets/music/partido.ogg (en bucle) · assets/sfx/ui_jugar.ogg (botón Jugar).
 // Si un archivo todavía no existe, simplemente no suena. Se apaga con "Música" en Configuración.
 const MUS={buf:{},load:{},cur:null,node:null,gain:null,want:null,
-  vol:{lobby:.42,partido:.22},
-  fetch(n){if(!AC||this.load[n])return this.load[n]||Promise.resolve();this.load[n]=fetch('assets/music/'+n+'.ogg?v=1').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+  vol:{lobby:.3,partido:.22},len:{lobby:19.53478},   // len: largo exacto del loop (el ogg trae unas muestras de relleno al final)   // v146: lobby bajito, de fondo (el archivo ya viene a -18 LUFS)
+  fetch(n){if(!AC||this.load[n])return this.load[n]||Promise.resolve();this.load[n]=fetch('assets/music/'+n+'.ogg?v=146').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
     .then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(buf=>{this.buf[n]=buf;}).catch(()=>{this.buf[n]=null;});return this.load[n];},
   play(n){this.want=n;if(!AC)return;
     if(!n||muted||!save.settings||save.settings.music===false){this.stop();return;}
     if(this.cur===n&&this.node)return;
     this.fetch(n).then(()=>{if(this.want!==n||!this.buf[n])return;if(this.cur===n&&this.node)return;this.stop();
-      const s=AC.createBufferSource(),g=AC.createGain();s.buffer=this.buf[n];s.loop=true;g.gain.value=0;s.connect(g);g.connect(AC.destination);
+      const s=AC.createBufferSource(),g=AC.createGain();s.buffer=this.buf[n];s.loop=true;if(this.len[n]&&this.len[n]<s.buffer.duration){s.loopStart=0;s.loopEnd=this.len[n];}g.gain.value=0;s.connect(g);g.connect(AC.destination);
       s.start();g.gain.setTargetAtTime(this.vol[n]||.3,AC.currentTime,.8);this.node=s;this.gain=g;this.cur=n;});},
   stop(){const s=this.node,g=this.gain;this.node=this.gain=null;this.cur=null;if(!s||!AC)return;try{g.gain.cancelScheduledValues(AC.currentTime);g.gain.setTargetAtTime(0,AC.currentTime,.35);s.stop(AC.currentTime+1.2);}catch(e){}},
   duck(on){if(this.gain&&AC)this.gain.gain.setTargetAtTime(on?(this.vol[this.cur]||.3)*.35:(this.vol[this.cur]||.3),AC.currentTime,.25);}
@@ -3385,6 +3487,9 @@ const LEAGUES=[
  {n:'Pueblo',min:700,ic:'🏘️',c1:'#3d8bff',c2:'#163c8a'},{n:'Playa Pirata',min:1200,ic:'🏝️',c1:'#9b4dff',c2:'#3a1a7a'},
  {n:'Templo del Desierto',min:1800,ic:'🏜️',c1:'#ff4d5e',c2:'#6a1020'},{n:'Tundra de Hielo',min:2600,ic:'❄️',c1:'#16c7b0',c2:'#0a4a42'},
  {n:'Volcán',min:3500,ic:'🌋',c1:'#ff7a1a',c2:'#5a1a08'},{n:'Coliseo de Leyendas',min:4500,ic:'👑',c1:'#ffcc33',c2:'#7a5200'}];
+// v148: en qué arena se desbloquea cada carta (los sobres y la tienda solo dan cartas de tu arena o anteriores, como en Clash)
+const AR_P={zurdito:0,cazador:0,perro:0,sangre:0,coletazo:0, expreso:1,gato:1,pausa:1, toro:2,rey:2, gigante:3,vikingo:3, ruleta:4,leon:4, ciclon:5,malabares:5, muralla:6, turbo:7};
+const AR_C={bomba:0,cascara:0,rayo:0,turbo:0, enredadera:1,lodo:1, punetazo:2,superbalon:2, rafaga:3,escudo:3, tornado:4,iman:4, hielo:5, meteorito:6, bolapicos:7};
 const KITS={
  clasico:{n:'Azul Clásico',rar:'comun',j:'#2f7bff',d:'#173f99',s:'#ffffff',pat:'franja',cost:0},
  blanco:{n:'Blanco Real',rar:'comun',j:'#f2f4f8',d:'#b9c0cc',s:'#d4af37',pat:'liso',cost:300},
@@ -3425,7 +3530,7 @@ const LVL_COPIES=[0,2,4,10,20],LVL_GOLD=[0,100,400,1500,5000],MAXLVL=5;
 // v75: copias para subir de nivel según la rareza (como en Clash: las comunes piden muchas, las legendarias pocas)
 const COPIES_BY_RAR={comun:[0,10,20,50,100],rara:[0,4,10,20,50],epica:[0,2,4,10,20],legendaria:[0,1,2,4,8]};
 // v79: economía compartida con el servidor (assets/econ.js)
-const ED=ECON.data({PLAYERS,CARDS,LEAGUES,KITS,BOOTS,PACKS,RARE_PER_CARD,LVL_GOLD,LVL_COPIES,COPIES_BY_RAR,MAXLVL});
+const ED=ECON.data({AR_P,AR_C,PLAYERS,CARDS,LEAGUES,KITS,BOOTS,PACKS,RARE_PER_CARD,LVL_GOLD,LVL_COPIES,COPIES_BY_RAR,MAXLVL});
 function needOf(id,lvl){let r='comun';try{r=rarOf(id)||'comun';}catch(e){}return (COPIES_BY_RAR[r]||COPIES_BY_RAR.comun)[lvl]||LVL_COPIES[lvl];}
 const AVATARS=['⚽','😎','🦁','🐯','🦅','🐺','🔥','⭐','👑','🤖','👽','🐸','🦈','🐉','🥷','🧢'];
 const BANNERS=['#2f7bff','#ff3b4e','#16a874','#9b4dff','#ff9f1a','#e83e8c','#1aa3c9','#5b6478'];
@@ -3596,7 +3701,9 @@ function renderBattle(){
   const sb=(id,ic,l,cls)=>`<button class="hm-btn ${cls||''}" id="${id}" ${id==='hbCards'?'data-sc="squad"':''}>${ICON(ic,40)}<span class="ct">${l}</span></button>`;
   $('#sc-battle').innerHTML=`<div class="hm">
    <div class="hm-stage" id="hmStage">
-     <div class="hm-rays"></div><div class="hm-plat"></div>
+     <div class="hm-rays"></div><div class="hm-glow"></div><div class="hm-plat"></div>
+     <div class="hm-spk">${spkHTML(9,[[18,82],[12,78]])}</div>
+     <span class="hm-arname ct">Arena ${(save.testArena!=null?save.testArena:li)+1} · ${esc(LEAGUES[save.testArena!=null?save.testArena:li].n)}</span>
      <button class="hm-arena" id="hmArena" aria-label="Arenas"><img src="assets/arenas/a${save.testArena!=null?save.testArena:li}.webp?v=89" alt="${esc(Lg.n)}" onerror="this.parentNode.classList.add('noimg')">${dioramaHTML(save.testArena!=null?save.testArena:li)}</button>
      <div class="hm-col l">${sb('hbNews','news','Noticias')}${sb('hbHow','help','Ayuda')}</div>
      <div class="hm-col r">${sb('hbMenu','menu','Menú','dark')}${sb('hbRank','medal','Ranking')}${sb('hbLocker','shirt','Vestuario')}${sb('hbSpect','tv','IA vs IA')}</div>
@@ -3608,14 +3715,14 @@ function renderBattle(){
      <button class="hm-road" id="hbRoad2"><span class="hm-tro">${ICON('trophy',34)}</span><span class="hm-rinfo"><b class="ct">${save.trophies}</b><span class="hm-bar"><i style="width:${Math.round(prog*100)}%"></i></span><small class="ct">${nx?'Siguiente arena: '+nx.min:'Arena máxima'}</small></span></button>
      <div class="hm-playrow">
        <button class="hm-mode" id="hbMode"><span class="hm-mic">${Lg.ic}</span><span><small class="ct">${save.testArena!=null?'Prueba: '+ARENAS[save.testArena].n:'Arena '+(li+1)}</small><b class="ct">${Lg.n}</b></span></button>
-       <button class="hm-play shine" id="goBattle"><b>JUGAR</b></button>
+       <button class="hm-play shine" id="goBattle"><b>JUGAR</b>${spkHTML(3,[[6,94],[10,80]])}</button>
      </div>
    </div></div>`;
   $('#goBattle').onclick=()=>{audio();if(!uiSnd('jugar'))sfx('power');homeStage(false);matchmaking();};
 $('#hbNews').onclick=openNews;$('#hbHow').onclick=openHow;
   $('#hbMenu').onclick=openSettings;$('#hbRank').onclick=()=>go('rank');$('#hbLocker').onclick=()=>go('locker');$('#hbSpect').onclick=()=>{audio();homeStage(false);startSpectate();};
-  $('#hbRoad2').onclick=openLeagues;$('#hbMode').onclick=openLeagues;
-  $('#hmArena').onclick=openLeagues;
+  $('#hbRoad2').onclick=()=>openArenas();$('#hbMode').onclick=()=>openArenas();
+  $('#hmArena').onclick=()=>openArenas();
   $$('.pslot.full').forEach(b=>b.onclick=()=>tapPackSlot(+b.dataset.i));
   renderTop();setTimeout(needName,600);
 }
@@ -3929,6 +4036,38 @@ function renderRank(){
 }
 
 // ================== LIGAS / PERFIL / AJUSTES ==================
+// ================== v148: pantalla de arenas (se desliza; las bloqueadas se ven grises) ==================
+function spkHTML(n,area){let h='';const A=area||[[8,92],[8,80]];for(let i=0;i<n;i++){const x=A[0][0]+Math.random()*(A[0][1]-A[0][0]),y=A[1][0]+Math.random()*(A[1][1]-A[1][0]);
+  h+=`<i class="spk" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--s:${(10+Math.random()*14).toFixed(0)}px;--d:${(1.8+Math.random()*1.8).toFixed(2)}s;--w:${(Math.random()*2.5).toFixed(2)}s"></i>`;}return h;}
+function arenaCards(i){const ps=PLAYERS.filter(p=>(AR_P[p.id]||0)===i).map(p=>cardHTML(p.id,{kind:'player',bar:false})),cs=Object.keys(CARDS).filter(k=>(AR_C[k]||0)===i).map(k=>cardHTML(k,{kind:'power',bar:false}));return ps.concat(cs).join('');}
+function openArenas(start){
+  const tr=save.trophies,top=Math.max(tr,save.maxTrophies||0),li=leagueIdx(tr),un=leagueIdx(top),N=LEAGUES.length;
+  let el=document.getElementById('arv');if(!el){el=document.createElement('div');el.id='arv';document.body.appendChild(el);}
+  const pg=i=>{const L=LEAGUES[i],nx=LEAGUES[i+1],lock=i>un,cur=i===li;let st;
+    if(cur){const p=nx?Math.max(0,Math.min(1,(tr-L.min)/(nx.min-L.min))):1;
+      st=`<div class="arv-st cur"><b class="ct">¡Estás aquí!</b><small class="ct">${nx?`Te faltan ${nx.min-tr} 🏆 para llegar a ${nx.n}`:'Llegaste a la arena más alta'}</small>${nx?`<div class="arv-bar"><i style="width:${Math.round(p*100)}%"></i><span class="ct">${tr} / ${nx.min}</span></div>`:''}</div>`;}
+    else if(lock)st=`<div class="arv-st lk"><b class="ct">🔒 Bloqueada</b><small class="ct">Llega a ${L.min} 🏆 para desbloquearla${i===li+1?` · te faltan ${L.min-tr}`:''}</small></div>`;
+    else st=`<div class="arv-st"><b class="ct">✔ Desbloqueada</b><small class="ct">${L.min} 🏆${nx?' – '+(nx.min-1):'+'}</small></div>`;
+    return `<section class="arv-pg${lock?' locked':''}" data-i="${i}"><div class="arv-num ct">Arena ${i+1}</div><div class="arv-nm ct">${esc(L.n)}</div>
+      <div class="arv-img"><img src="assets/arenas/a${i}.webp?v=89" alt="" loading="lazy">${lock?'<span class="arv-lk">🔒</span>':''}</div>
+      ${st}<div class="arv-gold ct">🪙 ${winGold(i)} por victoria</div>
+      <div class="arv-h ct">${lock?'Cartas que desbloquea':'Cartas de esta arena'}</div><div class="arv-cards">${arenaCards(i)}</div>
+      <button class="btn ${save.testArena===i?'g':'b'} sm" data-ta="${i}">${save.testArena===i?'✔ Jugando aquí (prueba)':'Jugar aquí (prueba)'}</button>${save.testArena!=null?'<button class="btn y sm" data-auto="1">Estadio automático</button>':''}</section>`;};
+  el.innerHTML=`<div class="arv-top"><button class="arv-back" id="arvX" aria-label="Volver">✕</button><span class="ct">Arenas</span></div>
+    <div style="position:relative;flex:1;display:flex;min-height:0"><button class="arv-arr l" id="arvL">‹</button><div class="arv-sc" id="arvS">${LEAGUES.map((_,i)=>pg(i)).join('')}</div><button class="arv-arr r" id="arvR">›</button></div>
+    <div class="arv-dots">${LEAGUES.map((_,i)=>`<i class="${i===li?'cur':''}"></i>`).join('')}</div>`;
+  el.classList.remove('hide');try{iconize(el);}catch(e){}
+  const S=document.getElementById('arvS'),dots=[...el.querySelectorAll('.arv-dots i')],W=()=>S.clientWidth||1;
+  const upd=()=>{const k=Math.round(S.scrollLeft/W());dots.forEach((d,j)=>d.classList.toggle('on',j===k));document.getElementById('arvL').style.visibility=k>0?'':'hidden';document.getElementById('arvR').style.visibility=k<N-1?'':'hidden';};
+  let lastK=-1;S.onscroll=()=>{upd();const k=Math.round(S.scrollLeft/W());if(k!==lastK){if(lastK>=0)try{uiSnd('scroll');}catch(e){}lastK=k;}};
+  const goK=k=>S.scrollTo({left:Math.max(0,Math.min(N-1,k))*W(),behavior:'smooth'});
+  document.getElementById('arvL').onclick=()=>goK(Math.round(S.scrollLeft/W())-1);document.getElementById('arvR').onclick=()=>goK(Math.round(S.scrollLeft/W())+1);
+  requestAnimationFrame(()=>{S.scrollLeft=(start!=null?start:li)*W();lastK=start!=null?start:li;upd();});
+  document.getElementById('arvX').onclick=()=>{el.classList.add('hide');el.innerHTML='';};
+  el.querySelectorAll('[data-ta]').forEach(b=>b.onclick=()=>{const k=+b.dataset.ta;save.testArena=k;persist();toast('Próximo partido en '+ARENAS[k].n);renderTab();openArenas(k);});
+  el.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>{const k=Math.round(S.scrollLeft/W());save.testArena=null;persist();toast('Estadio automático');renderTab();openArenas(k);});
+  el.querySelectorAll('.arv-cards .cw').forEach(c=>c.onclick=()=>{const id=c.dataset.id,pl=!!c.querySelector('.c-pos');try{if(!pl)openPower(id);else if(!isPower(id))openCard(id);}catch(e){}});
+}
 function openLeagues(){const li=leagueIdx(save.trophies);
   showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Camino de arenas</div>
    <p class="desc" style="margin-top:0">Gana para sumar unos 30 🏆; perder resta unos 25. Cada arena nueva paga más monedas.</p>
@@ -4207,7 +4346,7 @@ async function startSpectate(){
   b.style.display='flex';
 }
 function spectRestore(){window.SPECT=false;AI0=false;for(const id of ['joy','btns','row']){const e=document.getElementById(id);if(e)e.style.display='';}const b=document.getElementById('spectTag');if(b)b.style.display='none';}
-function spectExit(){spectRestore();state='menu';gameOn=false;updLand();if(save.settings.land)lockOri('portrait');crowdStop(true);document.getElementById('end').classList.add('hide');document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');}
+function spectExit(){spectRestore();document.getElementById('app').classList.remove('rx-on');state='menu';gameOn=false;updLand();if(save.settings.land)lockOri('portrait');crowdStop(true);document.getElementById('end').classList.add('hide');document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');}
 function spectEnd(a,b){const end=document.getElementById('end');const t=document.getElementById('spectTag');if(t)t.style.display='none';
   end.innerHTML=`<div class="mpanel res-draw"><h2 class="ct">Fin del partido</h2><div class="rs">${a} - ${b}</div><small class="sys" style="display:block;text-align:center;margin-bottom:8px">IA contra IA · no cuenta para tus copas</small><div class="acts"><button class="btn b" id="spAgain">Ver otro</button><button class="btn y" id="spOk">Salir</button></div></div>`;
   end.classList.remove('hide');$('#spOk').onclick=spectExit;$('#spAgain').onclick=()=>{end.classList.add('hide');spectRestore();startSpectate();};}
@@ -4261,21 +4400,61 @@ function onMatchEnd(a,b,forfeit){try{MUS.stop();}catch(e){}
   // v79: el premio lo calcula el servidor (con cuenta) o el teléfono (sin cuenta), con las mismas reglas
   const O=oppInfo||{},sqIds=sq=>sq?[sq.gk&&sq.gk.card&&sq.gk.card.id,...(sq.f||[]).map(x=>x&&x.card&&x.card.id)].filter(Boolean):[];
   const h={on:!!O.online,ar:save.testArena!=null?save.testArena:leagueIdx(save.trophies),opp:{n:O.name,av:O.av,c:O.c,tr:O.trophies},mc:usedCards[0],oc:usedCards[1],ms:[save.squad.gk,...save.squad.f],os:sqIds(O.squad)};
-  econDo({t:'match',a,b,forfeit:!!forfeit,h}).then(r=>showEnd(a,b,forfeit,r,null)).catch(e=>showEnd(a,b,forfeit,null,(e&&e.message)||'No se pudo guardar'));}
-function showEnd(a,b,forfeit,r,errMsg){
+  const pre={xp:save.xp,lvl:save.lvl,tr:save.trophies};   // v146: para animar copas y XP desde lo que tenías
+  econDo({t:'match',a,b,forfeit:!!forfeit,h}).then(r=>showEnd(a,b,forfeit,r,null,pre)).catch(e=>showEnd(a,b,forfeit,null,(e&&e.message)||'No se pudo guardar',pre));}
+// ================== v146: PANTALLA DE RESULTADO (estilo Clash, a nuestro modo) ==================
+// Entra por partes: banners → marcador del rival → tu marcador → letrero → confeti/aplausos (si ganas) → copas → barra de XP.
+// Sonidos: si existen assets/sfx/ui_res_*.ogg suenan esos; si no, usa los del juego que ya están (provisionales).
+const RES_SND={golpe:['fx_shot',.55],titulo_win:['goal',.55],titulo_draw:null,titulo_loss:null,confeti:null,aplausos:null,xp:null,nivel:null,copas:null};
+Object.assign(UI_VOL,{res_golpe:.85,res_titulo_win:.9,res_titulo_draw:.85,res_titulo_loss:.85,res_confeti:.8,res_aplausos:.6,res_xp:.7,res_nivel:.9,res_copas:.7});
+function resPre(){for(const k in RES_SND)uiLoad('res_'+k);}
+function resSnd(k,rate){if(!AC||muted)return;const f='res_'+k,b=UIS[f];
+  if(b){const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;g.gain.value=UI_VOL[f]||.8;s.playbackRate.value=rate||1;s.connect(g);g.connect(AC.destination);s.start();return;}
+  const F=RES_SND[k];if(F)crowdShot(F[0],F[1],0);
+  else if(k==='xp')uiSnd('mejora_sube');else if(k==='nivel')uiSnd('mejora');}
+function resConfetti(host){const C=['#2fd8c8','#8ff4e0','#ffc92e','#ffe46a','#ffffff','#2f8cff'],box=document.createElement('div');box.className='rx-conf';
+  for(let i=0;i<70;i++){const p=document.createElement('i'),w=6+Math.random()*7;p.style.cssText=`left:${Math.random()*100}%;width:${w}px;height:${w*(.4+Math.random()*.5)}px;background:${C[i%C.length]};`+
+    `animation-delay:${(Math.random()*1.2).toFixed(2)}s;animation-duration:${(2.6+Math.random()*2.2).toFixed(2)}s;--dx:${Math.round((Math.random()-.5)*160)}px;--rz:${Math.round(360+Math.random()*720)}deg`;box.appendChild(p);}
+  host.appendChild(box);setTimeout(()=>box.remove(),7000);}
+function showEnd(a,b,forfeit,r,errMsg,pre){
   const res=r?r.res:a>b?'win':a<b?'loss':'draw',dt=r?r.dt:0,gold=r?r.gold:0,xp=r?r.xp:0,lu=r?r.lu:0,pack=r?r.pack:null,li=r?r.li:leagueIdx(save.trophies),nl=r?r.nl:li;
-  const end=document.getElementById('end');
-  end.innerHTML=`<div class="mpanel res-${res}"><h2 class="ct">${res==='win'?'¡Victoria!':res==='loss'?(forfeit?'Te rendiste':'Derrota'):'Empate'}</h2><div class="rs">${a} - ${b}</div>
-    ${r?`<div class="rw"><span class="tro">🏆 ${dt>=0?'+':''}${dt}</span>${gold?`<span>🪙 +${gold}</span>`:''}<span style="color:#8fe0ff">✨ +${xp} XP</span></div>`:`<small class="full sys">${esc(errMsg)}</small>`}
-    ${pack?`<div class="rpack">${packHTML(pack,true)}<small class="sys">${PACKS[pack].n} ganado</small></div>`:r&&res==='win'?'<small class="full sys">Tus espacios de sobres están llenos</small>':''}
-    ${lu?`<div class="newl ct">⭐ ¡Subiste a nivel ${save.lvl}! +5 💎</div>`:''}
-    ${nl!==li?`<div class="newl ct">${nl>li?'¡Subiste a':'Bajaste a'} ${LEAGUES[nl].ic} ${LEAGUES[nl].n}!<br><small class="sys">Nuevo estadio: ${ARENAS[nl].n}</small></div>`:''}
-    ${r&&gold>0?adBtn('adG','Ver anuncio · x2 monedas (+'+gold+')','gold2','big'):''}${r&&dt<0?adBtn('adT','Ver anuncio · recupera '+Math.ceil(-dt/2)+' copas','tro','big'):''}
-    <button class="btn y" id="endOk">Continuar</button>${r?ADS.slot('fin',true):''}</div>`;
-  end.classList.remove('hide');
+  const O=oppInfo||{},P=pre||{xp:save.xp,lvl:save.lvl,tr:save.trophies},T={win:'¡VICTORIA!',loss:forfeit?'TE RENDISTE':'DERROTA',draw:'EMPATE'}[res];
+  const end=document.getElementById('end');end.className='rx-end res-'+res;document.getElementById('app').classList.add('rx-on');
+  end.innerHTML=`<div class="rx">
+    <div class="rx-ban rx-opp rx-p" id="rxB1"><span class="rx-av">${esc(O.av||'🤖')}</span><span class="rx-nm"><b class="ct">${esc(O.name||'Rival')}</b><small>${O.c?flag(O.c)+' ':''}${ICON('trophy',13)} ${O.trophies||0}</small></span><span class="rx-sc ct rx-p" id="rxS1">${b}</span></div>
+    <div class="rx-mid"><div class="rx-vs ct rx-p" id="rxVs">VS</div><div class="rx-ti ct rx-p" id="rxTi">${T}</div></div>
+    <div class="rx-ban rx-me rx-p" id="rxB2" style="--mc:${esc(save.color||'#2f8cff')}"><span class="rx-av">${esc(save.avatar||'⚽')}</span><span class="rx-nm"><b class="ct">${esc(save.name||'Tú')}</b><small>${save.country?flag(save.country)+' ':''}${ICON('trophy',13)} <span id="rxTr">${P.tr}</span></small></span><span class="rx-sc ct rx-p" id="rxS2">${a}</span>
+      ${r?`<span class="rx-dt ct rx-p ${dt>0?'up':dt<0?'dn':''}" id="rxDt">${ICON('trophy',16)} ${dt>0?'+':''}${dt}</span>`:''}</div>
+    <div class="rx-rw rx-p" id="rxRw">
+      ${r?`<div class="rx-xp"><span class="rx-lv ct" id="rxLv">${P.lvl}</span><div class="rx-bar"><i id="rxXpI" style="width:${Math.round(P.xp/xpNeed(P.lvl)*100)}%"></i><span class="ct" id="rxXpT">${P.xp}/${xpNeed(P.lvl)}</span></div><b class="rx-xpg ct">+${xp} XP</b></div>
+        <div class="rx-chips">${gold?`<span class="ct">🪙 +${gold}</span>`:''}${pack?`<span class="rx-pk">${packHTML(pack,true)}<small class="ct">${PACKS[pack].n}</small></span>`:res==='win'?'<small class="full sys">Tus espacios de sobres están llenos</small>':''}</div>
+        <div class="newl ct rx-p" id="rxLu" style="display:none">⭐ ¡Subiste a nivel ${save.lvl}! +5 💎</div>
+        ${nl!==li?`<div class="newl ct">${nl>li?'¡Subiste a':'Bajaste a'} ${LEAGUES[nl].ic} ${LEAGUES[nl].n}!<br><small class="sys">Nuevo estadio: ${ARENAS[nl].n}</small></div>`:''}
+        ${gold>0?adBtn('adG','Ver anuncio · x2 monedas (+'+gold+')','gold2','big'):''}${dt<0?adBtn('adT','Ver anuncio · recupera '+Math.ceil(-dt/2)+' copas','tro','big'):''}`
+      :`<small class="full sys">${esc(errMsg||'')}</small>`}
+    </div>
+    <div class="rx-acts rx-p" id="rxAc"><button class="btn y" id="endAgain">Jugar otra vez</button><button class="btn b" id="endOk">OK</button></div>
+    ${r?ADS.slot('fin',true):''}</div>`;
+  end.classList.remove('hide');try{iconize(end);}catch(e){}resPre();
+  const $i=id=>document.getElementById(id),on=(id,cls)=>{const e=$i(id);if(e)e.classList.add(cls||'in');},T0=[],at=(ms,f)=>T0.push(setTimeout(()=>{if(end.classList.contains('hide'))return;f();},ms));
+  at(60,()=>{on('rxB1');on('rxB2');on('rxVs');});
+  at(520,()=>{on('rxS1');resSnd('golpe',1);});
+  at(900,()=>{on('rxS2');resSnd('golpe',1.12);});
+  at(1350,()=>{on('rxTi');resSnd('titulo_'+res);if(res==='win'){resConfetti(end);resSnd('confeti');setTimeout(()=>resSnd('aplausos'),250);}});
+  at(1900,()=>{on('rxDt');if(!r||!dt)return;const el=$i('rxTr'),n=Math.min(20,Math.abs(dt));resSnd('copas');for(let i=1;i<=n;i++)setTimeout(()=>{if(el)el.textContent=Math.round(P.tr+dt*i/n);},i*28);});
+  at(2250,()=>{on('rxRw');if(!r)return;
+    // la barra de XP se llena desde lo que tenías; si subes de nivel se llena, se vacía y sigue
+    const I=$i('rxXpI'),Tt=$i('rxXpT'),L=$i('rxLv');let lv=P.lvl,cur=P.xp,left=xp,k=0;resSnd('xp');
+    const step=()=>{const need=xpNeed(lv),take=Math.min(left,need-cur);cur+=take;left-=take;I.style.transition='width .7s cubic-bezier(.3,.8,.3,1)';I.style.width=Math.round(cur/need*100)+'%';Tt.textContent=cur+'/'+need;
+      if(cur>=need&&k<5){k++;setTimeout(()=>{lv++;cur=0;L.textContent=lv;L.classList.remove('pop');void L.offsetWidth;L.classList.add('pop');resSnd('nivel');const u=$i('rxLu');if(u){u.style.display='';u.classList.add('in');}
+        I.style.transition='none';I.style.width='0%';Tt.textContent='0/'+xpNeed(lv);void I.offsetWidth;if(left>0)setTimeout(step,120);},760);}};
+    step();});
+  at(2500,()=>on('rxAc'));
   const ag=$('#adG');if(ag)ag.onclick=async()=>{ag.disabled=true;const o=await watchAd({k:'gold2'},o=>'+'+o.gold+' monedas');if(o)ag.remove();else ag.disabled=false;};
-  const at=$('#adT');if(at)at.onclick=async()=>{at.disabled=true;const o=await watchAd({k:'tro'},o=>'+'+o.tro+' copas recuperadas');if(o)at.remove();else at.disabled=false;};
-  $('#endOk').onclick=async()=>{save.mcount=(save.mcount||0)+1;persist();const offerI=save.mcount%5===0;end.classList.add('hide');gameOn=false;updLand();if(save.settings.land)lockOri('portrait');state='menu';crowdStop(true);document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');if(offerI)setTimeout(offerInter,450);};
+  const atb=$('#adT');if(atb)atb.onclick=async()=>{atb.disabled=true;const o=await watchAd({k:'tro'},o=>'+'+o.tro+' copas recuperadas');if(o)atb.remove();else atb.disabled=false;};
+  const leave=again=>{T0.forEach(clearTimeout);save.mcount=(save.mcount||0)+1;persist();const offerI=save.mcount%5===0;end.className='hide';end.innerHTML='';document.getElementById('app').classList.remove('rx-on');gameOn=false;updLand();if(save.settings.land)lockOri('portrait');state='menu';crowdStop(true);document.getElementById('app').classList.remove('on');document.getElementById('meta').classList.remove('hide');go('battle');
+    if(offerI)setTimeout(offerInter,450);else if(again)setTimeout(()=>{const g=document.getElementById('goBattle');if(g&&!gameOn)g.click();},350);};
+  $('#endOk').onclick=()=>leave(false);$('#endAgain').onclick=()=>leave(true);
 }
 
 // ================== v85: íconos propios y botones que responden (estilo Brawl) ==================

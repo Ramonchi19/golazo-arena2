@@ -123,7 +123,7 @@ console.log('server/src/match.gen.js listo (' + out.length + ' bytes)');
   const ctx = { console }; ctx.window = ctx; vm.createContext(ctx);
   vm.runInContext(kits, ctx);
   vm.runInContext(econ, ctx);
-  vm.runInContext(data + '\n' + html.slice(a, b) + '\nglobalThis.__ED = ECON.data({PLAYERS,CARDS,LEAGUES,KITS,BOOTS,PACKS,RARE_PER_CARD,LVL_GOLD,LVL_COPIES,COPIES_BY_RAR,MAXLVL});', ctx);
+  vm.runInContext(data + '\n' + html.slice(a, b) + '\nglobalThis.__ED = ECON.data({AR_P,AR_C,PLAYERS,CARDS,LEAGUES,KITS,BOOTS,PACKS,RARE_PER_CARD,LVL_GOLD,LVL_COPIES,COPIES_BY_RAR,MAXLVL});', ctx);
   const ED = JSON.parse(JSON.stringify(ctx.__ED));
   const txt = '// ARCHIVO GENERADO por server/build-sim.mjs (datos de la economía, sacados de index.html). No editar.\n' +
     'import "../../assets/econ.js";\nexport const ECON = globalThis.ECON;\nexport const ED = ' + JSON.stringify(ED) + ';\n';

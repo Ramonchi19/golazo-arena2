@@ -46,12 +46,16 @@
   const rarOfId = (D, id) => D.CARDS[id] ? D.CARDS[id].rar : (D.PBY[id] || {}).rar;   // igual que needOf() del juego
   function needOf(D, id, lvl) { const r = rarOfId(D, id) || 'comun'; return (D.COPIES_BY_RAR[r] || D.COPIES_BY_RAR.comun)[lvl] || D.LVL_COPIES[lvl]; }
   function packItems(D, E, type) { const P = D.PACKS[type] || D.PACKS.bronce; if (P.only) return 1; return P.items + Math.floor(lg(D, E.trophies) * P.items * .12); }
+  // v148: cada carta es de una arena; solo salen las de tu arena más alta alcanzada o anteriores. Si una rareza no existe todavía, baja a la siguiente.
+  const arOf = (D, E) => lg(D, Math.max(E.trophies || 0, E.maxTrophies || 0));
+  const poolFor = (D, E) => { const a = arOf(D, E), P = D.POOL.filter(p => (p.ar || 0) <= a); return P.length ? P : D.POOL; };
+  function pickRar(pool, rar) { for (let i = RORD.indexOf(rar); i >= 0; i--) { const o = pool.filter(p => p.rar === RORD[i]); if (o.length) return o; } return pool; }
   function roll(D, E, type, R) {
-    const P0 = D.PACKS[type] || D.PACKS.bronce, pool = D.POOL, n = packItems(D, E, type), rars = [];
+    const P0 = D.PACKS[type] || D.PACKS.bronce, pool = poolFor(D, E), n = packItems(D, E, type), rars = [];
     if (P0.only) rars.push(P0.only);
     else { if (P0.gL || R() < P0.pL) rars.push('legendaria'); if (P0.gE || R() < P0.pE) rars.push('epica'); if (P0.gR) rars.push('rara'); while (rars.length < n) rars.push(R() < D.RARE_PER_CARD ? 'rara' : 'comun'); }
     const got = {};   // ojo: hay ids repetidos entre jugadores y poderes (p. ej. "turbo"), por eso se guarda el tipo
-    for (const rar of rars) { let opts = pool.filter(p => p.rar === rar); if (!opts.length) opts = pool; const pk = opts[Math.floor(R() * opts.length)], key = pk.k + ':' + pk.id; got[key] = got[key] || { pk, n: 0 }; got[key].n++; }
+    for (const rar of rars) { const opts = pickRar(pool, rar); const pk = opts[Math.floor(R() * opts.length)], key = pk.k + ':' + pk.id; got[key] = got[key] || { pk, n: 0 }; got[key].n++; }
     const items = Object.values(got).map(({ pk, n }) => ({ kind: pk.k, id: pk.id, n, rar: pk.rar, isNew: !(pk.k === 'power' ? E.powers[pk.id] : E.players[pk.id]) }));
     for (const it of items) { const T = it.kind === 'power' ? E.powers : E.players; if (!T[it.id]) T[it.id] = { lvl: 1, copies: it.n - 1 }; else T[it.id].copies += it.n; }
     items.sort((a, b) => RORD.indexOf(b.rar) - RORD.indexOf(a.rar));
@@ -93,7 +97,7 @@
     const tiers = [[['comun', .7], ['rara', 1]], [['rara', .6], ['epica', 1]], [['epica', .7], ['legendaria', 1]]];
     for (const t of tiers) {
       const x = r(); const rar = t.find(([, c]) => x < c)[0];
-      let opts = D.POOL.filter(p => p.rar === rar && !used[p.id]); if (!opts.length) opts = D.POOL.filter(p => !used[p.id]);
+      const PF = poolFor(D, E).filter(p => !used[p.id]); let opts = pickRar(PF, rar); if (!opts.length) opts = D.POOL.filter(p => !used[p.id]);
       const pk = opts[Math.floor(r() * opts.length)]; used[pk.id] = 1; const O = OFFER[pk.rar] || OFFER.comun;
       out.push({ id: pk.id, kind: pk.k, rar: pk.rar, n: O.n, cur: O.cur, p: O.p, pd: Math.round(O.p * (1 - OFF_DISC)) });
     }
@@ -221,7 +225,7 @@
       PBY, CARDS, LEAGUES: G.LEAGUES.map(l => ({ min: l.min })), PACKS: JSON.parse(JSON.stringify(G.PACKS)), RARE_PER_CARD: G.RARE_PER_CARD,
       KITS: pick(G.KITS, ['rar', 'gems', 'cost', 'pack']), BOOTS: pick(G.BOOTS, ['rar', 'gems', 'cost', 'pack']),
       LVL_GOLD: G.LVL_GOLD.slice(), LVL_COPIES: G.LVL_COPIES.slice(), COPIES_BY_RAR: JSON.parse(JSON.stringify(G.COPIES_BY_RAR)), MAXLVL: G.MAXLVL,
-      POOL: [...G.PLAYERS.map(p => ({ id: p.id, rar: p.rar, k: 'player' })), ...Object.keys(G.CARDS).map(k => ({ id: k, rar: G.CARDS[k].rar, k: 'power' }))]
+      POOL: [...G.PLAYERS.map(p => ({ id: p.id, rar: p.rar, k: 'player', ar: (G.AR_P || {})[p.id] || 0 })), ...Object.keys(G.CARDS).map(k => ({ id: k, rar: G.CARDS[k].rar, k: 'power', ar: (G.AR_C || {})[k] || 0 }))]
     };
   }
 
@@ -274,5 +278,5 @@
   }
   const pickE = s => { const o = {}; for (const k of EK) o[k] = s[k]; return JSON.parse(JSON.stringify(o)); };
 
-  root.ECON = { PRUEBA_INICIO, CAP, capE, offers, weekOf, weekEnd, wkState, OFFER, OFF_DISC, fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
+  root.ECON = { arOf, poolFor, PRUEBA_INICIO, CAP, capE, offers, weekOf, weekEnd, wkState, OFFER, OFF_DISC, fixPowers, AD_CAP, nameKey, cleanName, EK, UNLOCK_H, FREE_H, SHOP, H, rng, lg, xpNeed, addXp, winGold, cycleSeq, cycleAt, nextPacks, untilKind, awardCycle, packState, gemsToOpen, needOf, packItems, roll, act, data, fromSave, sane, pickE };
 })(typeof window !== 'undefined' ? window : globalThis);
