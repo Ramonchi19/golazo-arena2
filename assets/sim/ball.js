@@ -44,7 +44,7 @@
   SIM.landT = b => { const a = GRAV / 2, bb = b.vy, c = b.y - BR, d = bb * bb + 4 * a * c; return d < 0 ? 0 : (bb + Math.sqrt(d)) / (2 * a); };
 
   // Balón pegado al pie del jugador que lo conduce
-  SIM.ballCarried = (W, dt) => {
+  SIM.ballCarried = (W, dt) => { W.ball.cv = null;
     const ball = W.ball, p = ball.owner, sp = Math.hypot(p.vx, p.vz), fx = Math.sin(p.face), fz = Math.cos(p.face);
     const fr = Math.max(0, 1 - 1.25 * dt); ball.vx *= fr; ball.vz *= fr;
     p.touchT = (p.touchT || 0) - dt;
@@ -83,6 +83,10 @@
       if (ball.vy < -2.5) { const iv = -ball.vy; F.squash(Math.min(.12, iv * .009)); ball.vy = -ball.vy * .55; if (iv > 7 && F.land) F.land(ball.x, ball.z, iv); else if (ball.vy > 3) F.bounce(ball.x, ball.z); }   // v103: cae de alto = pasto y tierra
       else ball.vy = 0;
     }
+    // v163: curva del tiro (sobre el camino): desvío lateral que crece y regresa a cero al llegar a donde se apuntó
+    if (ball.cv) { const c = ball.cv, px = ball.x - c.x0, pz = ball.z - c.z0, sd = px * c.ux + pz * c.uz, k = sd / c.l;
+      if (k < 0 || k >= 1) ball.cv = null;
+      else { const want = 4 * c.off * k * (1 - k), cur = px * -c.uz + pz * c.ux, dlt = want - cur; ball.x += -c.uz * dlt; ball.z += c.ux * dlt; } }
     const onG = ball.y <= BR + .01, hs = Math.hypot(ball.vx, ball.vz);
     let fr = onG ? 1.05 : .1;
     if (onG) for (const z of (W.zones || [])) { if (z.kind === 'lodo' && Math.hypot(ball.x - z.x, ball.z - z.z) < z.r) { fr = 4.5; break; } }
@@ -98,9 +102,9 @@
         }
       }
     }
-    if (ball.z > HW - BR) { ball.z = HW - BR; ball.vz = -Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, HW); }
-    if (ball.z < -HW + BR) { ball.z = -HW + BR; ball.vz = Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, -HW); }
-    { const k = SIM.corner(ball, BR, .75); if (k && k.vn > 10) F.zap(ball.x, ball.y, ball.z); }
+    if (ball.z > HW - BR) { ball.z = HW - BR; ball.cv = null; ball.vz = -Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, HW); }
+    if (ball.z < -HW + BR) { ball.z = -HW + BR; ball.cv = null; ball.vz = Math.abs(ball.vz) * .75; if (hs > 10) F.zap(ball.x, ball.y, -HW); }
+    { const k = SIM.corner(ball, BR, .75); if (k) ball.cv = null; if (k && k.vn > 10) F.zap(ball.x, ball.y, ball.z); }
     for (const s of [1, -1]) {
       const xs = ball.x * s;
       if (xs > L - BR) {
@@ -111,7 +115,7 @@
           if (ball.y > GH - BR) { ball.y = GH - BR; ball.vy = -Math.abs(ball.vy) * .3; }
         } else if (xs < L + .3 && !inMouth) {
           const nearPost = Math.abs(Math.abs(ball.z) - GW) < .5 && ball.y < GH + .3, nearBar = Math.abs(ball.z) < GW + .3 && Math.abs(ball.y - GH) < .5;
-          ball.x = s * (L - BR); const hv = Math.abs(ball.vx); ball.vx = -ball.vx * (nearPost || nearBar ? .7 : .6);
+          ball.cv = null; ball.x = s * (L - BR); const hv = Math.abs(ball.vx); ball.vx = -ball.vx * (nearPost || nearBar ? .7 : .6);
           if (nearPost || nearBar) { F.post(ball, nearBar); ball.tried = [false, false]; } else if (hv > 10 && F.zap) F.zap(ball.x, ball.y, ball.z);   // v99: rebote en la pared del fondo
           else if (hs > 10) F.wide(s * L, ball);
         }

@@ -41,7 +41,7 @@ ${data}
   // ---- lo visual y el sonido no existen en el servidor ----
   const NO = () => {};
   const sfx = NO, burst = NO, part = NO, dust = NO, popText = NO, showBig = NO, ringFx = NO, vib = NO, pwElectro = NO,
-    crowdShot = NO, zapFx = NO, shotScar = NO, spinBallMesh = NO, netCollide = NO, bigSave = NO, startQTE = NO,
+    crowdShot = NO, zapFx = NO, shotScar = NO, kickFx = NO, arcFx = NO, gkArcFx = NO, spinBallMesh = NO, netCollide = NO, bigSave = NO, startQTE = NO,
     tone = NO, targetFx = NO, stormCloud = NO, iceSpikes = NO, mudBubbles = NO, shieldDome = NO, turboTrails = NO, superAura = NO,
     burnFx = NO, boltFxLines = NO, puffFx = NO, smokeFx = NO, blastFx = NO, craterFx = NO, decalFx = NO, fxFn = NO,
     renderCards = NO, reactUpdate = NO, ballInNet = NO, audio = NO,
@@ -84,7 +84,7 @@ ${match}
     kickoff(0);
   }
   // un paso del partido: es la misma función update() del juego
-  function step(dt) { if (state !== 'play') return; T += dt; update(dt); }
+  function step(dt) { if (state !== 'play') return; arcTick(dt); SIMSLOW = arcActive() ? ARC_SLOWK : 1; T += dt * SIMSLOW; update(dt * SIMSLOW); }   // v167: cámara lenta del arco para los dos
   return {
     setup, step, events,
     get ball() { return ball; }, get players() { return players; }, get score() { return score; },
@@ -93,7 +93,7 @@ ${match}
     get overtime() { return overtime; },
     playCard: (team, i, x, z) => playCard(team, i, x, z), castSpell: (k, team, x, z) => castSpell(k, team, x, z),
     // ---- partido en línea: los dos equipos son humanos ----
-    setHumans(h) { H1 = !!h; if (H1 && !user1) user1 = fieldOf(1)[0] || null; CTRL_LOCK[0] = CTRL_LOCK[1] = !!h; },
+    setHumans(h) { H1 = !!h; ARC_GRACE = h ? .35 : 0; if (H1 && !user1) user1 = fieldOf(1)[0] || null; CTRL_LOCK[0] = CTRL_LOCK[1] = !!h; },
     // el teléfono dice a qué jugador controla (índice en la lista del servidor)
     setCtrlIdx(t, i) { const p = players[i]; if (p && p.team === t && !p.gk) setCtrl(t, p); },
     get ctrl() { return [user, user1]; },
@@ -104,7 +104,7 @@ ${match}
     shoot: (p, pw, kind, aim) => shoot(p, pw, kind, aim), tryVolley: p => tryVolley(p), take: (p, s) => take(p, s),
     keeperOf: t => keeperOf(t), get D() { return D; },
     setJoy(t, x, y) { const J = joyFor(t); J.x = x; J.y = y; },
-    btnDown: (t, k) => simBtnDown(t, k), btnUp: (t, k) => simBtnUp(t, k),
+    btnDown: (t, k) => simBtnDown(t, k), btnUp: (t, k, z) => simBtnUp(t, k, z), gkTap: (t, z) => simGkTap(t, z), get slow() { return SIMSLOW < 1; },
     cast(t, k, x, z) { const c = CARDS[k]; if (!c || state !== 'play' || energy[t] < c.cost) return false; energy[t] -= c.cost; castSpell(k, t, clamp(x, -L, L), clamp(z, -HW, HW)); return true; }
   };
 }

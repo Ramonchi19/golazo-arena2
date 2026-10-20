@@ -54,7 +54,7 @@ const dirOf=t=>t===0?1:-1;
   // ---- lo visual y el sonido no existen en el servidor ----
   const NO = () => {};
   const sfx = NO, burst = NO, part = NO, dust = NO, popText = NO, showBig = NO, ringFx = NO, vib = NO, pwElectro = NO,
-    crowdShot = NO, zapFx = NO, shotScar = NO, spinBallMesh = NO, netCollide = NO, bigSave = NO, startQTE = NO,
+    crowdShot = NO, zapFx = NO, shotScar = NO, kickFx = NO, arcFx = NO, gkArcFx = NO, spinBallMesh = NO, netCollide = NO, bigSave = NO, startQTE = NO,
     tone = NO, targetFx = NO, stormCloud = NO, iceSpikes = NO, mudBubbles = NO, shieldDome = NO, turboTrails = NO, superAura = NO,
     burnFx = NO, boltFxLines = NO, puffFx = NO, smokeFx = NO, blastFx = NO, craterFx = NO, decalFx = NO, fxFn = NO,
     renderCards = NO, reactUpdate = NO, ballInNet = NO, audio = NO,
@@ -164,8 +164,11 @@ function shoot(p,power,kind,aim){
   let sup;
   if(p._cineGo){sup=true;p._cineGo=false;}
   else{sup=p.star>0||superNext[team];if(superNext[team])superNext[team]=false;
-    if(!sup&&!kind&&power>=.97&&energy[team]>=SUPER_COST){energy[team]-=SUPER_COST;sup=true;}
-    if(sup&&!kind&&ball.owner===p&&!cine&&state==='play'){startCine(p,[p,power,kind,aim]);return;}}
+    const zn=aim&&aim.zone;   // v165: el súper tiro se decide con el arco en el piso (verde = súper, amarillo = potente, rojo = débil o desviado)
+    if(zn){if(zn==='g'&&energy[team]>=SUPER_COST){energy[team]-=SUPER_COST;sup=true;}else if(zn==='y')power=1;
+      else if(Math.random()<.5)power=.55;else{power=.9;aim.az+=(Math.random()<.5?-1:1)*rand(GW-1,GW+2.5);}}
+    else if(!sup&&!kind&&!aim&&power>=.97&&energy[team]>=SUPER_COST){const r=Math.random();   // v167: bots: verde según la arena, si no amarillo o rojo
+      if(r<BOT_ARC){energy[team]-=SUPER_COST;sup=true;}else if(r<BOT_ARC+(1-BOT_ARC)*.45)power=1;else if(Math.random()<.5)power=.55;else p._wild=true;}}
   const perfect=!sup&&!kind&&(aim?(power>=.79&&power<.91):(power>=.85&&Math.random()<.22));
   release(p);ball.isShot=true;ball.slowDone=false;
   const kp=keeperOf(1-p.team);let az=(kp&&Math.abs(kp.z)>.3?-Math.sign(kp.z):(Math.random()<.5?1:-1))*rand(1.2,GW-.7);
@@ -173,7 +176,7 @@ function shoot(p,power,kind,aim){
   // v67: calidad del disparo: con un rival encima o pateando girado, sale menos preciso y un poco más lento
   const _po=nearestOpp(p),press=_po&&d2(_po,p)<1.6,_sdx=d*(L+1)-ball.x,_sdz=az-ball.z,_tf=Math.abs(((Math.atan2(_sdx,_sdz)-p.face)+Math.PI*3)%(Math.PI*2)-Math.PI)>1.1;
   const qErr=(press?1.5:1)*(_tf?1.35:1),qSp=(press?.94:1)*(_tf?.96:1);
-  az+=rand(-1,1)*p.shotErr*(sup?.3:perfect?.2:1)*qErr;
+  az+=rand(-1,1)*p.shotErr*(sup?.3:perfect?.2:1)*qErr;if(p._wild){p._wild=false;az+=(Math.random()<.5?-1:1)*rand(GW-1,GW+2.5);}
   if(aim){az=aim.az;const zf=perfect?.15:power<.6?.5:power<.85?1:1.6;az+=rand(-1,1)*(p.shotErr*zf*(sup?.3:1)*qErr+(power>=.85&&!sup&&!perfect?.7:0));}
   let ay=sup?rand(.5,1.3):clamp(.3+power*1.6+rand(-.2,.4),.25,GH+(power>.95?.5:-.2));
   if(kind)ay=rand(.4,2.2);
@@ -184,9 +187,14 @@ function shoot(p,power,kind,aim){
   const head=kind==='¡Cabezazo!';
   const sp=(sup?44-clamp(l-18,0,26)*.7:(kind?(head?21:26):19+power*18))*p.shotMul*(perfect?1.12:1)*(sup?1:qSp)*1.1,t=l/sp,g=sup?GRAV*(.15+clamp(l-18,0,26)*.02):GRAV;
   ball.vx=dx/t;ball.vz=dz/t;ball.vy=(ay-ball.y)/t+.5*g*t;
+  // v163: el balón no sube al cielo (aunque se cargue toda la barra desde lejos): tope a la altura máxima del tiro
+  {const H=kind?4.2:(sup?3.0:3.6),vmax=Math.sqrt(2*g*Math.max(.25,H-ball.y));if(ball.vy>vmax)ball.vy=vmax;}
+  // v163: curva: sale abierto hacia un lado y se cierra para llegar justo a donde se apuntó
+  ball.cv=null;if(!kind&&l>6){const st=(p.card&&p.card.st&&p.card.st.tir)||60,off=Math.min(1.6,l*(.022+st*.00035))*rand(.45,1)*(sup?.6:1)*(Math.random()<.5?-1:1);
+    ball.cv={x0:ball.x,z0:ball.z,ux:dx/l,uz:dz/l,l,off};}   // la curva se dibuja sobre el camino: sale hacia un lado y regresa a la línea del tiro
   if(l>24&&!sup){const e=(l-24)*.09;ball.vz+=rand(-e,e)*sp/l*4;}
   ball.super=sup;ball.shotInfo={team,dist:l,press,turned:_tf,perfect,sup};ball.passTo=null;ball.cross=false;faceTo(p,dx,dz);p.kickPow=sup?1.15:1;
-  if(!kind&&(sup||power>=.85))shotScar(ball.x,ball.z,dx,dz,sup);
+  if(!kind&&(sup||power>=.85)){shotScar(ball.x,ball.z,dx,dz,sup);kickFx(ball.x,ball.z,dx,dz,sup,+power||0);}
   if(sup){popText('¡SÚPER TIRO!',p.x,2.6,p.z,'#ffcc33',22);hitstop=.13;shakeAmt=1.1;burst(ball.x,ball.y,ball.z,0xffb000,26,10);ringFx(ball.x,ball.z,3.2,0xffb000,.35);psfx('superbalon');sfx('super');sfx('kickHard');vib(60);}
   else if(perfect){popText('¡PERFECTO!',p.x,2.9,p.z,'#ffd23a',28);hitstop=.07;shakeAmt=Math.max(shakeAmt,.55);burst(ball.x,ball.y,ball.z,0xffd23a,20,8);ringFx(ball.x,ball.z,2.4,0xffd23a,.3);sfx('perfect');sfx('kickHard');vib(40);}
   else{if(kind)popText(kind,p.x,2.6,p.z,'#fff');
@@ -263,7 +271,7 @@ function updateBall(dt){_updateBall(dt);try{dangerCheck();}catch(e){}if(walls.le
 // v62: la física del balón vive en assets/sim/ball.js (la misma que usará el servidor); aquí solo lo visual
 
 function _updateBall(dt){
-  if(ball.gk){const k=ball.gk;if(gkSequence(k,dt))return;if(ballToHands(k,'mid')){k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}ball.x=k.x+Math.sin(k.face)*.55;ball.z=k.z+Math.cos(k.face)*.55;ball.y=1.05;ball.vx=ball.vy=ball.vz=0;k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}
+  if(ball.gk){ball.cv=null;const k=ball.gk;if(gkSequence(k,dt))return;if(ballToHands(k,'mid')){k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}ball.x=k.x+Math.sin(k.face)*.55;ball.z=k.z+Math.cos(k.face)*.55;ball.y=1.05;ball.vx=ball.vy=ball.vz=0;k.hold-=dt;if(k.hold<=0)keeperDistribute(k);return;}
   if(ball.owner){SIM.ballCarried(SIMW,dt);spinBallMesh(dt);return;}
   SIM.ballFree(SIMW,dt);spinBallMesh(dt);
 }
@@ -306,7 +314,7 @@ function updateKeeper(k,dt){
   if(free&&ball.vx*-d>3){const atLine=crossAt(gx),atK=crossAt(k.x);
     if(atLine&&atK&&atLine.t<2.4&&Math.abs(atLine.z)<GW+1.2&&atLine.y<GH+1.2)pred={line:atLine,k:atK};}
   if(pred){
-    if(!k.alert){k.alert=true;k.plan=null;if(ball.super&&k.team===0&&ball.lastTeam===1&&!AI0)startQTE(k);
+    if(!k.alert){k.alert=true;k.plan=null;if(ball.super&&ball.lastTeam!==k.team){if(humanTeam(k.team))gkArcStart(k);else{const r=Math.random(),ok=BOT_ARC*.4;k.qteRes=r<ok?'ok':r<ok+.25?'half':null;}}
       k.reactT=G_.react*rand(.94,1.06)+(screened(k)?.08:0);}
     k.reactT-=dt;k.vx=k.vz=0;
     if(k.reactT<=0){
@@ -381,7 +389,14 @@ function resolveSave(k,G_){
   const margin=lat-dz+(Math.random()+Math.random()-1)*.07;
   const out=Math.sign(ball.z)||(Math.random()<.5?1:-1);                  // hacia afuera del arco
   const settle=()=>{if(diving&&!down)k.down=Math.max(k.down||0,.75-G_.SAL*.004);};
-  if(!body&&margin<0){if(margin>-.3)popText('¡Por poquito!',k.x,2.6,k.z,'#ffd6a0');k.saveKind='fallo';k.saveT=.7;k.saveY=y;k.saveZ=cz-k.z;settle();return;}
+  // v166: el portero contra el súper tiro usa el arco: verde = atajadón casi seguro, amarillo = lo desvía si llega cerca
+  if(ball.super&&(k.qteRes==='ok'||k.qteRes==='half')&&shield[k.team]<=0){const r=k.qteRes;k.qteRes=null;
+    if(r==='ok'&&margin>-2.5){k.dive=.55;k.diveDir=Math.sign(ball.z-k.z)||1;ball.vx=-ball.vx*.25;ball.vz=(Math.sign(ball.z-k.z)||1)*rand(6,10);ball.vy=rand(3,6);ball.super=false;ball.lastTeam=k.team;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;k.saveKind='desvio';k.saveT=.7;popText('¡ATAJADÓN!',k.x,2.8,k.z,'#ffcc33',26);burst(ball.x,ball.y,ball.z,0xffcc33,24,8);sfx('catch');bigSave();return;}
+    if(r==='half'&&margin>-1.2){if(!diving&&!down){k.dive=.55;k.diveDir=Math.sign(ball.z-k.z)||out;k.diveH=y;}ball.vx=-ball.vx*rand(.15,.25);ball.vz=out*rand(5,9);ball.vy=rand(2,5);ball.super=false;
+      ball.lastTeam=k.team;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;k.saveKind='desvio';k.saveT=.7;popText('¡La desvió!',k.x,2.7,k.z,'#fff',20);burst(ball.x,ball.y,ball.z,0xffffff,16,6);sfx('punch');bigSave();return;}}
+  if(!body&&margin<0){if(margin>-.3)popText('¡Por poquito!',k.x,2.6,k.z,'#ffd6a0');k.saveKind='fallo';k.saveT=.7;k.saveY=y;k.saveZ=cz-k.z;
+    if(!diving&&!down&&!(k.stun>0)&&!(k.frozen>0)&&!(k.rooted>0)){k.dive=.6;k.diveDir=Math.sign(cz-k.z)||out;k.diveH=y;k.pcd=Math.max(k.pcd||0,1);k.down=Math.max(k.down||0,.6);}   // v163: aunque no llegue, se lanza
+    settle();return;}
   if(ball.super&&k.qteRes==='ok'){k.qteRes=null;k.dive=.55;k.diveDir=Math.sign(ball.z-k.z)||1;ball.vx=-ball.vx*.25;ball.vz=(Math.sign(ball.z-k.z)||1)*rand(6,10);ball.vy=rand(3,6);ball.super=false;ball.lastTeam=k.team;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;popText('¡ATAJADÓN!',k.x,2.8,k.z,'#ffcc33',26);burst(ball.x,ball.y,ball.z,0xffcc33,24,8);sfx('catch');bigSave();return;}
   if(ball.super&&shield[k.team]<=0){
     if(!body&&margin<.4){knock(k,-d*.3,Math.sign(ball.z-k.z)||1,6,.9);popText('¡Lo atravesó!',k.x,2.7,k.z,'#ffcc33');ball.vx*=.9;return;}   // al súper tiro solo lo para si le llega bien
@@ -824,20 +839,36 @@ function update(dt){
 }
 
 // ================== v65: CONTROLES POR EQUIPO (botones y apuntado; el juego los llama con equipo 0) ==================
+// v165: arco del súper tiro: con la barra llena y 3 de energía sale un arco en el piso y una aguja que lo cruza una vez
+var SIMSLOW=1,ARC_GRACE=0,BOT_ARC=.4;const ARC_DUR=1.05,ARC_Y=.16,ARC_SLOWK=.2;
+function humanTeam(t){return t===0?!AI0:H1;}
+// v167: el portero contra el súper (ahora lo corre también el servidor en línea)
+function gkArcStart(k){if(k.gkArc)return;const st=(k.card&&k.card.st&&k.card.st.ref)||70;k.gkArc={t:0,g:clamp(.055+(st-50)*.0008,.05,.09)};k.qteRes=null;startQTE(k);}
+function simGkTap(t,z){const k=keeperOf(t);if(!k||!k.gkArc)return;if(!z||'gyr'.indexOf(z)<0)z=arcZone(Math.min(1,k.gkArc.t/ARC_DUR),k.gkArc.g);
+  k.gkArc=null;k.qteRes=z==='g'?'ok':z==='y'?'half':'fail';gkArcFx(k,z);}
+function arcTick(rdt){for(const t of [0,1]){const k=keeperOf(t);if(!k||!k.gkArc)continue;k.gkArc.t+=rdt;
+    if(!ball.super||ball.owner||ball.gk||state!=='play'){k.gkArc=null;gkArcFx(k,null);continue;}
+    if(k.gkArc.t>=ARC_DUR+ARC_GRACE)simGkTap(t,'r');}}
+function arcActive(){for(const p of players)if((p.aim&&p.aim.arc)||p.gkArc)return true;return false;}
+function arcZone(n,g){const c=Math.abs(n-.5);return c<=g?'g':c<=g+ARC_Y?'y':'r';}
+function arcEnd(u){if(u&&u._arc){u._arc=false;arcFx(u,0);}}
 function simStartAim(t,type,key){const u=ctrlOf(t);u.aim={type,key,power:0,t:0,dir:aimDefault(u,type)};if(type==='shot'){u.charging=true;u.charge=0;}}
 function simUpdateAim(t,dt){const u=ctrlOf(t),J=joyFor(t);const a=u&&u.aim;if(!a)return;
-  if(ball.owner!==u||u.stun>0){u.aim=null;u.charging=false;return;}
+  if(ball.owner!==u||u.stun>0){u.aim=null;u.charging=false;arcEnd(u);return;}
+  if(a.arc){a.arc.t+=dt/(SIMSLOW||1);u.vx=u.vz=0;if(a.arc.t>=ARC_DUR+ARC_GRACE){simReleaseAim(t,'r');return;}}
   a.t+=dt;a.power=Math.min(1,a.power+dt/1.1*(a.type==='shot'?(u.chargeMul||1):1));if(a.type==='shot')u.charge=a.power;
+  if(a.type==='shot'&&!a.arc&&a.power>=1&&energy[t]>=SUPER_COST&&!(u.star>0)&&!superNext[t]&&state==='play'){const st=(u.card&&u.card.st&&u.card.st.tir)||60;
+    a.arc={t:0,g:clamp(.055+(st-50)*.0008,.05,.09)};u._arc=true;arcFx(u,1);}
   const m=Math.hypot(J.x,J.y);a.dir=m>.25?{x:-J.y/m,z:J.x/m}:aimDefault(u,a.type);
 }
 function updateAim(dt){simUpdateAim(0,dt);if(H1)simUpdateAim(1,dt);}
-function simReleaseAim(t){const u=ctrlOf(t);
-  const a=u&&u.aim;if(!a)return;u.aim=null;u.charging=false;
+function simReleaseAim(t,zf){const u=ctrlOf(t);
+  const a=u&&u.aim;if(!a)return;u.aim=null;u.charging=false;arcEnd(u);
   if(ball.owner!==u)return;
   const tap=a.t<.13,pw=tap?null:a.power;
   if(a.type==='shot'){const d=dirOf(u.team),gx=d*L,fwd=a.dir.x*d;let az;
     if(fwd>.15)az=u.z+a.dir.z/a.dir.x*(gx-u.x);else az=clamp(a.dir.z*6,-GW,GW);
-    az=clamp(az,-(GW+2.5),GW+2.5);shoot(u,tap?.55:pw,null,{az});u.charge=0;}
+    az=clamp(az,-(GW+2.5),GW+2.5);shoot(u,tap?.55:pw,null,a.arc?{az,zone:zf&&'gyr'.indexOf(zf)>=0?zf:arcZone(Math.min(1,a.arc.t/ARC_DUR),a.arc.g)}:{az});u.charge=0;}
   else if(a.type==='pass')passAim(u,pw,a.dir);
   else crossAim(u,pw,a.dir);
 }
@@ -851,7 +882,7 @@ function simBtnDown(t,k){const J=joyFor(t);
   if(k==='b'){if(atk){if(has)simStartAim(t,'pass','b');}else if(u.tcd<=0){const d=simDir(t);startAct(u,'body',d.x,d.z);}}
   if(k==='c'){if(atk){if(has)simStartAim(t,'cross','c');}else{if(t===0)pressT=2.5;else pressT1=2.5;popText('¡Presión!',u.x,2.6,u.z,'#ffb3e6');}}
 }
-function simBtnUp(t,k){const u=ctrlOf(t);if(u&&u.aim&&u.aim.key===k)simReleaseAim(t);}
+function simBtnUp(t,k,z){const u=ctrlOf(t);if(u&&u.aim&&u.aim.key===k)simReleaseAim(t,z);}
 
 // ===================================================================
 
@@ -867,7 +898,7 @@ function simBtnUp(t,k){const u=ctrlOf(t);if(u&&u.aim&&u.aim.key===k)simReleaseAi
     kickoff(0);
   }
   // un paso del partido: es la misma función update() del juego
-  function step(dt) { if (state !== 'play') return; T += dt; update(dt); }
+  function step(dt) { if (state !== 'play') return; arcTick(dt); SIMSLOW = arcActive() ? ARC_SLOWK : 1; T += dt * SIMSLOW; update(dt * SIMSLOW); }   // v167: cámara lenta del arco para los dos
   return {
     setup, step, events,
     get ball() { return ball; }, get players() { return players; }, get score() { return score; },
@@ -876,7 +907,7 @@ function simBtnUp(t,k){const u=ctrlOf(t);if(u&&u.aim&&u.aim.key===k)simReleaseAi
     get overtime() { return overtime; },
     playCard: (team, i, x, z) => playCard(team, i, x, z), castSpell: (k, team, x, z) => castSpell(k, team, x, z),
     // ---- partido en línea: los dos equipos son humanos ----
-    setHumans(h) { H1 = !!h; if (H1 && !user1) user1 = fieldOf(1)[0] || null; CTRL_LOCK[0] = CTRL_LOCK[1] = !!h; },
+    setHumans(h) { H1 = !!h; ARC_GRACE = h ? .35 : 0; if (H1 && !user1) user1 = fieldOf(1)[0] || null; CTRL_LOCK[0] = CTRL_LOCK[1] = !!h; },
     // el teléfono dice a qué jugador controla (índice en la lista del servidor)
     setCtrlIdx(t, i) { const p = players[i]; if (p && p.team === t && !p.gk) setCtrl(t, p); },
     get ctrl() { return [user, user1]; },
@@ -887,7 +918,7 @@ function simBtnUp(t,k){const u=ctrlOf(t);if(u&&u.aim&&u.aim.key===k)simReleaseAi
     shoot: (p, pw, kind, aim) => shoot(p, pw, kind, aim), tryVolley: p => tryVolley(p), take: (p, s) => take(p, s),
     keeperOf: t => keeperOf(t), get D() { return D; },
     setJoy(t, x, y) { const J = joyFor(t); J.x = x; J.y = y; },
-    btnDown: (t, k) => simBtnDown(t, k), btnUp: (t, k) => simBtnUp(t, k),
+    btnDown: (t, k) => simBtnDown(t, k), btnUp: (t, k, z) => simBtnUp(t, k, z), gkTap: (t, z) => simGkTap(t, z), get slow() { return SIMSLOW < 1; },
     cast(t, k, x, z) { const c = CARDS[k]; if (!c || state !== 'play' || energy[t] < c.cost) return false; energy[t] -= c.cost; castSpell(k, t, clamp(x, -L, L), clamp(z, -HW, HW)); return true; }
   };
 }

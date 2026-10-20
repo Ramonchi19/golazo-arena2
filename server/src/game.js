@@ -81,8 +81,11 @@ export class GameCore {
       if (Number.isInteger(m.u) && m.u >= 0 && m.u < 5) M.setCtrlIdx(team, team === 1 ? m.u + 5 : m.u);
       this.send(1 - team, { t: 'ri', j: [r2(-x), r2(-y)] }); // el rival, visto desde el otro lado
     } else if (m.t === 'b' && 'abc'.includes(m.k)) {
-      if (m.d) M.btnDown(team, m.k); else M.btnUp(team, m.k);
+      const z = typeof m.z === 'string' && 'gyr'.includes(m.z) && m.z.length === 1 ? m.z : null;   // v167: zona del arco que vio el jugador
+      if (m.d) M.btnDown(team, m.k); else M.btnUp(team, m.k, z);
       this.send(1 - team, { t: 'rb', k: m.k, d: m.d ? 1 : 0 });
+    } else if (m.t === 'q' && typeof m.z === 'string' && m.z.length === 1 && 'gyr'.includes(m.z)) {
+      M.gkTap(team, m.z);   // v167: el portero tocó en el arco
     } else if (m.t === 'c' && POWERS.includes(m.k) && this.decks[team].includes(m.k)) {
       const x = Math.max(-32, Math.min(32, +m.x || 0)), z = Math.max(-16, Math.min(16, +m.z || 0));
       const wx = team === 1 ? -x : x, wz = team === 1 ? -z : z;
@@ -122,7 +125,7 @@ export class GameCore {
     const order = team === 1 ? P.slice(5).concat(P.slice(0, 5)) : P;
     const idx = p => p ? order.indexOf(p) : -1;
     return {
-      t: 's', k: this.tickN, tm: r2(M.time), ot: M.overtime ? 1 : 0, ps: r2(Math.max(0, M.pause)),
+      t: 's', k: this.tickN, sl: M.slow ? 1 : 0, tm: r2(M.time), ot: M.overtime ? 1 : 0, ps: r2(Math.max(0, M.pause)),
       sc: team === 1 ? [M.score[1], M.score[0]] : M.score.slice(), en: r2(M.energy[team]),
       u: [idx(M.ctrl[team]), idx(M.ctrl[1 - team])],                    // a quién controla cada quien
       b: [r2(b.x * s), r2(b.y), r2(b.z * s), r2(b.vx * s), r2(b.vy), r2(b.vz * s), idx(b.owner), idx(b.gk), b.super ? 1 : 0],

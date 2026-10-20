@@ -77,7 +77,7 @@ function send(o){if(O&&O.ws&&O.ws.readyState===1)O.ws.send(JSON.stringify(o));}
 function onMsg(m){if(!O)return;
   if(m.t==='sala'){O.retries=0;if(!O.rival){O.rival=oppFrom(m.rival);mmVS(O.rival);prepOnline();}else if(O.prepared)send({t:'listo'});}
   else if(m.t==='cuenta'){O.count=true;if(O.prepared)goCount();}
-  else if(m.t==='inicio'){O.go=true;if(O.prepared&&O.counted){pause=0;pauseCb=null;showBig('¡A jugar!');}else if(O.prepared)goCount();}
+  else if(m.t==='inicio'){O.go=true;if(O.prepared&&O.counted){pause=0;pauseCb=null;showBig('¡A jugar!');try{crowdShot('fx_buzzstart',.7);}catch(e){}}else if(O.prepared)goCount();}
   else if(m.t==='s'){applySnap(m);}
   else if(m.t==='po'){const r=performance.now()-m.c;O.rtt=O.rtt?O.rtt*.7+r*.3:r;}
   else if(m.t==='ri'){joy1.x=m.j[0];joy1.y=m.j[1];}
@@ -102,6 +102,7 @@ function goCount(){
   if(!O||O.counted)return;O.counted=true;mmClose();try{crowdStart();}catch(e){}
   state='play';pause=O.go?0:99;pauseCb=null;      // congelado hasta 'inicio'
   if(O.go){showBig('¡A jugar!');return;}
+  try{snd1('inicio_tambores',.85);}catch(e){}   // v162: tambores durante la cuenta
   let n=3;const c=()=>{if(!O||O.go||n<=0)return;showBig(String(n),'#fff');n--;setTimeout(c,1000);};c();
 }
 async function startOnline(){if(O&&!O.preparing)return prepOnline();}
@@ -123,7 +124,7 @@ function endOnline(m){if(!O||O.ended)return;O.ended=true;
 function angLerp(a,b,k){let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return a+d*k;}
 function applySnap(S){
   if(!O||!O.started||state!=='play')return;O.snaps++;
-  time=S.tm;overtime=!!S.ot;score=S.sc.slice();energy[0]=S.en;
+  window.NET_SLOW=!!S.sl;time=S.tm;overtime=!!S.ot;score=S.sc.slice();energy[0]=S.en;
   if(S.ps>0){pause=Math.max(pause,S.ps);pauseCb=null;}else if(O.go&&pause>0&&pause<50)pause=0;
   // v66: el jugador que controla el rival lo dice el servidor; el mío lo decido yo
   if(S.u&&S.u[1]>=0&&players[S.u[1]]&&players[S.u[1]].team===1)user1=players[S.u[1]];
@@ -168,13 +169,12 @@ const origEnd=window.endGame;
 window.endGame=function(){if(O)return;return origEnd();};                    // y cuándo termina
 const origCine=window.startCine;
 window.startCine=function(p,args){if(O){if(ball.owner===p&&state==='play'){p._cineGo=true;shoot.apply(null,args);}return;}return origCine(p,args);};
-const origQTE=window.startQTE;
-window.startQTE=function(k){if(O)return;return origQTE(k);};
 const origTS=window.timeScaleNow;
-window.timeScaleNow=function(rdt){if(O){slowT=0;return 1;}return origTS(rdt);};
+window.timeScaleNow=function(rdt){if(O){slowT=0;cine=null;qte=null;return origTS(rdt);}return origTS(rdt);};
 const origDown=window.btnDown,origUp=window.btnUp;
 window.btnDown=function(k){if(O&&O.go)send({t:'b',k,d:1});return origDown(k);};
-window.btnUp=function(k){if(O&&O.go)send({t:'b',k,d:0});return origUp(k);};
+window.btnUp=function(k){if(O&&O.go){const a=user&&user.aim,z=a&&a.arc&&a.key===k?arcZone(Math.min(1,a.arc.t/ARC_DUR),a.arc.g):null;send(z?{t:'b',k,d:0,z}:{t:'b',k,d:0});}return origUp(k);};   // v167: manda la zona del arco que viste
+window.onGkTap=function(z){if(O&&O.go&&z)send({t:'q',z});};
 const origPlay=window.playCard;
 window.playCard=function(team,i,x,z){if(O&&team===0){const k=hands[0][i];const ok=origPlay(team,i,x,z);if(ok)send({t:'c',k,x:+x.toFixed(2),z:+z.toFixed(2)});return ok;}return origPlay(team,i,x,z);};
 const qb=document.getElementById('quit');
