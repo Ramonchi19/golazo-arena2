@@ -63,7 +63,7 @@ const dirOf=t=>t===0?1:-1;
   const vfx = () => null;
   const vxMud = () => null, vxWallMesh = () => null, vxBarrelMesh = () => null, vxIceZone = () => null, vxGloveMesh = () => null,
     vxTornadoMesh = () => null, vxMeteorMesh = () => null, vxMeteorWarn = () => null, vxPeel = () => null;
-  const fb = () => false, psfx = () => false, handPos = () => null;
+  const fb = () => false, psfx = () => false, handPos = () => null, pwLoop = () => null, pwLoopStop = NO;
   // sin cinemática: el súper tiro sale de inmediato
   const startCine = (p, args) => { if (ball.owner === p && state === 'play') { p._cineGo = true; shoot.apply(null, args); } };
   function dangerCheck() {}
@@ -377,7 +377,7 @@ function resolveSave(k,G_){
     if(y<.45&&!diving&&dz>.7)lat-=.25;
     body=dz<G_.body&&y<1.95&&y>.15;
     if(k.smother>0&&y<1.1)body=body||dz<1.25;}                            // mano a mano: abierto, tapa mucho
-  if(shield[k.team]>0){lat=99;body=true;}
+  if(shield[k.team]>0){lat=99;body=true;if(!(k._shs>Date.now())){k._shs=Date.now()+700;psfx('escudo_bloquea');}}
   const margin=lat-dz+(Math.random()+Math.random()-1)*.07;
   const out=Math.sign(ball.z)||(Math.random()<.5?1:-1);                  // hacia afuera del arco
   const settle=()=>{if(diving&&!down)k.down=Math.max(k.down||0,.75-G_.SAL*.004);};
@@ -573,15 +573,15 @@ function tryVolley(p){
 }
 function updatePlayer(p,dt){
   if(cine&&cine.p===p){p.vx*=.5;p.vz*=.5;return;}
-  p.tcd-=dt;p.pcd-=dt;p.zapcd-=dt;if(p.star>0)p.star-=dt;if(p.kickT>0)p.kickT-=dt;if(p.touchVis>0)p.touchVis-=dt;if(p.slip>0)p.slip-=dt;if(p.volleyQ>0)p.volleyQ-=dt;
+  p.tcd-=dt;p.pcd-=dt;p.zapcd-=dt;if(p.star>0){p.star-=dt;if(p.star<=0)psfx('turbo_fin');}if(p.kickT>0)p.kickT-=dt;if(p.touchVis>0)p.touchVis-=dt;if(p.slip>0)p.slip-=dt;if(p.volleyQ>0)p.volleyQ-=dt;
   if(p.gk){updateKeeper(p,dt);return;}
   if(p.charging&&ball.owner!==p){p.charging=false;p.charge=0;}
-  if(p.frozen>0||p.rooted>0){if(p.frozen>0)p.frozen-=dt;if(p.rooted>0)p.rooted-=dt;p.vx=p.vz=0;p.act=null;p.charging=false;if(ball.owner===p)loseBall(p,0,0);return;}   /* v95: congelado (hielo) o atrapado (enredadera) */
+  if(p.frozen>0||p.rooted>0){if(p.frozen>0){p.frozen-=dt;if(p.frozen<=0)psfx('hielo_rompe');}if(p.rooted>0)p.rooted-=dt;p.vx=p.vz=0;p.act=null;p.charging=false;if(ball.owner===p)loseBall(p,0,0);return;}   /* v95: congelado (hielo) o atrapado (enredadera) */
   if(p.stun>0){p.stun-=dt;const f=Math.max(0,1-3*dt);p.vx*=f;p.vz*=f;movePlayer(p,dt);return;}
   if(p.recover>0){p.recover-=dt;p.vx*=.85;p.vz*=.85;movePlayer(p,dt);return;}
   if(p.act){updateAct(p,dt);movePlayer(p,dt);return;}
   for(const z of zones){if(z.kind==='enred'&&z.team!==p.team&&z.caught<z.max&&!(p.star>0)&&!(p.rooted>0)&&Math.hypot(p.x-z.x,p.z-z.z)<z.r){z.caught++;rootP(p,2.6*z.S);}}
-  let slow=1;for(const z of zones){if(z.kind==='hielo'||z.kind==='enred')continue;if(z.team!==p.team&&Math.hypot(p.x-z.x,p.z-z.z)<z.r){slow=Math.min(slow,z.kind==='lodo'?.36:.45);if(z.kind==='lodo'&&Math.hypot(p.vx,p.vz)>2&&Math.random()<.25)part(p.x,.15,p.z,rand(-1.5,1.5),rand(1.5,3),rand(-1.5,1.5),Math.random()<.5?0x5a3b1e:0x7a5230,.45,12,rand(.5,.9));}}
+  let slow=1;for(const z of zones){if(z.kind==='hielo'||z.kind==='enred')continue;if(z.team!==p.team&&Math.hypot(p.x-z.x,p.z-z.z)<z.r){slow=Math.min(slow,z.kind==='lodo'?.36:.45);if(z.kind==='lodo'&&Math.hypot(p.vx,p.vz)>2&&!(p.mudS>0)){p.mudS=1.4;psfx('lodo_pisa');}if(p.mudS>0)p.mudS-=dt;if(z.kind==='lodo'&&Math.hypot(p.vx,p.vz)>2&&Math.random()<.25)part(p.x,.15,p.z,rand(-1.5,1.5),rand(1.5,3),rand(-1.5,1.5),Math.random()<.5?0x5a3b1e:0x7a5230,.45,12,rand(.5,.9));}}
   let dvx=0,dvz=0;
   if(isCtrl(p)){const J=joyFor(p.team);
     let jx=-J.y,jz=J.x;const m=Math.hypot(jx,jz);
@@ -673,9 +673,9 @@ function updatePowers(dt){
       for(const p of players){if(p.team===e.team||p.star>0)continue;const dx=p.x-e.x,dz=p.z-e.z,dd=Math.hypot(dx,dz);
         if(dd<e.r&&!e.caught.has(p)&&(!p.gk||dd<e.r*.6)){e.caught.set(p,0);p.stun=Math.max(p.stun,1.4);p.act=null;loseBall(p,0,0);popText('¡Wiii!',p.x,2.6,p.z,'#dff4ff',16);}
         if(e.caught.has(p)){const t=e.caught.get(p)+dt;e.caught.set(p,t);const a=Math.atan2(dz,dx)+dt*9,rr=Math.max(.6,dd*.9);p.x=e.x+Math.cos(a)*rr;p.z=e.z+Math.sin(a)*rr;p.vx=p.vz=0;p.spinT=.2;p.flyY=Math.min(2.4,(p.flyY||0)+dt*3);p.flyVy=0;p.stun=Math.max(p.stun,.6);
-          if(t>1.1){e.caught.delete(p);e.caught.set(p,-99);const nx=dx/(dd||1),nz=dz/(dd||1);knock(p,nx,nz,11,1.1);launch(p,6);}}}
+          if(t>1.1){e.caught.delete(p);e.caught.set(p,-99);const nx=dx/(dd||1),nz=dz/(dd||1);knock(p,nx,nz,11,1.1);launch(p,6);psfx('tornado_lanza');}}}
       if(!ball.owner&&!ball.gk&&Math.hypot(ball.x-e.x,ball.z-e.z)<e.r){const a=Math.atan2(ball.z-e.z,ball.x-e.x)+1.4;ball.vx=Math.cos(a)*8;ball.vz=Math.sin(a)*8;ball.vy=Math.max(ball.vy,4);}
-      if(e.life<=0){e.done=true;vxRemove(e.mesh);smokeFx(e.x,e.z,1.2,8);}}
+      if(e.life<=0){e.done=true;pwLoopStop(e.snd);vxRemove(e.mesh);smokeFx(e.x,e.z,1.2,8);}}
     if(e.type==='meteor'){e.t+=dt;const k=Math.min(1,e.t/e.dur);vxMeteor(e,k,dt);
       if(k>=1){e.done=true;vxRemove(e.mesh);vxRemove(e.warn);meteorImpact(e);}}
   }
@@ -715,9 +715,9 @@ function playCard(team,i,x,z){
 }
 function castSpell(k,team,x,z){
   const opp=players.filter(p=>p.team!==team),S=1+(spellLvl(team,k)-1)*.08;
-  if(k==='bomba'){const r=CARDS.bomba.r*S,d=dirOf(team),sx=x-d*9,E={x,z,team,S};vxBomb(x,z,r,d,sx);effects.push({type:'bombT',t:0,E});}
+  if(k==='bomba'){const r=CARDS.bomba.r*S,d=dirOf(team),sx=x-d*9,E={x,z,team,S};vxBomb(x,z,r,d,sx);effects.push({type:'bombT',t:0,E});psfx('bomba_cae');pwLoop('bomba_mecha',.9);}
   else if(k==='cascara'){const m=vxPeel(x,z);traps.push({x,z,team,life:25*S,mesh:m});sfx('touch');vxPeelAnim(m,x,z);}
-  else if(k==='rayo'){const r=CARDS.rayo.r*S;stormCloud(x,z,r);targetFx(x,z,r,0x7fe8ff,.4);skyFlash=.2;ringFx(x,z,r,0x7fe8ff,.4);sfx('zap');
+  else if(k==='rayo'){const r=CARDS.rayo.r*S;stormCloud(x,z,r);targetFx(x,z,r,0x7fe8ff,.4);skyFlash=.2;ringFx(x,z,r,0x7fe8ff,.4);if(!psfx('rayo_carga'))sfx('zap');
     // elige hasta 2 rivales dentro del área (los más cercanos al centro) y les cae un rayo directo
     const vic=opp.filter(p=>Math.hypot(p.x-x,p.z-z)<r).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z)).slice(0,2);
     if(!vic.length)effects.push({type:'strike',t:.38,x,z,team,S});
@@ -729,10 +729,10 @@ function castSpell(k,team,x,z){
   else if(k==='escudo'){if(!(shield[team]>0))shieldDome(team);shield[team]=7*S;const g=keeperOf(team);fb('onda',g.x,1.3,g.z,5,.7,{tint:0x9fe8ff});popText('¡Escudo!',g.x,2.8,g.z,'#7fe8ff',20);psfx('escudo');sfx('power');}
   else if(k==='punetazo'){let tgt=null,bd=CARDS.punetazo.r*S;for(const p of opp){const dd=Math.hypot(p.x-x,p.z-z);if(dd<bd){bd=dd;tgt=p;}}
     {const tg=tgt||{x,z};targetFx(tg.x,tg.z,1.3,0xff3b4e,.34);}
-    const gl=vxGloveMesh();vxAdd(gl,x-dirOf(team)*7,9,z);effects.push({type:'glove',mesh:gl,t:0,dur:.32,team,S,tgt,x,z,sx:x-dirOf(team)*7,sy:9,sz:z});tone(300,.25,'sawtooth',.05,900);}
-  else if(k==='tornado'){const gp=vxTornadoMesh();vxAdd(gp,x,0,z);const a=rand(0,6.28);effects.push({type:'tornado',mesh:gp,x,z,vx:Math.cos(a)*1.6,vz:Math.sin(a)*1.6,life:4.2*S,team,S,r:CARDS.tornado.r*S,caught:new Map()});psfx('tornado');sfx('power');popText('¡Tornado!',x,3,z,'#dff4ff',22);}
+    const gl=vxGloveMesh();vxAdd(gl,x-dirOf(team)*7,9,z);effects.push({type:'glove',mesh:gl,t:0,dur:.32,team,S,tgt,x,z,sx:x-dirOf(team)*7,sy:9,sz:z});if(!psfx('punetazo_sale'))tone(300,.25,'sawtooth',.05,900);}
+  else if(k==='tornado'){const gp=vxTornadoMesh();vxAdd(gp,x,0,z);const a=rand(0,6.28);effects.push({type:'tornado',mesh:gp,x,z,vx:Math.cos(a)*1.6,vz:Math.sin(a)*1.6,life:4.2*S,team,S,r:CARDS.tornado.r*S,caught:new Map(),snd:pwLoop('tornado_gira',4.2*S)});psfx('tornado');sfx('power');popText('¡Tornado!',x,3,z,'#dff4ff',22);}
   else if(k==='meteorito'){const m=vxMeteorMesh(),d=dirOf(team),msx=x-d*16,msz=z+rand(-6,6);vxAdd(m,msx,30,msz);const warn=vxMeteorWarn(x,z);
-    effects.push({type:'meteor',mesh:m,warn,x,z,t:0,dur:1.25,team,S,sx:msx,sy:30,sz:msz});tone(120,1.2,'sawtooth',.06,40);popText('¡Cuidado!',x,2.5,z,'#ff7a4a',20);}
+    effects.push({type:'meteor',mesh:m,warn,x,z,t:0,dur:1.25,team,S,sx:msx,sy:30,sz:msz});if(!psfx('meteorito_cae'))tone(120,1.2,'sawtooth',.06,40);popText('¡Cuidado!',x,2.5,z,'#ff7a4a',20);}
   else if(k==='lodo'){castObstacle(k,team,x,z,S);}
   else if(k==='enredadera'){const r=CARDS.enredadera.r*S,m=vfx('vines',x,z,r,8*S);zones.push({x,z,r,team,life:8*S,mesh:m,kind:'enred',caught:0,max:2,S});
     fb('polvo',x,.5,z,r*1.3,.6,{tint:0x6a8a3a});for(let i=0;i<16;i++){const a=rand(0,6.28),s=rand(2,5);part(x+Math.cos(a)*r*.5,.2,z+Math.sin(a)*r*.5,Math.cos(a)*s,rand(2,5),Math.sin(a)*s,i%2?0x3a8a2a:0x6a4a2a,.6,12,rand(.6,1.1));}
@@ -740,12 +740,12 @@ function castSpell(k,team,x,z){
   else if(k==='rafaga'){const u=casterOf(team),ox=u?u.x:x-dirOf(team)*8,oz=u?u.z:z;let dx=x-ox,dz=z-oz,dl=Math.hypot(dx,dz);if(dl<1){dx=dirOf(team);dz=0;dl=1;}dx/=dl;dz/=dl;
     const len=Math.max(10,dl+5);effects.push({type:'gust',ox,oz,dx,dz,len,w:CARDS.rafaga.r*S,t:0,team,S,hit:new Set(),ballHit:false,mesh:vfx('gust',ox,oz,dx,dz,len,CARDS.rafaga.r*S)});
     psfx('rafaga');sfx('power');popText('¡Ráfaga!',x,2.4,z,'#dff4ff',20);}
-  else if(k==='iman'){effects.push({type:'magnet',team,S,life:4*S,mesh:vfx('magnet',team),pulled:false});psfx('iman');sfx('power');const c=casterOf(team)||fieldOf(team)[0];if(c)popText('¡Imán!',c.x,2.8,c.z,'#ff6a7a',22);}
+  else if(k==='iman'){effects.push({type:'magnet',team,S,life:4*S,mesh:vfx('magnet',team),pulled:false});psfx('iman');pwLoop('iman_jala',4*S);sfx('power');const c=casterOf(team)||fieldOf(team)[0];if(c)popText('¡Imán!',c.x,2.8,c.z,'#ff6a7a',22);}
   else if(k==='bolapicos'){const u=casterOf(team),ox=u?u.x+0:x-dirOf(team)*10,oz=u?u.z:z;let dx=x-ox,dz=z-oz,dl=Math.hypot(dx,dz);if(dl<1){dx=dirOf(team);dz=0;dl=1;}dx/=dl;dz/=dl;
     const sx=clamp(ox+dx*1.6,-L+1,L-1),sz=clamp(oz+dz*1.6,-HW+1,HW-1);
-    effects.push({type:'spike',x:sx,z:sz,vx:dx*15,vz:dz*15,r:CARDS.bolapicos.r,team,S,bounces:0,life:7,hit:new Set(),mesh:vfx('spike',sx,sz)});
+    effects.push({type:'spike',x:sx,z:sz,vx:dx*15,vz:dz*15,r:CARDS.bolapicos.r,team,S,bounces:0,life:7,hit:new Set(),mesh:vfx('spike',sx,sz),snd:pwLoop('bolapicos_rueda',7)});
     fb('polvo',sx,.5,sz,2.2,.5);psfx('bolapicos');sfx('kick');popText('¡Bola de picos!',sx,2.6,sz,'#ffcc66',20);}
-  else if(k==='superbalon'){if(!superNext[team])superAura(team);superNext[team]=true;const c=ball.owner||fieldOf(team)[0];popText('¡Súper balón listo!',c.x,2.8,c.z,'#ffcc33',18);sfx('power');}
+  else if(k==='superbalon'){if(!superNext[team])superAura(team);superNext[team]=true;const c=ball.owner||fieldOf(team)[0];popText('¡Súper balón listo!',c.x,2.8,c.z,'#ffcc33',18);if(!psfx('superbalon_carga'))sfx('power');}
 }
 // v95: quién lanza los poderes con dirección (ráfaga, bola de picos): tu jugador controlado, o el más cercano al balón
 function casterOf(t){const u=ctrlOf(t);if(u&&!u.gk)return u;let best=null,bd=1e9;for(const p of fieldOf(t)){const d=Math.hypot(p.x-ball.x,p.z-ball.z);if(d<bd){bd=d;best=p;}}return best;}
@@ -766,12 +766,12 @@ function updatePowers2(dt){
       if(e.life<=0||(ball.owner&&ball.owner.team===e.team)){e.done=true;vxRemove(e.mesh);}continue;}
     if(e.type==='spike'){e.life-=dt;e.x+=e.vx*dt;e.z+=e.vz*dt;let b=false;
       if(Math.abs(e.x)>L-.9){e.x=Math.sign(e.x)*(L-.9);e.vx=-e.vx;b=true;}if(Math.abs(e.z)>HW-.9){e.z=Math.sign(e.z)*(HW-.9);e.vz=-e.vz;b=true;}if(SIM.corner(e,.9,1))b=true;
-      if(b){e.bounces++;e.hit.clear();fb('polvo',e.x,.6,e.z,2.4,.5);shakeAmt=Math.max(shakeAmt,.35);sfx('hit');}
+      if(b){e.bounces++;e.hit.clear();fb('polvo',e.x,.6,e.z,2.4,.5);shakeAmt=Math.max(shakeAmt,.35);if(!psfx('bolapicos_rebota'))sfx('hit');}
       vfx('spikeUpd',e,dt);if(Math.random()<.5)part(e.x,.1,e.z,rand(-1,1),rand(.5,2),rand(-1,1),0xc8d6a0,.4,6,rand(.6,1));
       for(const p of players){if(p.team===e.team||e.hit.has(p)||p.star>0)continue;if(Math.hypot(p.x-e.x,p.z-e.z)<e.r+.5){e.hit.add(p);const sp=Math.hypot(e.vx,e.vz)||1;
         if(knock(p,e.vx/sp,e.vz/sp,(p.gk?9:15)*e.S,p.gk?1.4:1.6))launch(p,p.gk?4:7);burst(p.x,1,p.z,0xffcc66,14,7);popText('¡Ouch!',p.x,2.6,p.z,'#ffcc66',18);sfx('hit');hitstop=Math.max(hitstop,.04);}}
       if(!ball.owner&&!ball.gk&&Math.hypot(ball.x-e.x,ball.z-e.z)<e.r+.4&&ball.y<1.6){const sp=Math.hypot(e.vx,e.vz)||1;ball.vx=e.vx/sp*16;ball.vz=e.vz/sp*16;ball.vy=3;ball.lastTeam=e.team;}
-      if(e.bounces>=2||e.life<=0){e.done=true;vxRemove(e.mesh);vfx('spikeBreak',e.x,e.z);burst(e.x,1,e.z,0x8a8f9a,24,9);fb('polvo',e.x,.6,e.z,3,.7);shakeAmt=Math.max(shakeAmt,.5);sfx('boom');}continue;}
+      if(e.bounces>=2||e.life<=0){e.done=true;pwLoopStop(e.snd);vxRemove(e.mesh);vfx('spikeBreak',e.x,e.z);burst(e.x,1,e.z,0x8a8f9a,24,9);fb('polvo',e.x,.6,e.z,3,.7);shakeAmt=Math.max(shakeAmt,.5);sfx('boom');}continue;}
   }
 }
 function explode(e){psfx('bomba');
@@ -808,7 +808,7 @@ function update(dt){
   else{otTime-=dt;if(otTime<=0){endGame();return;}}
   const rate=(time<=X2T||overtime?2:1)/2.8;
   energy[0]=Math.min(10,energy[0]+rate*dt);energy[1]=Math.min(10,energy[1]+rate*dt*D.ai);
-  pressT-=dt;pressT1-=dt;shield[0]-=dt;shield[1]-=dt;
+  pressT-=dt;pressT1-=dt;for(const t of [0,1])if(shield[t]>0&&shield[t]-dt<=0)psfx('escudo_fin');shield[0]-=dt;shield[1]-=dt;
   if(!H1&&!NOCARDS){aiCards(dt,1);if(AI0)aiCards(dt,0);}updateControl();updateAim(dt);
   for(const p of players){updatePlayer(p,dt);runQueue(p,dt);}
   contestBall(dt);separate();updateBall(dt);

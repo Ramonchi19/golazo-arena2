@@ -50,7 +50,7 @@ ${data}
   const vfx = () => null;
   const vxMud = () => null, vxWallMesh = () => null, vxBarrelMesh = () => null, vxIceZone = () => null, vxGloveMesh = () => null,
     vxTornadoMesh = () => null, vxMeteorMesh = () => null, vxMeteorWarn = () => null, vxPeel = () => null;
-  const fb = () => false, psfx = () => false, handPos = () => null;
+  const fb = () => false, psfx = () => false, handPos = () => null, pwLoop = () => null, pwLoopStop = NO;
   // sin cinemática: el súper tiro sale de inmediato
   const startCine = (p, args) => { if (ball.owner === p && state === 'play') { p._cineGo = true; shoot.apply(null, args); } };
   function dangerCheck() {}

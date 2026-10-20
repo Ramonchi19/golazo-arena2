@@ -94,8 +94,9 @@ async function prepOnline(){
   if(!O){mmClose();if(gameOn&&state==='vs')beginMatch();return;}   // se cayó la conexión mientras cargaba: se juega contra la IA
   O.started=true;H1=true;user1=fieldOf(1)[0];CTRL_LOCK[1]=true;
   if(O.team===1)kickoff(1);          // el servidor saca con el equipo azul; desde el lado rojo eso es el rival
+  mmClose();try{await matchIntro(O.rival||oppFrom({}));}catch(e){}if(!O)return;   // v153: entrada con alineaciones antes de avisar que estamos listos
   O.prepared=true;send({t:'listo'});
-  if(O.count||O.go)goCount();else mmProg(1,'Esperando a tu rival…');
+  if(O.count||O.go)goCount();else say('Esperando a tu rival…');
 }
 function goCount(){
   if(!O||O.counted)return;O.counted=true;mmClose();try{crowdStart();}catch(e){}
