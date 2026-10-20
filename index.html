@@ -1251,11 +1251,12 @@ function crowdLoad(){if(!AC)return Promise.resolve();if(crowdLoading)return crow
 // ================== v123: MÚSICA (lobby y partido) y sonidos de botones ==================
 // Archivos: assets/music/lobby.ogg y assets/music/partido.ogg (en bucle) · assets/sfx/ui_jugar.ogg (botón Jugar).
 // Si un archivo todavía no existe, simplemente no suena. Se apaga con "Música" en Configuración.
+const MUS_OFF=true;   // v168: sin música de fondo (ni lobby, ni partido, ni resultado)
 const MUS={buf:{},load:{},cur:null,node:null,gain:null,want:null,
   vol:{lobby:.3,partido:.08},len:{lobby:21.33333,partido:36.8711},mul:1,   // v161: lobby nuevo (8 compases)   // v158: partido muy bajito, por debajo del público   // len: largo exacto del loop (el ogg trae unas muestras de relleno al final)   // v146: lobby bajito, de fondo (el archivo ya viene a -18 LUFS)
   fetch(n){if(!AC||this.load[n])return this.load[n]||Promise.resolve();this.load[n]=fetch('assets/music/'+n+'.ogg?v=161').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
     .then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(buf=>{this.buf[n]=buf;}).catch(()=>{this.buf[n]=null;});return this.load[n];},
-  play(n,mul){this.want=n;this.mul=mul||1;if(this.gain&&AC&&this.cur===n)this.gain.gain.setTargetAtTime((this.vol[n]||.3)*this.mul,AC.currentTime,.6);if(!AC)return;
+  play(n,mul){if(MUS_OFF){this.want=null;this.stop();return;}this.want=n;this.mul=mul||1;if(this.gain&&AC&&this.cur===n)this.gain.gain.setTargetAtTime((this.vol[n]||.3)*this.mul,AC.currentTime,.6);if(!AC)return;
     if(!n||muted||!save.settings||save.settings.music===false){this.stop();return;}
     if(this.cur===n&&this.node)return;
     this.fetch(n).then(()=>{if(this.want!==n||!this.buf[n])return;if(this.cur===n&&this.node)return;this.stop();
@@ -2347,7 +2348,8 @@ function voxSay(p,a,prio,chance){if(!p||!p.card||!AC||muted||!VOX.buf[p.card.id]
   const L=VOX.buf[p.card.id][a];if(!L||!L.length)return false;const now=AC.currentTime;
   if(prio<2&&now<VOX.until)return false;if(prio<2&&(p._voxT||0)>now)return false;
   const key=p.card.id+a;let c=L.filter(x=>x.n!==VOX.last[key]);if(!c.length)c=L;const pick=c[Math.floor(Math.random()*c.length)];VOX.last[key]=pick.n;
-  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=pick.buf;{const far=Math.min(1,Math.abs(p.x-(typeof camX==='number'?camX:0))/38);g.gain.value=(p.team===0?.5:.42)*(prio>1?1.15:1)*(1-far*.4);}   // v159: se oyen dentro de la cancha, no encima del públicos.connect(g);g.connect(voxBus());s.start();
+  const s=AC.createBufferSource(),g=AC.createGain();s.buffer=pick.buf;{const far=Math.min(1,Math.abs(p.x-(typeof camX==='number'?camX:0))/38);g.gain.value=(p.team===0?.5:.42)*(prio>1?1.15:1)*(1-far*.4);}      // v159: se oyen dentro de la cancha, no encima del público
+  s.connect(g);g.connect(voxBus());s.start();   // v168: esta línea estaba pegada al comentario y no sonaba ninguna voz
   VOX.until=now+pick.buf.duration*.6;p._voxT=now+pick.buf.duration+2.2;return true;}
 function voxTick(){if(!AC||!players.length)return;
   const own=ball.owner||null;
@@ -2378,9 +2380,9 @@ function voxTick(){if(!AC||!players.length)return;
 // ================== v161: AMBIENTE DE CADA ARENA ==================
 // Sonidos sueltos al azar (cada 8–15 s) durante el partido: pájaros, olas, lobo, lava… (assets/sfx/arena/*.ogg)
 const ARENA_AMB=[['entreno_pajaros','entreno_silbato'],['bosque_buho','bosque_magia'],['pueblo_gallo','pueblo_perro'],['playa_ola','playa_gaviota'],['templo_viento','templo_tambor'],['tundra_viento','tundra_hielo','tundra_lobo'],['volcan_burbuja','volcan_retumbe','volcan_fuego'],[]];
-const AMB={buf:{},next:0,last:null};
+const AMB={buf:{},next:0,last:null},AMB_OFF=true;   // v168: sin sonidos ambientales de las arenas
 function ambLoad(k){if(!AC||AMB.buf[k]!==undefined)return;AMB.buf[k]=null;fetch('assets/sfx/arena/'+k+'.ogg?v=161').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(x=>{AMB.buf[k]=x;}).catch(()=>{AMB.buf[k]=false;});}
-function ambTick(){if(!AC||muted||state!=='play'||typeof ARENA==='undefined')return;const L=ARENA_AMB[ARENAS.indexOf(ARENA)]||[];if(!L.length)return;
+function ambTick(){if(AMB_OFF||!AC||muted||state!=='play'||typeof ARENA==='undefined')return;const L=ARENA_AMB[ARENAS.indexOf(ARENA)]||[];if(!L.length)return;
   L.forEach(ambLoad);const now=AC.currentTime;if(!AMB.next||AMB.next<now-30){AMB.next=now+4+Math.random()*4;return;}if(now<AMB.next)return;
   AMB.next=now+8+Math.random()*7;let c=L.filter(k=>k!==AMB.last&&AMB.buf[k]);if(!c.length)c=L.filter(k=>AMB.buf[k]);if(!c.length)return;const k=c[Math.floor(Math.random()*c.length)];AMB.last=k;
   const s=AC.createBufferSource(),g=AC.createGain(),p=AC.createStereoPanner?AC.createStereoPanner():null;s.buffer=AMB.buf[k];g.gain.value=.32+Math.random()*.08;
