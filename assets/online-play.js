@@ -23,7 +23,7 @@ function oppFrom(r){
   const lv=v=>Math.max(1,Math.min(MAXLVL,v|0||1));
   // v68: el rival juega con SU uniforme; si se confunde con el mío, newGame() pone el visitante al que juega de visita
   const kk=r.kit&&KITS[r.kit.k]?r.kit.k:'clasico',bk=r.kit&&BOOTS[r.kit.b]?r.kit.b:'negro';
-  const g=sq.gk||{},f=(sq.f||[]).slice(0,4);while(f.length<4)f.push({});
+  const g=Object.assign({},sq.gk||{},{id:'muralla'}),f=(sq.f||[]).slice(0,4);while(f.length<4)f.push({});
   const nums={},nn=v=>{v=v|0;return v>=1&&v<=99?v:0;};
   {const c0=card(g.id,'POR');if(nn(g.num))nums[c0.id]=nn(g.num);f.forEach((o,i)=>{const c=card(o.id,F[i].r);if(nn(o.num))nums[c.id]=nn(o.num);});}
   return{name:r.name||'Rival',av:r.avatar||'⚽',c:r.country||'MX',trophies:r.trophies|0,online:true,
@@ -153,7 +153,7 @@ function applySnap(S){
     if(g[3]>0&&!(k.smother>0))k.smDir=g[4];up('smother',g[3]);
     if((g[5]>0||g[6]>0))k.catchY=g[7];up('highT',g[5]);up('blockT',g[6]);
     if(g[9]>0&&!(k.saveT>0)){k.saveKind=SAVEK[g[8]]||null;k.saveY=g[10];k.saveZ=g[11];}up('saveT',g[9]);
-    if(g[12]>0&&!(k.prepT>0))k.prepY=g[13];up('prepT',g[12]);up('down',g[14]);up('backT',g[15]);});
+    if(g[12]>0&&!(k.prepT>0))k.prepY=g[13];up('prepT',g[12]);up('down',g[14]);up('backT',g[15]);up('swipeT',g[16]||0);});
 }
 const SAVEK=['','fallo','pecho','alta','baja','lado','rechazo','travesano','pie','cuerpo','punta','desvio'];
 // v66: la diferencia con el servidor se reparte poco a poco (unos 0.15 s), sin saltos

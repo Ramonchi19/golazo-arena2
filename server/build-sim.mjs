@@ -11,7 +11,7 @@ const root = join(here, '..');
 const match = readFileSync(join(root, 'assets/sim/match.js'), 'utf8');
 const data = readFileSync(join(root, 'assets/sim/data.js'), 'utf8');
 const html = readFileSync(join(root, 'index.html'), 'utf8');
-const pa = html.indexOf('const P=('), pb = html.indexOf('const PBY=', pa);
+const pa = html.indexOf('const P=(id,'), pb = html.indexOf('const PBY=', pa);
 if (pa < 0 || pb < 0) throw new Error('no encontré PLAYERS en index.html');
 writeFileSync(join(here, 'src/cards.gen.js'), '// ARCHIVO GENERADO por server/build-sim.mjs a partir de index.html (cartas de jugadores). No editar.\n' +
   html.slice(pa, pb) + 'export const PBY = Object.fromEntries(PLAYERS.map(p => [p.id, p]));\n');

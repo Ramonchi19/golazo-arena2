@@ -26,8 +26,8 @@ export function cleanSquad(sq) {
   while (f.length < 4) f.push({});
   return {
     form, slots: FORMS[form],
-    gk: { card: card(sq.gk && sq.gk.id, 'POR'), lvl: lv(sq.gk && sq.gk.lvl) },
-    f: f.map((o, i) => ({ card: card(o && o.id, FORMS[form][i].r), lvl: lv(o && o.lvl) })),
+    gk: { card: PBY.muralla || card(null, 'POR'), lvl: lv(sq.gk && sq.gk.lvl) },
+    f: f.map((o, i) => ({ card: (o && o.id !== 'muralla' && PBY[o.id]) || Object.values(PBY).find(c => c.pos === FORMS[form][i].r) || null, lvl: lv(o && o.lvl) })),
   };
 }
 export function cleanDeck(d) {
@@ -139,7 +139,7 @@ const SAVEK = ['', 'fallo', 'pecho', 'alta', 'baja', 'lado', 'rechazo', 'travesa
 export function gkSnap(k, s) {
   const t = v => r2(Math.max(0, v || 0));
   return [t(k.dive), (k.diveDir || 0) * s, r2(k.diveH || 0), t(k.smother), (k.smDir || 0) * s, t(k.highT), t(k.blockT), r2(k.catchY || 0),
-    Math.max(0, SAVEK.indexOf(k.saveKind || '')), t(k.saveT), r2(k.saveY || 0), r2((k.saveZ || 0) * s), t(k.prepT), r2(k.prepY || 0), t(k.down), t(k.backT)];
+    Math.max(0, SAVEK.indexOf(k.saveKind || '')), t(k.saveT), r2(k.saveY || 0), r2((k.saveZ || 0) * s), t(k.prepT), r2(k.prepY || 0), t(k.down), t(k.backT), t(k.swipeT)];
 }
 function pub(p) { return { name: p.name, avatar: p.avatar, country: p.country, trophies: p.trophies, squad: p.squad, kit: p.kit || null, deck: p.deck }; }
 export const GAME_TICK_MS = TICK_MS;

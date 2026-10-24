@@ -1184,7 +1184,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=163"></script>
 <script src="assets/sim/data.js?v=129"></script>
-<script src="assets/sim/match.js?v=169"></script>
+<script src="assets/sim/match.js?v=180"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
 <script src="assets/icons.js?v=157"></script>
@@ -2124,6 +2124,10 @@ function makeGLBChar(team,id){
     lul:ctrl(byName.LeftUpLeg),rul:ctrl(byName.RightUpLeg),ll:ctrl(byName.LeftLeg),rl:ctrl(byName.RightLeg),
     model,lh:byName.LeftHand,rh:byName.RightHand,hips:byName.Hips?{b:byName.Hips,p0:byName.Hips.position.clone()}:null,toes:[byName.LeftToeBase,byName.RightToeBase,byName.LeftFoot,byName.RightFoot].filter(Boolean),hd:ctrl(byName.Head),sp2:ctrl(byName.Spine02||byName.Spine01),la:ctrl(byName.LeftArm),ra:ctrl(byName.RightArm),lfa:ctrl(byName.LeftForeArm),rfa:ctrl(byName.RightForeArm),sp:ctrl(byName.Spine01||byName.Spine),
     lsx:sx(byName.LeftForeArm||byName.LeftArm),rsx:sx(byName.RightForeArm||byName.RightArm),hipsH:byName.Hips?lp(byName.Hips).y:1};
+  // v170: palma (hacia dónde mira en reposo, la T: hacia abajo) y dedos de cada mano, para acomodarlas al correr
+  for(const [k,h] of [['l',byName.LeftHand],['r',byName.RightHand]]){if(!h)continue;const q=new THREE.Quaternion();h.getWorldQuaternion(q);
+    const fing=[];h.traverse(o=>{if(o.isBone&&o!==h&&/(Index|Middle|Ring|Pinky)/i.test(o.name))fing.push(o);});
+    bones['hi'+k]={palm:new THREE.Vector3(0,-1,0).applyQuaternion(q.invert()),fing,mid:byName[(k==='l'?'Left':'Right')+'HandMiddle1']||fing[0]||null};}
   {const v=new THREE.Vector3();let mn=1e9;for(const b of [byName.LeftToeBase,byName.RightToeBase,byName.LeftFoot,byName.RightFoot].filter(Boolean)){b.getWorldPosition(v);model.worldToLocal(v);mn=Math.min(mn,v.y);}bones.restFootY=mn;
    const hv=new THREE.Vector3();if(byName.Hips){byName.Hips.getWorldPosition(hv);root.worldToLocal(hv);}bones.hipsWorldH=hv.y;bones.armOut=({gigante:.46,muralla:.46,coletazo:.34,toro:.38,vikingo:.24,sangre:.36,perro:.22,pausa:.2})[id]||.14;}
   const mixer=new THREE.AnimationMixer(model),A={};
@@ -2165,11 +2169,771 @@ function goA(m,n,o){o=o||{};const a=act(m,n);if(!a)return false;if(m.curA===n&&!
   m.curA=n;m.lockUntil=o.lock!=null?T+o.lock:0;return true;}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const BIGARMS={gigante:1,muralla:1,coletazo:1,toro:1,sangre:1};
+// ================== v170: CARRERA CARICATURESCA ==================
+// Sobre la misma animación de trote/carrera: se exagera el movimiento alrededor de su pose promedio (piernas, brazos, torso),
+// más rebote, estirar al despegar y aplastar al pisar, inclinación y cabeza con retraso. Cada personaje tiene su dosis.
+// elbow: codo doblado como corredor (rad), el antebrazo va hacia el frente sin cruzarse por la panza · fore: antebrazo derecho, en línea con el brazo (sin doblar el codo hacia adentro) · hand: manos derechas, en línea con el antebrazo (palma hacia el cuerpo) · armFwd: brazos más al frente (rad; negativo = hacia el frente) · armOut: brazos más abiertos (para que no choquen con el cuerpo) · leg/arm/sp: cuánto se exagera · bob: rebote extra · sq: estirar/aplastar · lean: inclinación al frente (rad) · hd: cabeza suelta
+const TOONRUN={toro:{slide:{lean:0.95,low:0.14,up:-0.15},turnW:0.75,turnR:6,leg:1.3,arm:.5,sp:1,bob:1.7,sq:.11,lean:.30,hd:.5,armFwd:-.5,armOut:.16,hand:1,elbow:1.25,ra:{abd:.3,sw:.3,bend:1.1}},ciclon:{slide:{lean:1.25,low:0.1},turnW:1.2,turnR:12,leg:1.55,arm:1.75,sp:1.7,bob:1.8,sq:.13,lean:.10,hd:1,ra:{abd:.16,sw:.5,bend:1.1}},turbo:{slide:{lean:1.2,low:0.1},turnW:1.1,turnR:11,leg:1.45,arm:1.6,sp:1.3,bob:1.25,sq:.08,lean:.36,hd:.4,ra:{abd:.18,sw:.5,bend:1.25,fwd:0,fo:.34}},
+  zurdito:{slide:{lean:1.2,low:0.11},turnW:1.15,turnR:11,leg:1.4,arm:.8,sp:1,bob:1.6,sq:.10,lean:.18,hd:.7,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.18,sw:.46,bend:1.15,fo:.34}},
+  cazador:{slide:{lean:1.15,low:0.12},turnW:1,turnR:9,leg:1.35,arm:.8,sp:1,bob:1.35,sq:.07,lean:.24,hd:.5,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.16,sw:.42,bend:1.05}},
+  perro:{slide:{lean:1.1,low:0.12,up:0.4},turnW:0.95,turnR:9,leg:1.4,arm:.8,sp:1,bob:1.5,sq:.09,lean:.32,hd:.6,armOut:.1,hand:1,elbow:1.25,armFwd:-.25,ra:{abd:.2,sw:.42,bend:1.15}},
+  sangre:{slide:{lean:1.0,low:0.13,up:0.3},turnW:0.8,turnR:7,leg:1.3,arm:.6,sp:1,bob:1.5,sq:.09,lean:.28,hd:.5,armFwd:-.25,armOut:.14,hand:1,elbow:1.2,ra:{abd:.28,sw:.34,bend:1.1}},
+  coletazo:{slide:{lean:1.0,low:0.13,up:0.25},turnW:0.8,turnR:7,leg:1.25,arm:.6,sp:1,bob:1.4,sq:.08,lean:.20,hd:.5,armFwd:-.25,armOut:.14,hand:1,elbow:1.2,ra:{abd:.28,sw:.3,bend:1}},
+  pausa:{slide:{lean:0.9,low:0.15},turnW:0.6,turnR:6,leg:1.15,arm:.8,sp:0,hipK:.25,bob:1.15,sq:0,lean:0,hd:.9,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.24,sw:.3,bend:.95}},
+  gigante:{slide:{lean:0.85,low:0.16,up:-0.55},turnW:0.65,turnR:5,leg:1.2,arm:.55,sp:1,bob:1.6,sq:.10,lean:.15,hd:.5,armFwd:-.25,armOut:.12,hand:1,elbow:1.15,ra:{abd:.24,sw:.26,bend:.9}},
+  rey:{slide:{lean:1.1,low:0.12},turnW:0.9,turnR:8,leg:1.2,arm:.8,sp:1,bob:1.25,sq:.05,lean:.12,hd:.3,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.15,sw:.34,bend:1}},
+  expreso:{slide:{lean:1.25,low:0.1,up:0.4},turnW:1.15,turnR:11,leg:1.5,arm:.8,sp:1,bob:1.3,sq:.10,lean:.22,hd:.4,hand:1,elbow:1.35,armFwd:-.25,ra:{abd:.22,sw:.44,bend:1.2,fwd:0,fo:.4}},
+  gato:{slide:{lean:1.2,low:0.11,up:0.4},turnW:1.1,turnR:11,leg:1.45,arm:.8,sp:1,bob:1.8,sq:.14,lean:.18,hd:.7,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.24,sw:.38,bend:1.1,fo:.42}},
+  muralla:{slide:{lean:0.8,low:0.18,up:-0.2},turnW:0.55,turnR:4.5,leg:1.15,arm:.5,sp:1,bob:1.2,sq:.04,lean:.08,hd:.3,armFwd:-.25,armOut:.14,hand:1,elbow:1.1,ra:{abd:.22,sw:.2,bend:.8,swB:0}},
+  vikingo:{slide:{lean:1.0,low:0.13,up:0.35},turnW:0.8,turnR:7,leg:1.3,arm:.8,sp:1,bob:1.6,sq:.09,lean:.22,hd:.6,hand:1,elbow:1.25,armFwd:-.25,ra:{abd:.24,sw:.38,bend:1.05}},
+  malabares:{slide:{lean:1.2,low:0.11},turnW:1.1,turnR:10,leg:1.4,arm:.8,sp:1,bob:1.8,sq:.13,lean:.08,hd:1,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.17,sw:.46,bend:1}},
+  ruleta:{slide:{lean:1.1,low:0.12},turnW:0.95,turnR:9,leg:1.2,arm:.8,sp:1,bob:1.3,sq:.06,lean:.15,hd:.4,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.16,sw:.38,bend:1.05}},
+  leon:{slide:{lean:1.15,low:0.11},turnW:1.05,turnR:10,leg:1.4,arm:.8,sp:1,bob:1.45,sq:.08,lean:.28,hd:.6,hand:1,elbow:1.3,armFwd:-.25,ra:{abd:.2,sw:.46,bend:1.15,fo:.34}}};
+const TOONCLIPS=new Set(['jog','sprint','strafe_jl','strafe_jr','fwd_diag','jog_back','back_diag_l','back_diag_r','dribble']);
+let _tq1,_tq2,_tq3,_tv1,_tv2,_tv3,_ev,_ev2,_eq,ELBOW_SIGN=-1;const _hq=[],_hv=[];
+// manos de corredor: la palma mira hacia el cuerpo (paralela al tronco) y los dedos un poco cerrados, sin abrirse hacia afuera
+// v170: brazos y manos de corredor. Todo va suavizado cuadro a cuadro y con el sentido de giro fijo por personaje,
+// para que nunca haya un salto (antes la mano a veces se volteaba de golpe).
+const _sm=(o,k,v,dt,r)=>{if(o[k]==null)o[k]=v;else o[k]+=(v-o[k])*Math.min(1,dt*r);return o[k];};
+function sgnOf(m,key,test){const S=m._sg||(m._sg={});if(S[key]==null)S[key]=test();return S[key];}
+function armIn(m,B,w,k,dt){const R=m.root,v=_hv,sh=v[0],hp=v[1],hd=v[2];R.updateMatrixWorld(true);
+  B.hips.b.getWorldPosition(hp);R.worldToLocal(hp);const Z=m._ai||(m._ai={});
+  for(const [kk,c,h] of [['l',B.la,B.lh],['r',B.ra,B.rh]]){if(!c||!h)continue;c.b.getWorldPosition(sh);R.worldToLocal(sh);
+    const want=Math.abs(sh.x-hp.x)*k,cur=()=>{h.getWorldPosition(hd);R.worldToLocal(hd);return Math.abs(hd.x-hp.x);},c0=cur(),len=Math.max(.1,sh.distanceTo(hd));
+    const a=_sm(Z,kk,Math.asin(clamp((c0-want)/len,0,.85)),dt,14)*w;if(a<.002)continue;
+    const sg=sgnOf(m,'ai'+kk,()=>{_tq3.setFromAxisAngle(c.az,.2);c.b.quaternion.premultiply(_tq3);c.b.updateMatrixWorld(true);const r=cur()<c0?1:-1;_tq3.setFromAxisAngle(c.az,-.2);c.b.quaternion.premultiply(_tq3);c.b.updateMatrixWorld(true);return r;});
+    _tq3.setFromAxisAngle(c.az,a*sg);c.b.quaternion.premultiply(_tq3);c.b.updateMatrixWorld(true);}}
+// normal de la palma medida en la malla (la mano es plana: su eje más delgado), en el espacio del hueso de la mano
+function handNormal(m,h){const B=m.bones;B._hn=B._hn||new Map();if(B._hn.has(h))return B._hn.get(h);let res=null;const P=[];const v=new THREE.Vector3();
+  B.model.traverse(o=>{if(!o.isSkinnedMesh||!o.skeleton)return;const g=o.geometry,Ps=g.attributes.position,SI=g.attributes.skinIndex,SW=g.attributes.skinWeight;if(!Ps||!SI||!SW)return;
+    const bi=o.skeleton.bones.indexOf(h);if(bi<0)return;for(let i=0;i<Ps.count;i++)for(let j=0;j<4;j++){if(SI.array[i*4+j]!==bi||SW.array[i*4+j]<.6)continue;
+      v.fromBufferAttribute(Ps,i).applyMatrix4(o.bindMatrix).applyMatrix4(o.skeleton.boneInverses[bi]);P.push(v.x,v.y,v.z);}});
+  const n=P.length/3;if(n>=12){let mx=0,my=0,mz=0;for(let i=0;i<n;i++){mx+=P[i*3];my+=P[i*3+1];mz+=P[i*3+2];}mx/=n;my/=n;mz/=n;
+    const C=[[0,0,0],[0,0,0],[0,0,0]];for(let i=0;i<n;i++){const d=[P[i*3]-mx,P[i*3+1]-my,P[i*3+2]-mz];for(let a=0;a<3;a++)for(let b=0;b<3;b++)C[a][b]+=d[a]*d[b];}
+    // eje de menor variación: iteración de potencia sobre (traza·I − C)
+    const tr=C[0][0]+C[1][1]+C[2][2];let x=[.3,.5,.8];for(let it=0;it<60;it++){const y=[0,1,2].map(a=>tr*x[a]-(C[a][0]*x[0]+C[a][1]*x[1]+C[a][2]*x[2]));const l=Math.hypot(...y)||1;x=y.map(t=>t/l);}
+    res=new THREE.Vector3(x[0],x[1],x[2]).normalize();}
+  B._hn.set(h,res);return res;}
+function handPose(m,B,w,dt){if(!_hq.length){for(let i=0;i<3;i++)_hq.push(new THREE.Quaternion());for(let i=0;i<6;i++)_hv.push(new THREE.Vector3());}
+  const [qh,qa]=_hq,[hp,mp,fd,pn,tg,ax]=_hv;m.root.updateMatrixWorld(true);const Z=m._tw||(m._tw={});
+  for(const k of ['l','r']){const I=B['hi'+k],h=k==='l'?B.lh:B.rh;if(!I||!h)continue;
+    const fa=k==='l'?B.lfa:B.rfa;h.getWorldPosition(hp);if(I.mid){I.mid.getWorldPosition(mp);fd.subVectors(mp,hp).normalize();}else if(fa){fa.b.getWorldPosition(mp);fd.subVectors(hp,mp).normalize();}else continue;h.getWorldQuaternion(qh);const nL=handNormal(m,h)||I.palm;pn.copy(nL).applyQuaternion(qh);
+    B.hips.b.getWorldPosition(tg);tg.y=hp.y;tg.sub(hp);const tl=tg.length();tg.addScaledVector(fd,-tg.dot(fd));
+    pn.addScaledVector(fd,-pn.dot(fd));let ang=Z[k]==null?0:Z[k];
+    if(tg.length()>.35*tl&&pn.lengthSq()>.09){tg.normalize();pn.normalize();ang=Math.atan2(ax.crossVectors(pn,tg).dot(fd),pn.dot(tg));if(ang>Math.PI/2)ang-=Math.PI;else if(ang<-Math.PI/2)ang+=Math.PI;   // palma o dorso hacia el cuerpo: el giro más corto
+      if(Z[k]!=null){while(ang-Z[k]>Math.PI/2)ang-=Math.PI;while(ang-Z[k]<-Math.PI/2)ang+=Math.PI;}}   // sin saltos (palma y dorso valen igual)
+    {const p0=Z[k]==null?ang:Z[k];ang=p0+clamp((ang-p0)*Math.min(1,dt*8),-.2,.2);Z[k]=ang;}ang=clamp(ang,-2.2,2.2);qa.setFromAxisAngle(fd,ang*w);rotW(h,qa);}}
+// ================== v171: BRAZOS DE CORREDOR CONSTRUIDOS ==================
+// No se toma el brazo de la animación: se arma la pose con ángulos controlados en el espacio del pecho.
+// Brazo pegado al costado (separado lo justo para no tocar el cuerpo), vaivén corto adelante/atrás sincronizado con los pies,
+// codo doblado hacia el frente y la mano siguiendo la línea del antebrazo (sin doblar la muñeca), palma hacia el cuerpo.
+// Todo sale de fórmulas continuas: no hay giros de golpe ni saltos de un cuadro a otro.
+const CLIPPH={};const RA_DEF={abd:.16,sw:.42,bend:1.05,fwd:-.08,swB:-.1,fo:.28,top:.3};   // fo: antebrazo un poco hacia afuera · top: la mano nunca sube más arriba de (hombro − top·brazo)
+let _ra=null;
+function raV(){if(_ra)return _ra;const V=()=>new THREE.Vector3(),Q=()=>new THREE.Quaternion();_ra={v:[V(),V(),V(),V(),V(),V(),V(),V()],q:[Q(),Q(),Q(),Q(),Q(),Q()],M1:new THREE.Matrix4(),M2:new THREE.Matrix4()};return _ra;}
+function frameQ(a,b,out){const T=raV(),c=T.v[7];const bb=T.v[6].copy(b).addScaledVector(a,-b.dot(a)).normalize();c.crossVectors(a,bb);T.M1.makeBasis(a,bb,c);return out.setFromRotationMatrix(T.M1);}
+// pose de reposo (bind) en el espacio del personaje: se mide una vez
+function raBind(m,B){if(B._rab)return B._rab;const R=m.root,save=B.all.map(o=>o.b.quaternion.clone());for(const o of B.all)o.b.quaternion.copy(o.q0);R.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();R.getWorldQuaternion(Rq);const Ri=Rq.clone().invert();
+  const mq=b=>{const q=new THREE.Quaternion();b.getWorldQuaternion(q);return q.premultiply(Ri);},mp=b=>{const v=new THREE.Vector3();b.getWorldPosition(v);return R.worldToLocal(v);};
+  const toe=B.toes[0]&&mp(B.toes[0]),ft=B.feet[0]&&mp(B.feet[0]),fz=toe&&ft?(Math.sign(toe.z-ft.z)||1):1,hip=mp(B.hips.b),chest=(B.sp2||B.sp).b;
+  const res={fz,chestQ:mq(chest),side:{}};
+  for(const k of ['l','r']){const u=k==='l'?B.la:B.ra,f=k==='l'?B.lfa:B.rfa,h=k==='l'?B.lh:B.rh;if(!u||!f||!h)continue;
+    const ps=mp(u.b),pe=mp(f.b),pw=mp(h);res.side[k]={sx:Math.sign(ps.x-hip.x)||1,uQ:mq(u.b),fQ:mq(f.b),hQ:mq(h),aU:pe.clone().sub(ps).normalize(),aF:pw.clone().sub(pe).normalize(),
+      lenU:ps.distanceTo(pe),lenF:pe.distanceTo(pw),tw:null};}
+  B.all.forEach((o,i)=>o.b.quaternion.copy(save[i]));R.updateMatrixWorld(true);B._rab=res;return res;}
+function setWorldQ(b,qw){const T=raV(),pq=T.q[5];b.parent.getWorldQuaternion(pq);b.quaternion.copy(pq.invert().multiply(qw));b.updateMatrixWorld(true);}
+function runArms(m,B,P,w,dt,jf){if(w<.01||!B.la||!B.ra||!B.lfa||!B.rfa)return;const RA=Object.assign({},RA_DEF,P.ra||{});jf=jf||0;RA.sw*=1-.35*jf;RA.bend*=1-.2*jf;RA.fwd*=1-jf;   // trote: mismos brazos, más tranquilos
+  const bd=raBind(m,B),T=raV(),R=m.root;
+  const [vU,vF,Fw,ax,tmp,pl]=T.v,[Rq,Cd,qU,qF,qa]=T.q;R.updateMatrixWorld(true);R.getWorldQuaternion(Rq);
+  // cuánto giró el pecho desde la pose de reposo (inclinación, rebote): los brazos lo siguen
+  const ch=(B.sp2||B.sp).b;ch.getWorldQuaternion(Cd);Cd.premultiply(Rq.clone().invert()).multiply(bd.chestQ.clone().invert());
+  // fase de la zancada: qué pie va adelante (continuo, de -1 a 1)
+  const fp=b=>{b.getWorldPosition(tmp);return R.worldToLocal(tmp).z*bd.fz;};let dz=0;if(B.feet.length>=2){dz=fp(B.feet[0])-fp(B.feet[1]);}
+  m._raA=Math.max(Math.abs(dz),(m._raA||Math.abs(dz)||.3)*(1-Math.min(.5,dt*.8)),.05);let ph=Math.sin(clamp(dz/m._raA,-1,1)*Math.PI/2);
+  // v172: la fase sale del tiempo de la animación (onda pura, sin pausas en los extremos); se calibra sola contra los pies la primera vez
+  {const ac=m.L&&m.L[m.curA];if(ac){const d=ac.getClip().duration||1,u=((ac.time%d)+d)%d/d,C=CLIPPH[m.curA]||(CLIPPH[m.curA]={a:0,b:0,n:0}),t=2*Math.PI*u;
+    if(C.n<90&&Math.abs(dz)>.01){C.a+=dz*Math.cos(t);C.b+=dz*Math.sin(t);C.n++;}if(C.n>=40)ph=Math.cos(t-Math.atan2(C.b,C.a));}}
+  m._raP=m._raP==null?ph:m._raP+clamp((ph-m._raP)*Math.min(1,dt*14),-dt*8,dt*8);   // tope de velocidad: al cambiar de trote a carrera el brazo no da un salto
+  Fw.set(0,0,bd.fz);
+  for(const k of ['l','r']){const S=bd.side[k];if(!S)continue;const u=k==='l'?B.la:B.ra,f=k==='l'?B.lfa:B.rfa,h=k==='l'?B.lh:B.rh;
+    // pie izquierdo adelante → brazo derecho adelante (y al revés)
+    const s=(k==='l'?-1:1)*m._raP,sw=RA.fwd+RA.sw*s,abd=RA.abd+clamp(S.sx*(m._bank||0),0,.3)*1.1,bend=RA.bend+RA.swB*s;   // v172: en la curva, el brazo de afuera se abre para el equilibrio
+    vU.set(S.sx*Math.sin(abd),-Math.cos(abd)*Math.cos(sw),Math.cos(abd)*Math.sin(sw)*bd.fz).normalize();
+    frameQ(S.aU,Fw,qa);frameQ(vU,Fw,qU);qU.multiply(qa.invert());                  // reposo → brazo colgando con el vaivén
+    ax.crossVectors(vU,Fw).normalize();const bs=tmp.copy(vU).applyAxisAngle(ax,-.5).dot(Fw)>vU.dot(Fw)?-1:1;   // codo hacia el frente
+    let bnd=bend;for(let it=0;it<8;it++){vF.copy(vU).applyAxisAngle(ax,bs*bnd);if(S.lenU*vU.y+S.lenF*vF.y<=-RA.top*S.lenU)break;bnd*=.85;}   // la mano no sube a la cara
+    vF.copy(vU).applyAxisAngle(ax,bs*bnd);
+    frameQ(S.aF,Fw,qa);frameQ(vU,Fw,qF);qF.multiply(qa.invert());qa.setFromAxisAngle(ax,bs*bnd);qF.premultiply(qa);
+    if(RA.fo){if(S.os==null)S.os=tmp.set(0,-1,0).applyAxisAngle(Fw,.3).x*S.sx>0?1:-1;const os=S.os;   // sentido fijo (antes se recalculaba y podía voltearse)
+     qa.setFromAxisAngle(Fw,os*RA.fo);vF.applyQuaternion(qa);qF.premultiply(qa);}
+    // giro del antebrazo para que la palma mire al cuerpo (se calcula una vez; palma o dorso, el más corto)
+    if(S.tw==null){const hn=handNormal(m,h);if(hn){const hq=S.hQ.clone().premultiply(qF);pl.copy(hn).applyQuaternion(hq);const inw=tmp.set(-S.sx,0,0);inw.addScaledVector(vF,-inw.dot(vF));pl.addScaledVector(vF,-pl.dot(vF));
+        if(inw.lengthSq()>1e-6&&pl.lengthSq()>1e-6){inw.normalize();pl.normalize();let a=Math.atan2(T.v[7].crossVectors(pl,inw).dot(vF),pl.dot(inw));if(a>Math.PI/2)a-=Math.PI;else if(a<-Math.PI/2)a+=Math.PI;S.tw=a;}else S.tw=0;}else S.tw=0;}
+    if(S.tw){qa.setFromAxisAngle(vF,S.tw);qF.premultiply(qa);}
+    // a mundo: raíz · pecho · pose
+    const wU=Rq.clone().multiply(Cd).multiply(qU).multiply(S.uQ),wF=Rq.clone().multiply(Cd).multiply(qF).multiply(S.fQ),wH=Rq.clone().multiply(Cd).multiply(qF).multiply(S.hQ);
+    const cu=new THREE.Quaternion();u.b.getWorldQuaternion(cu);setWorldQ(u.b,cu.slerp(wU,w));
+    const cf=new THREE.Quaternion();f.b.getWorldQuaternion(cf);setWorldQ(f.b,cf.slerp(wF,w));
+    const chq=new THREE.Quaternion();h.getWorldQuaternion(chq);setWorldQ(h,chq.slerp(wH,w));}}
+// ================== v173: BARRIDA HECHA A MANO ==================
+// Se lanza con los pies por delante, de lado, casi acostado: pierna de adelante estirada, la otra doblada abajo,
+// una mano apoyada atrás en el piso y la otra arriba para el equilibrio; luego se levanta y sigue corriendo.
+// Las direcciones de cada hueso se ponen directo (en el espacio del jugador): nada cruza el cuerpo ni se mete al piso.
+let SL_SIGN=-1;const SLIDE_PROC=true,SL_DUR=.88,SL_IN=.22,SL_OUT=.34;
+const SLIDE_DEF={lean:1.15,low:.12,up:.55};   // up: qué tan arriba va la mano del equilibrio   // lean: cuánto se echa para atrás (rad) · low: altura de la cadera (fracción)
+function slBind(m,B){if(B._slb)return B._slb;const R=m.root,save=B.all.map(o=>o.b.quaternion.clone()),tp=m.tilt.position.clone(),tr=m.tilt.rotation.clone();
+  m.tilt.position.set(0,0,0);m.tilt.rotation.set(0,0,0);for(const o of B.all)o.b.quaternion.copy(o.q0);R.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();R.getWorldQuaternion(Rq);const Ri=Rq.clone().invert();
+  const mq=b=>{const q=new THREE.Quaternion();b.getWorldQuaternion(q);return q.premultiply(Ri);},mp=b=>{const v=new THREE.Vector3();b.getWorldPosition(v);return R.worldToLocal(v);};
+  const res={hipY:mp(B.hips.b).y,limbs:{}};const hip=mp(B.hips.b);
+  const add=(key,a,b2,c)=>{if(!a||!b2||!c)return;const pa=mp(a),pb=mp(b2),pc=mp(c);res.limbs[key]={a,b:b2,c,qa:mq(a),qb:mq(b2),qc:mq(c),da:pb.clone().sub(pa).normalize(),db:pc.clone().sub(pb).normalize(),sx:Math.sign(pa.x-hip.x)||1};};
+  const lf=B.feet[0],rf=B.feet[1];
+  add('ll',B.lul&&B.lul.b,B.ll&&B.ll.b,lf);add('rl',B.rul&&B.rul.b,B.rl&&B.rl.b,rf);
+  add('la',B.la&&B.la.b,B.lfa&&B.lfa.b,B.lh);add('ra',B.ra&&B.ra.b,B.rfa&&B.rfa.b,B.rh);
+  B.all.forEach((o,i)=>o.b.quaternion.copy(save[i]));m.tilt.position.copy(tp);m.tilt.rotation.copy(tr);R.updateMatrixWorld(true);B._slb=res;return res;}
+// pone un miembro (2 huesos) apuntando a dA y dB (espacio del jugador); el tercer hueso sigue al segundo
+// piernas: giro mínimo desde la pose de reposo (el giro propio queda como el de la animación: sin medias vueltas)
+function slLimb(L,Rq,dA,dB,ref,w){const qa=new THREE.Quaternion(),qb=new THREE.Quaternion(),t=new THREE.Vector3();
+  qa.setFromUnitVectors(L.da,t.copy(dA));qb.setFromUnitVectors(L.db,t.copy(dB));
+  const wA=Rq.clone().multiply(qa).multiply(L.qa),wB=Rq.clone().multiply(qb).multiply(L.qb),wC=Rq.clone().multiply(qb).multiply(L.qc);
+  for(const [b,q] of [[L.a,wA],[L.b,wB],[L.c,wC]]){const c=new THREE.Quaternion();b.getWorldQuaternion(c);setWorldQ(b,c.slerp(q,w));}}
+// brazos: giro mínimo desde donde está cada hueso (conserva el giro propio de la mano)
+function slArm(L,Rq,dA,dB,w){const pa=new THREE.Vector3(),pb=new THREE.Vector3(),cur=new THREE.Vector3(),tg=new THREE.Vector3(),q=new THREE.Quaternion(),I=new THREE.Quaternion(),cq=new THREE.Quaternion();
+  const step=(bone,child,d)=>{bone.getWorldPosition(pa);child.getWorldPosition(pb);cur.subVectors(pb,pa).normalize();tg.copy(d).applyQuaternion(Rq);
+    q.setFromUnitVectors(cur,tg);I.identity().slerp(q,w);bone.getWorldQuaternion(cq);setWorldQ(bone,cq.premultiply(I));};
+  step(L.a,L.b,dA);step(L.b,L.c,dB);}
+function slidePose(m,p,dt){const B=m.bones;if(!B||!B.hips)return;
+  if(p.act==='slide'&&m._slT==null){m._slT=0;m._slLead=Math.random()<.5?'r':'l';}
+  if(m._slT==null)return;m._slT+=dt;const t=m._slT;if(t>=SL_DUR||p.stun>0||p.flyY>.05){m._slT=null;m._slTilt=null;return;}
+  const P=(p.card&&TOONRUN[p.card.id])||{},S=Object.assign({},SLIDE_DEF,P.slide||{}),bd=slBind(m,B),fz=(B._rab||raBind(m,B)).fz;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x),w=sm(t/SL_IN)*(1-sm((t-(SL_DUR-SL_OUT))/SL_OUT));
+  // inclinación del cuerpo y altura (gira sobre el punto entre los pies)
+  const th=S.lean*w,h=bd.hipY;
+  m._slTilt=[th*fz*SL_SIGN,Math.min(0,(h*S.low-h*Math.cos(th)))*w,h*Math.sin(th)*.65*fz];
+  m.tilt.rotation.x=m._slTilt[0];m.tilt.position.y=m._slTilt[1];m.tilt.position.z=m._slTilt[2];m.root.updateMatrixWorld(true);
+  if(w<.002)return;
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const F=new THREE.Vector3(0,0,fz),U=new THREE.Vector3(0,1,0);
+  const V=(x,y,z)=>{const v=new THREE.Vector3(x,y,z*fz).normalize();return v.lerp(new THREE.Vector3(0,-1,.15*fz).normalize(),1-w).normalize();},X=new THREE.Vector3(1,0,0),VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize();   // con poco peso, la pose objetivo se acerca a colgando (sin medias vueltas al entrar/salir)
+  const lead=m._slLead,L=bd.limbs;
+  for(const k of ['l','r']){const lg=L[k+'l'];if(!lg)continue;const sx=lg.sx;
+    if(k===lead)slLimb(lg,Rq,V(sx*.05,-.12,1),V(0,-.1,1),X,w);                    // pierna de adelante: estirada, rozando el piso
+    else slLimb(lg,Rq,V(sx*.35,-.15,.9),V(-sx*.25,-.2,-.95),X,w);}   // doblada por debajo, casi en el piso                       // la otra: rodilla adelante, pie abajo/atrás
+  const sup=lead==='r'?'l':'r';   // la mano del lado contrario a la pierna de adelante se apoya atrás
+  for(const k of ['l','r']){const ar=L[k+'a'];if(!ar)continue;const sx=ar.sx;
+    if(k===sup)slArm(ar,Rq,VA(sx*.35,-.75,-.55),VA(sx*.15,-.95,-.25),w);              // apoyada atrás en el piso
+    else slArm(ar,Rq,VA(sx*.95,S.up*.3,-.1),VA(sx*(1-S.up*.45),S.up,-.15),w);}   // arriba y afuera (no frente a la cara)
+  // la cabeza mira al frente aunque el cuerpo vaya echado para atrás
+  if(B.hd){const hq=new THREE.Quaternion(),ax=new THREE.Vector3(1,0,0).applyQuaternion(Rq);B.hd.b.getWorldQuaternion(hq);setWorldQ(B.hd.b,hq.premultiply(new THREE.Quaternion().setFromAxisAngle(ax,-m._slTilt[0]*.7)));}
+  // nada debajo del piso: se sube todo lo justo para que el punto más bajo quede en el piso (pie y mano rozando)
+  {m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const o of B.all){o.b.getWorldPosition(v);if(v.y<mn)mn=v.y;}
+   const margin=Math.max(.04,(B.restFootY||.08)*.9),d=margin-mn;m._slTilt[1]+=d>0?d:d*w;m.tilt.position.y=m._slTilt[1];m.root.updateMatrixWorld(true);}}                           // arriba y afuera para el equilibrio
+// ================== v174: METER CUERPO (UNO POR PERSONAJE) Y MANOTAZO DEL PORTERO ==================
+// Misma regla del juego para todos; cambia solo cómo se ve. Fases: carga (se agacha), golpe (se lanza), regreso.
+// Los brazos se apuntan con giro mínimo (sin manos volteadas) y siempre por fuera del cuerpo y lejos de la cabeza.
+const HIT_DUR=.5,HIT_STYLE={toro:'cuernos',rey:'empujon',perro:'caza',leon:'caza',malabares:'cadera',ciclon:'tornado',pausa:'caparazon',vikingo:'rugby',sangre:'llamas'};
+// v176: manotazos llamativos de cada portero. cuerpo: [u,[inclinación, altura(×cadera), avance(×cadera), giro (rad, hacia el lado del golpe), ladeo]]
+// brazos: dirección del brazo y del antebrazo (x hacia afuera de su lado, y arriba, z al frente). cu = momento del contacto
+const S2=Math.PI*2,DA=[[.5,-.8,.2],[.4,-.85,.3]];
+const GK_SW={
+ zarpazo:{D:.8,cu:.52,
+  body:[[0,[0,0,0,0,0]],[.22,[.25,-.14,0,-.45,0]],[.34,[.35,.28,.15,.9,0]],[.44,[.45,.48,.32,4.4,.12]],[.52,[.5,.34,.45,S2,.1]],[.62,[.95,-.1,.45,S2,0]],[.78,[.6,-.16,.3,S2,0]],[1,[0,0,0,S2,0]]],
+  lu:[[0,DA[0]],[.22,[.9,-.1,-.45]],[.34,[1,.05,.12]],[.52,[1,.05,.15]],[.62,[.35,-.78,.5]],[.8,[.35,-.8,.45]],[1,DA[0]]],
+  lf:[[0,DA[1]],[.22,[.9,.12,-.2]],[.34,[.95,.12,.32]],[.52,[.9,.1,.42]],[.62,[.25,-.9,.35]],[.8,[.25,-.9,.35]],[1,DA[1]]],
+  tu:[[0,DA[0]],[.22,[.7,-.5,.4]],[.34,[1,0,-.2]],[.52,[1,0,-.15]],[.62,[.35,-.78,.5]],[.8,[.35,-.8,.45]],[1,DA[0]]],
+  tf:[[0,DA[1]],[.22,[.6,-.5,.6]],[.34,[.95,0,-.1]],[.52,[.95,0,-.05]],[.62,[.25,-.9,.35]],[.8,[.25,-.9,.35]],[1,DA[1]]]},
+ manotazo:{D:.85,cu:.5,
+  body:[[0,[0,0,0,0,0]],[.3,[-.22,.07,-.05,-.4,-.1]],[.4,[-.08,.04,.1,-.3,-.05]],[.5,[.6,-.2,.5,.35,.1]],[.62,[.62,-.22,.5,.4,.08]],[.82,[.2,-.05,.18,.1,0]],[1,[0,0,0,0,0]]],
+  lu:[[0,DA[0]],[.3,[.45,.88,-.2]],[.4,[.6,.72,.3]],[.5,[.15,-.45,.88]],[.62,[.05,-.6,.8]],[.82,[.4,-.75,.4]],[1,DA[0]]],
+  lf:[[0,DA[1]],[.3,[.3,.95,.1]],[.4,[.4,.6,.7]],[.5,[-.08,-.55,.83]],[.62,[-.15,-.7,.7]],[.82,[.3,-.8,.45]],[1,DA[1]]],
+  tu:[[0,DA[0]],[.3,[.6,-.5,-.6]],[.5,[.6,-.6,.3]],[.62,[.55,-.65,.35]],[1,DA[0]]],
+  tf:[[0,DA[1]],[.3,[.5,-.6,-.6]],[.5,[.5,-.7,.45]],[.62,[.45,-.7,.5]],[1,DA[1]]]},
+ puno:{D:.9,cu:.52,sym:1,
+  body:[[0,[0,0,0,0,0]],[.2,[.22,-.18,0,0,0]],[.36,[-.1,.45,.25,0,0]],[.46,[.2,.35,.45,0,0]],[.52,[.72,-.24,.55,0,0]],[.66,[.72,-.25,.55,0,0]],[.85,[.2,-.06,.2,0,0]],[1,[0,0,0,0,0]]],
+  lu:[[0,DA[0]],[.2,[.6,-.6,-.4]],[.36,[.3,.92,.15]],[.46,[.3,.7,.6]],[.52,[.25,-.55,.8]],[.66,[.25,-.55,.8]],[.85,[.5,-.8,.3]],[1,DA[0]]],
+  lf:[[0,DA[1]],[.2,[.5,-.7,-.3]],[.36,[.15,.95,.3]],[.46,[.2,.5,.85]],[.52,[.15,-.85,.5]],[.66,[.15,-.85,.5]],[.85,[.4,-.85,.35]],[1,DA[1]]]},
+ pinza:{D:.8,cu:.5,
+  body:[[0,[0,0,0,0,0]],[.2,[.25,-.12,0,-.6,0]],[.3,[.3,-.14,.1,.6,0]],[.42,[.35,-.14,.28,4.0,0]],[.5,[.35,-.14,.38,S2,0]],[.62,[-.06,-.1,.42,S2+.35,-.08]],[.8,[.1,-.04,.25,S2,0]],[1,[0,0,0,S2,0]]],
+  lu:[[0,DA[0]],[.2,[.9,-.2,-.4]],[.3,[1,0,.08]],[.5,[1,0,.1]],[.62,[1,-.1,.1]],[.8,[.6,-.7,.3]],[1,DA[0]]],
+  lf:[[0,DA[1]],[.2,[.9,0,-.2]],[.3,[1,.05,.2]],[.5,[1,.05,.22]],[.62,[.95,-.05,.25]],[.8,[.5,-.75,.4]],[1,DA[1]]],
+  tu:[[0,DA[0]],[.2,[.5,-.7,.35]],[.3,[.45,-.8,-.35]],[.62,[.45,-.8,-.35]],[1,DA[0]]],
+  tf:[[0,DA[1]],[.2,[.4,-.7,.55]],[.3,[.35,-.85,-.3]],[.62,[.35,-.85,-.3]],[1,DA[1]]]}};
+const GKSW_DUR=.8;
+// curva suave que pasa por varias poses (Catmull-Rom): k=[[u,[x,y,z]],...]
+function crv(k,u){if(u<=k[0][0])return k[0][1].slice();const n=k.length;if(u>=k[n-1][0])return k[n-1][1].slice();let i=0;while(u>k[i+1][0])i++;
+  const t=(u-k[i][0])/(k[i+1][0]-k[i][0]),P0=k[Math.max(0,i-1)][1],P1=k[i][1],P2=k[i+1][1],P3=k[Math.min(n-1,i+2)][1],t2=t*t,t3=t2*t;
+  return P1.map((_,j)=>.5*(2*P1[j]+(-P0[j]+P2[j])*t+(2*P0[j]-5*P1[j]+4*P2[j]-P3[j])*t2+(-P0[j]+3*P1[j]-3*P2[j]+P3[j])*t3));}
+const GKSW_STYLE={gato:'zarpazo',gigante:'puno',muralla:'puno',coletazo:'pinza'};
+function rotBoneW(b,ax,a){const q=new THREE.Quaternion(),c=new THREE.Quaternion();b.getWorldQuaternion(c);setWorldQ(b,c.premultiply(q.setFromAxisAngle(ax,a)));}
+function hitTornado(m,show,k){let tw=m._tw;if(!tw){tw=tornadoMesh();tw.scale.setScalar(.32);tw.traverse(o=>{o.frustumCulled=false;if(o.material){o.material=o.material.clone();o.material.color&&o.material.color.offsetHSL(0,0,0);}});m._tw=tw;m.root.add(tw);}
+  tw.visible=show;if(show){tw.scale.setScalar(.12+.26*k);tw.rotation.y+=.5;tw.userData.rings.forEach((r,i)=>{r.rotation.z+=.25+i*.03;});}}
+function shellMesh(){const g=new THREE.Group(),cv=document.createElement('canvas');cv.width=cv.height=256;const c=cv.getContext('2d');
+  c.fillStyle='#7d8a2e';c.fillRect(0,0,256,256);c.strokeStyle='#3c4a17';c.lineWidth=7;
+  for(let j=0;j<5;j++)for(let i=0;i<5;i++){const x=i*58+(j%2)*29,y=j*58;c.beginPath();for(let k=0;k<6;k++){const a=Math.PI/3*k+Math.PI/6;c.lineTo(x+26*Math.cos(a),y+26*Math.sin(a));}c.closePath();c.fillStyle=(i+j)%2?'#8c9a33':'#717f28';c.fill();c.stroke();}
+  const tx=new THREE.CanvasTexture(cv);tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(2,1);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(1,28,14,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({map:tx}));dome.scale.set(1,.95,1);dome.position.y=.12;g.add(dome);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(1,.13,10,32),new THREE.MeshLambertMaterial({color:0x4c7a2c}));rim.rotation.x=Math.PI/2;rim.position.y=.12;g.add(rim);
+  const bot=new THREE.Mesh(new THREE.CircleGeometry(1,28),new THREE.MeshLambertMaterial({color:0xd9c46a,side:THREE.DoubleSide}));bot.rotation.x=Math.PI/2;bot.position.y=.06;g.add(bot);
+  g.traverse(o=>o.frustumCulled=false);return g;}
+function hitShell(m,show,k,dt,h){let sh=m._sh;if(!sh){sh=shellMesh();m._sh=sh;m.root.add(sh);}
+  sh.visible=show;if(!show)return;const ws=new THREE.Vector3();m.root.getWorldScale(ws);const r=h*.6/ws.x;
+  const pop=k<1?1+.18*Math.sin(Math.PI*k):1;sh.scale.setScalar(r*pop);sh.position.y=0;sh.rotation.y+=dt*24;}
+function clawFx(x,y,z,face){   // tres rayas de zarpazo que brillan y se desvanecen
+  for(let i=-1;i<=1;i++){const g=new THREE.Mesh(new THREE.PlaneGeometry(.09,1.5),new THREE.MeshBasicMaterial({color:0xfff6d0,transparent:true,opacity:1,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+    g.position.set(x+Math.cos(face)*i*.22,y,z-Math.sin(face)*i*.22);g.rotation.set(0,face,.6);g.scale.set(1,.1,1);scene.add(g);effects.push({type:'claw',mesh:g,t:0,dur:.42,delay:(i+1)*.04});}}
+// ================== v179: REACCIONES A GOLPES (estilo Strikers, hechas a mano) ==================
+// fases: vuela (arco con giro) → cae y se arrastra → en el piso → se levanta (cada personaje a su manera)
+const REACT_PROC=true;
+const RUP_STYLE={gato:'kip',expreso:'kip',turbo:'kip',zurdito:'kip',malabares:'kip',ruleta:'kip',cazador:'kip',pausa:'tortuga',ciclon:'giro'};   // los demás: 'push' (se empujan con los brazos)
+const RTHICK={pausa:.36,gigante:.22,muralla:.22,toro:.2,vikingo:.18,rey:.18};
+// pose = [inclinación, giro extra, ladeo, altura(×cadera), columna, cabeza, brazo izq (3), antebrazo izq (3), brazo der, antebrazo der, muslo izq, pierna izq, muslo der, pierna der]
+const RP=(pitch,yaw,roll,lift,bend,head,lu,lf,ru,rf,lt,ls,rt,rs)=>[pitch,yaw,roll,lift,bend,head,...lu,...lf,...(ru||lu),...(rf||lf),...lt,...ls,...(rt||lt),...(rs||ls)];
+const R_STAND=RP(0,0,0,0,0,0,[.3,-.95,.05],[.25,-.95,.15],null,null,[.1,-.99,0],[.07,-.99,-.05]);
+const R_LIEB=RP(-1.52,0,0,0,0,.35,[.92,.38,.04],[.8,.58,.1],null,null,[.18,-.95,.22],[.1,-.92,-.35],[.15,-.97,.1],[.1,-.97,-.15]);   // de espaldas
+const R_LIEF=RP(1.5,0,0,0,0,-.45,[.72,.68,-.02],[.45,.88,-.06],null,null,[.12,-.99,.02],[.08,-.97,-.2]);                            // boca abajo
+const R_UP={
+ push:{D:.7,k:[[0,R_LIEB],
+  [.28,RP(-.55,0,0,0,.45,.15,[.45,-.55,-.7],[.35,-.78,-.5],null,null,[.15,-.25,.95],[.05,-.97,-.2],[.15,-.2,.96],[.05,-.97,-.15])],
+  [.52,RP(.42,0,0,0,.25,-.1,[.35,-.8,.45],[.25,-.95,.18],null,null,[.15,-.35,.92],[.05,-.98,-.12],[.15,-.95,.2],[.05,-.3,-.95])],
+  [.76,RP(.14,0,0,0,.08,0,[.42,-.86,.25],[.32,-.9,.28],null,null,[.12,-.97,.15],[.08,-.98,-.1],[.1,-.98,-.05],[.07,-.98,-.12])],
+  [.88,RP(.04,0,.1,0,0,0,[.38,-.9,.15],[.3,-.92,.2],null,null,[.1,-.99,0],[.07,-.99,-.05])],
+  [1,R_STAND]]},
+ kip:{D:.66,k:[[0,R_LIEB],
+  [.24,RP(-1.9,0,0,0,.4,.3,[.95,.25,0],[.9,.35,.1],null,null,[.15,.35,.92],[.1,.95,.3],[.15,.3,.94],[.1,.92,.35])],
+  [.46,RP(-.95,0,0,.28,.15,.1,[.5,.35,.78],[.4,.3,.86],null,null,[.15,-.55,.82],[.1,-.97,.2],[.15,-.85,.5],[.08,-.98,-.1])],
+  [.64,RP(.32,0,0,-.22,.15,-.05,[.62,-.15,.77],[.52,-.05,.85],null,null,[.25,-.42,.87],[.08,-.98,-.15],[.22,-.45,.86],[.08,-.98,-.15])],
+  [.82,RP(.08,0,0,-.04,.04,0,[.5,-.72,.45],[.4,-.8,.42],null,null,[.12,-.97,.15],[.08,-.99,-.05])],
+  [1,R_STAND]]},
+ tortuga:{D:.8,k:[[0,R_LIEB],
+  [.15,RP(-1.52,0,.42,0,0,.35,[.95,.25,.15],[.85,.4,.3],null,null,[.3,-.85,.4],[.2,-.9,.3])],
+  [.3,RP(-1.52,0,-.42,0,0,.35,[.95,.25,.15],[.85,.4,.3],null,null,[.3,-.85,.4],[.2,-.9,.3])],
+  [.45,RP(-1.52,0,.25,0,0,.35,[.95,.3,.1],[.85,.45,.2],null,null,[.25,-.9,.35],[.2,-.95,.2])],
+  [.66,RP(-.45,0,0,.3,.05,.1,[.7,.2,.68],[.6,.25,.75],null,null,[.15,-.8,.55],[.1,-.97,.1])],
+  [.82,RP(.15,0,0,-.08,0,0,[.5,-.7,.5],[.4,-.75,.5],null,null,[.15,-.95,.25],[.08,-.98,-.1])],
+  [1,R_STAND]]},
+ giro:{D:.7,k:[[0,R_LIEB],
+  [.25,RP(-1.1,0,0,0,.35,.2,[.8,-.2,-.55],[.6,-.5,-.6],null,null,[.15,-.3,.94],[.05,-.97,-.2])],
+  [.55,RP(-.2,Math.PI*1.2,0,.32,.05,0,[1,.05,.05],[.98,.1,.15],null,null,[.1,-.99,.05],[.07,-.99,-.05])],
+  [.78,RP(.1,Math.PI*2,0,-.05,0,0,[.85,-.4,.3],[.7,-.5,.45],null,null,[.15,-.97,.15],[.08,-.99,-.05])],
+  [1,RP(0,Math.PI*2,0,0,0,0,[.3,-.95,.05],[.25,-.95,.15],null,null,[.1,-.99,0],[.07,-.99,-.05])]]},
+ front:{D:.66,k:[[0,R_LIEF],
+  [.3,RP(1.05,0,0,0,-.15,-.35,[.32,-.55,.77],[.28,-.6,.75],null,null,[.15,-.85,-.5],[.08,-.4,-.91],[.15,-.88,-.45],[.08,-.35,-.93])],
+  [.55,RP(.55,0,0,0,.15,-.15,[.35,-.8,.48],[.25,-.92,.3],null,null,[.15,-.35,.92],[.05,-.98,-.12],[.15,-.95,.2],[.05,-.3,-.95])],
+  [.8,RP(.12,0,0,0,.05,0,[.42,-.86,.25],[.32,-.9,.28],null,null,[.12,-.97,.15],[.08,-.98,-.1],[.1,-.98,-.05],[.07,-.98,-.12])],
+  [1,R_STAND]]}};
+function rBind(m,B){if(B._rb)return B._rb;const bd=slBind(m,B),R=m.root,save=B.all.map(o=>o.b.quaternion.clone()),tp=m.tilt.position.clone(),tr=m.tilt.rotation.clone();
+  m.tilt.position.set(0,0,0);m.tilt.rotation.set(0,0,0);for(const o of B.all)o.b.quaternion.copy(o.q0);R.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();R.getWorldQuaternion(Rq);const Ri=Rq.clone().invert(),mq=b=>{const q=new THREE.Quaternion();b.getWorldQuaternion(q);return q.premultiply(Ri);};
+  const chain=[];if(B.hd){let b=B.hd.b.parent;while(b&&b!==B.hips.b){chain.unshift(b);b=b.parent;}}
+  const res={hipQ:mq(B.hips.b),hipP:B.hips.p0.clone(),chain:chain.map(b=>({b,q:mq(b)})),hdQ:B.hd?mq(B.hd.b):null,fz:(B._rab||raBind(m,B)).fz,h:bd.hipY};
+  B.all.forEach((o,i)=>o.b.quaternion.copy(save[i]));m.tilt.position.copy(tp);m.tilt.rotation.copy(tr);R.updateMatrixWorld(true);return B._rb=res;}
+function rLimb(L,RT,dA,dB,w){if(!L)return;const qa=new THREE.Quaternion().setFromUnitVectors(L.da,dA),qb=new THREE.Quaternion().setFromUnitVectors(L.db,dB);
+  const wA=RT.clone().multiply(qa).multiply(L.qa),wB=RT.clone().multiply(qb).multiply(L.qb),wC=RT.clone().multiply(qb).multiply(L.qc);
+  for(const [b,q] of [[L.a,wA],[L.b,wB],[L.c,wC]]){const c=new THREE.Quaternion();b.getWorldQuaternion(c);setWorldQ(b,c.slerp(q,w));}}
+function reactStart(m,p,B){const id=p.card&&p.card.id,rb=rBind(m,B);
+  // hacia dónde lo empujaron, en el espacio del jugador
+  const ry=m.root.rotation.y,vx=p.vx||0,vz=p.vz||0,lx=vx*Math.cos(ry)-vz*Math.sin(ry),lz=vx*Math.sin(ry)+vz*Math.cos(ry),sp=Math.hypot(lx,lz);
+  const fwd=sp>.5?(lz*rb.fz)/sp:-1,front=fwd>.55;   // empujado por detrás → cae de frente
+  const pa=sp>.5?Math.atan2(lx,lz*rb.fz):Math.PI;   // ángulo del empujón (0 = hacia donde mira)
+  const yaw0=front?pa:pa+Math.PI;   // de espaldas: el cuerpo queda mirando contra el empujón
+  let y0=yaw0;while(y0>Math.PI)y0-=2*Math.PI;while(y0<-Math.PI)y0+=2*Math.PI;
+  const vy=Math.max(p.flyVy||0,0),fly=(p.flyY>.05||vy>0);
+  const tier=fly?(p.flyTier||0):0;p.flyTier=0;
+  m._r={sq:0,sqv:fly?3.5+2*tier:0,ph:fly?'fly':'fall',t:0,front,tier,yaw0:y0*rb.fz,vy0:Math.max(2.5,vy),flip:!front&&vy>4.8,spin:(p.flySpin||8)*.12,style:front?'front':(RUP_STYLE[id]||'push'),
+    thick:(RTHICK[id]||.15),w:0,cur:null,lift:0,bounce:0,dust:0};
+  burst(p.x,1.2,p.z,0xfff6a0,8,5);}
+function reactPose(m,p,dt){const B=m.bones;if(!B||!B.hips||p.gk||!REACT_PROC)return;
+  const launched=p.flyY>.05||p.flyVy>0;
+  if(!m._r){if(launched||(p.stun>.95&&!(p.slip>0)&&!(p.spinT>0)&&!(p.frozen>0)))reactStart(m,p,B);else return;}
+  if(!m.toonS0)m.toonS0=B.model.scale.clone();B.model.scale.copy(m.toonS0);
+  const r=m._r,rb=rBind(m,B),bd=slBind(m,B),L=bd.limbs,h=rb.h,fz=rb.fz;r.t+=dt;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  // ---- fase y pose objetivo ----
+  const lie=r.front?R_LIEF:R_LIEB,U=R_UP[r.style]||R_UP.push;let tgt,rate=14;
+  if(r.ph==='fly'||r.ph==='fall'){const tf=r.ph==='fall'?.32:Math.max(.25,2*r.vy0/24),fp=Math.min(1,r.t/tf);
+    const e=sm(fp),fl=Math.sin(r.t*(r.tier?20:14)),nf=r.tier===1?1:r.tier===2?1:(r.flip?1:0),pit=r.front?(1.5+(r.tier?2*Math.PI:0))*e:-(1.52+nf*2*Math.PI)*e;
+    const yw=r.tier===2?(r.spin>0?1:-1)*6*Math.PI*e:r.tier===1?(r.spin>0?1:-1)*2*Math.PI*e:r.spin*Math.sin(Math.min(1,fp)*Math.PI*.5)*3;   // fuerte: una vuelta; brutal: tres vueltas como trompo
+    tgt=RP(pit,yw,.25*Math.sin(r.t*9),0,r.front?.1:-.3*(1-e),r.front?-.3:.35*e,
+      [.85,.45+.2*fl,.2],[.7,.62,.35],[.85,.45-.2*fl,.2],[.7,.62-.15*fl,.35],[.2,-.72,.55+.2*fl],[.15,-.9,-.3],[.2,-.85,-.35-.15*fl],[.1,-.75,-.6]);
+    rate=r.t<.08?26:r.tier?20:12;
+    if(!launched&&r.t>Math.min(.2,tf*.5)&&(r.ph==='fall'?r.t>=tf:true)){r.ph=r.tier?'tumble':'ground';r.t=0;r.sqv-=5+2*r.tier;r.bounce=r.tier?0:1;r.nb=0;if(r.cur){if(r.front){while(r.cur[0]>1.5+Math.PI)r.cur[0]-=2*Math.PI;}else while(r.cur[0]<-1.52-Math.PI)r.cur[0]+=2*Math.PI;r.yaw0+=r.cur[1]*(r.yks==null?1:r.yks);r.cur[1]=0;while(r.yaw0>Math.PI)r.yaw0-=2*Math.PI;while(r.yaw0<-Math.PI)r.yaw0+=2*Math.PI;}dust(p.x,p.z);dust(p.x,p.z);puffFx(p.x,.3,p.z,0xd9d0b8,1.1,.25,.5);shakeAmt=Math.max(shakeAmt,.18);}}
+  if(r.ph==='tumble'){   // rebota y rueda por el pasto (fuerte: 2 rebotes; brutal: 3)
+    const DT=r.tier===2?.75:.5,u=Math.min(1,r.t/DT),nr=r.tier===2?2:1;r.lrT=(r.spin>0?1:-1)*2*Math.PI*nr*sm(u);   // rueda como tronco a lo largo del cuerpo
+    const hs=r.tier===2?[.9,.45,.18]:[.5,.2],nb=hs.length,seg=Math.min(nb-1,Math.floor(u*nb)),su=u*nb-seg;
+    r.tb=Math.sin(Math.min(1,su)*Math.PI)*hs[seg]*h*(u<1?1:0);
+    if(seg!==r.nb){r.nb=seg;r.sqv-=3.5+r.tier;dust(p.x,p.z);dust(p.x,p.z);puffFx(p.x,.3,p.z,0xd9d0b8,1,.22,.5);shakeAmt=Math.max(shakeAmt,r.tier===2?.35:.22);}
+    const fl=Math.sin(r.t*22);
+    tgt=RP(lie[0],0,0,0,.1,.2,[.3,.94,.12+.1*fl],[.2,.97,.1],[.3,.94,.12-.1*fl],[.2,.97,.1],[.1,-.99,.05],[.07,-.99,-.05],[.1,-.99,.05],[.07,-.99,-.05]);
+    rate=16;if(u>=1){r.ph='ground';r.t=0;r.tb=0;r.bounce=.6;r.lr-=r.lrT;r.lrT=0;}}
+  if(r.ph==='ground'){tgt=lie;rate=16;if(p.stun<=U.D||!(p.stun>0)){r.ph='up';r.t=Math.max(0,U.D-Math.max(0,p.stun||0))*0;r.u0=Math.max(0,1-Math.max(0,p.stun||0)/U.D);}}
+  if(r.ph==='up'){const u=Math.min(1,(r.u0||0)+r.t/U.D*(1-(r.u0||0)));tgt=crv(U.k,u);rate=18;r.yk=1-sm((u-.2)/.65);if(u>=1)r.ph='out';}   // al levantarse se voltea hacia donde iba
+  if(r.ph==='out'){tgt=r.cur||R_STAND;r.yk=0;r.w-=dt/.16;if(r.w<=0){m._r=null;m.lockUntil=0;B.model.scale.copy(m.toonS0);for(const o of B.all)o.b.quaternion.copy(o.q0);B.hips.b.position.copy(rb.hipP);p._flyE=0;p._stE=0;p._stMax=0;m.tilt.rotation.order='XYZ';return;}}
+  else r.w=Math.min(1,r.w+dt/.07);
+  // suavizado: todos los valores van hacia la pose objetivo sin saltos
+  // v181: resortes (no solo suavizado): el cuerpo llega con un pequeño rebote elástico y brazos/piernas van un poquito atrás del torso
+  if(!r.cur){r.cur=tgt.slice();r.vel=tgt.map(()=>0);}
+  else{const n=Math.max(1,Math.ceil(dt/(1/120))),h_=dt/n;
+    for(let s_=0;s_<n;s_++)for(let i=0;i<tgt.length;i++){const lim=i>=6&&i<18,leg=i>=18,om=rate*(lim?1.05:leg?1.2:1.45),ze=lim?.5:leg?.58:.66;
+      r.vel[i]+=(om*om*(tgt[i]-r.cur[i])-2*ze*om*r.vel[i])*h_;r.cur[i]+=r.vel[i]*h_;}}
+  const P=r.cur,w=r.w;
+  // rebote al caer y polvo al arrastrarse
+  let bnc=r.tb||0;if(r.bounce>0){r.bounce=Math.max(0,r.bounce-dt/.32);const b=1-r.bounce;bnc=Math.sin(b*Math.PI)*.22*h*(1-b);}
+  const spd=Math.hypot(p.vx,p.vz);if((r.ph==='ground'||r.ph==='tumble')&&spd>1.2&&(r.dust-=dt)<=0){r.dust=.05;dust(p.x+rand(-.3,.3),p.z+rand(-.3,.3));}
+  // ---- cuerpo (grupo tilt): giro → inclinación → ladeo ----
+  m.root.position.y=Math.max(0,p.flyY||0);
+  m.tilt.rotation.order='YXZ';if(r.yk==null)r.yk=1;r.yks=(r.yks==null?1:r.yks)+(r.yk-(r.yks==null?1:r.yks))*Math.min(1,dt*14);if(r.lrT!=null){r.lr=(r.lr||0)+(r.lrT-(r.lr||0))*Math.min(1,dt*22);}m.tilt.rotation.set(P[0]*fz*w,(r.yaw0*r.yks+P[1])*w,P[2]*w);if(r.lr)m.tilt.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),r.lr*w));m.tilt.position.set(0,0,0);m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const RT=Rq.clone().multiply(m.tilt.quaternion);
+  // cadera y columna: desde la pose base, doblando la columna
+  B.hips.b.position.lerp(rb.hipP,w);
+  {const c=new THREE.Quaternion();B.hips.b.getWorldQuaternion(c);setWorldQ(B.hips.b,c.slerp(RT.clone().multiply(rb.hipQ),w));}
+  const ax=new THREE.Vector3(1,0,0),n=rb.chain.length||1;let acc=0;
+  for(const s of rb.chain){acc+=P[4]/n;const q=RT.clone().multiply(new THREE.Quaternion().setFromAxisAngle(ax,acc*fz)).multiply(s.q),c=new THREE.Quaternion();s.b.getWorldQuaternion(c);setWorldQ(s.b,c.slerp(q,w));}
+  if(B.hd&&rb.hdQ){const q=RT.clone().multiply(new THREE.Quaternion().setFromAxisAngle(ax,(acc+P[5])*fz)).multiply(rb.hdQ),c=new THREE.Quaternion();B.hd.b.getWorldQuaternion(c);setWorldQ(B.hd.b,c.slerp(q,w));}
+  // brazos y piernas (direcciones en el espacio del cuerpo)
+  const V=(L_,o)=>new THREE.Vector3(L_.sx*P[o],P[o+1],P[o+2]*fz).normalize();
+  if(L.la)rLimb(L.la,RT,V(L.la,6),V(L.la,9),w);if(L.ra)rLimb(L.ra,RT,V(L.ra,12),V(L.ra,15),w);
+  if(L.ll)rLimb(L.ll,RT,V(L.ll,18),V(L.ll,21),w);if(L.rl)rLimb(L.rl,RT,V(L.rl,24),V(L.rl,27),w);
+  // estirar al salir volando, aplastar al caer (resorte muy elástico)
+  {const n=Math.max(1,Math.ceil(dt/(1/120))),h_=dt/n,om=17,ze=.3;for(let s_=0;s_<n;s_++){r.sqv+=(-om*om*r.sq-2*ze*om*r.sqv)*h_;r.sq+=r.sqv*h_;}
+   const q=clamp(r.sq,-.28,.22)*w,s0=m.toonS0;B.model.scale.set(s0.x*(1-q*.5),s0.y*(1+q),s0.z*(1-q*.5));}
+  // ---- apoyo en el piso: el punto más bajo del cuerpo toca el pasto (en el aire, solo que no se entierre) ----
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3(),torso=new Set([B.hips.b,...rb.chain.map(s=>s.b),B.hd&&B.hd.b]);let mn=1e9;
+  for(const o of B.all){o.b.getWorldPosition(v);const rad=torso.has(o.b)?r.thick*h:.045*h;mn=Math.min(mn,v.y-rad);}
+  const air=(p.flyY||0)>.05,ry=m.root.position.y,fy=Math.max(0,(p.flyY||0)+((p.flyVy||0)-24*dt)*dt);let lift=air?-(mn-ry)-fy:-(mn-ry);   // la altura del vuelo se aplica después (fxPose): se usa la del siguiente cuadro   // cuánto subir para que toque el piso
+  lift=(air?Math.max(0,lift):lift)+Math.max(0,P[3])*h+bnc;   // agacharse ya lo resuelve el apoyo en el piso; la altura extra es solo para saltos
+  r.lift=lift*w;m.tilt.position.y=r.lift;m.root.updateMatrixWorld(true);
+  r.tilt=[m.tilt.quaternion.clone(),r.lift];}
+// ================== v182: PATADAS HECHAS A MANO (estilo Strikers) ==================
+// el balón sale al soltar el botón: la patada arranca con la pierna ya armada y el contacto es casi inmediato; mientras se carga el tiro, el cuerpo se enrosca
+const KICK_PROC=true;
+const KFOOT={zurdito:'l'};
+// pose: [inclinación, giro del pecho (+ = hombro de la pierna que patea hacia adelante), ladeo hacia el pie de apoyo, altura(×cadera),
+//        muslo que patea(3), pierna que patea(3), muslo de apoyo(3), pierna de apoyo(3), brazo del lado que patea(3), antebrazo(3), brazo contrario(3), antebrazo(3)]
+const KN=[.08,0,0,0, .1,-.99,.05, .07,-.99,-.05, .1,-.99,.05, .07,-.99,-.05, .3,-.95,0, .25,-.93,.25, .3,-.95,0, .25,-.93,.25];
+const KK=(a,b,c,d,kt,ks,st,ss,ka,kf,oa,of)=>[a,b,c,d,...kt,...ks,...st,...ss,...ka,...kf,...oa,...of];
+// v183: súper tiro: mientras corre el arco, la pierna se carga desde atrás (talón arriba, pecho enroscado)
+const KWIND=KK(.14,-.85,.12,0,[.1,-.3,-.95],[.05,.55,-.83],[.05,-.93,.36],[.03,-.95,-.3],[.75,-.25,-.62],[.6,-.35,-.72],[.85,.3,.43],[.7,.5,.5]);
+const KICKS={
+ tiro:{D:.62,k:[[0,KK(-.04,-.5,.12,0,[.12,-.72,-.68],[.05,-.08,-1],[.05,-.97,.25],[.03,-.99,.05],[.45,-.68,-.58],[.35,-.55,-.75],[.85,-.18,.48],[.68,.02,.73])],
+   [.1,KK(.16,.1,.16,0,[.05,-.9,.45],[.04,-.84,.55],[.04,-.97,.22],[.03,-.99,-.05],[.62,-.6,-.2],[.5,-.5,.25],[.9,-.12,.1],[.8,.1,.35])],
+   [.28,KK(-.2,.55,.1,.1,[.05,.3,.95],[.04,.42,.9],[.05,-.95,.3],[.03,-.97,-.22],[.75,-.3,.55],[.6,-.18,.75],[.82,-.32,-.42],[.68,-.42,-.55])],
+   [.55,KK(.2,.22,0,-.05,[.08,-.85,.5],[.05,-.99,-.05],[.08,-.8,-.55],[.05,-.95,-.3],[.5,-.8,.3],[.4,-.85,.35],[.5,-.8,-.25],[.4,-.85,-.1])],
+   [1,KN]]},
+ centro:{D:.66,k:[[0,KK(-.1,-.45,.15,0,[.15,-.7,-.7],[.05,-.1,-1],[.05,-.97,.25],[.03,-.99,.05],[.75,-.4,-.5],[.6,-.3,-.7],[.95,.1,.3],[.8,.3,.5])],
+   [.1,KK(-.05,.05,.18,0,[.08,-.85,.5],[.05,-.75,.65],[.05,-.97,.22],[.03,-.99,-.05],[.85,-.3,-.2],[.75,-.1,.2],[.95,.15,.1],[.85,.35,.3])],
+   [.3,KK(-.32,.5,.12,.06,[.08,.4,.91],[.05,.55,.83],[.05,-.95,.3],[.03,-.97,-.22],[.9,0,.4],[.75,.15,.6],[.9,.05,-.4],[.75,.1,-.6])],
+   [.58,KK(.15,.2,0,-.04,[.08,-.85,.5],[.05,-.99,-.05],[.08,-.8,-.55],[.05,-.95,-.3],[.5,-.8,.3],[.4,-.85,.35],[.5,-.8,-.25],[.4,-.85,-.1])],
+   [1,KN]]},
+ pase:{D:.46,k:[[0,KK(.06,-.3,.06,0,[.32,-.7,-.64],[.2,-.35,-.92],[.04,-.98,.15],[.03,-.99,.02],[.4,-.85,-.35],[.3,-.8,-.5],[.55,-.75,.35],[.45,-.6,.6])],
+   [.12,KK(.1,.12,.08,0,[-.08,-.9,.42],[-.12,-.95,.28],[.04,-.98,.15],[.03,-.99,-.02],[.45,-.82,-.1],[.35,-.8,.4],[.5,-.82,.2],[.4,-.75,.5])],
+   [.3,KK(.02,.3,.05,0,[-.2,-.55,.81],[-.2,-.6,.77],[.05,-.97,.2],[.03,-.99,-.08],[.45,-.82,.15],[.35,-.8,.45],[.45,-.85,-.1],[.35,-.85,.3])],
+   [.62,KK(.1,.08,0,0,[.08,-.92,.35],[.05,-.99,-.05],[.08,-.95,-.25],[.05,-.97,-.15],[.35,-.92,.1],[.28,-.92,.25],[.35,-.92,-.05],[.28,-.92,.2])],
+   [1,KN]]},
+ super:{D:.82,k:[[0,KWIND],[.05,KK(-.05,-.5,.12,.15,[.1,-.5,-.86],[.05,.1,-.99],[.05,-.6,.8],[.05,-.97,-.1],[.85,.2,-.45],[.7,.4,-.55],[.9,.3,.3],[.75,.5,.4])],
+   [.12,KK(-.3,.15,.12,.42,[.05,-.35,.94],[.04,-.25,.97],[.05,-.6,.8],[.05,-.97,-.15],[.9,.35,-.15],[.8,.5,.2],[.95,.25,.1],[.85,.45,.25])],
+   [.32,KK(-.45,.75,.08,.5,[.05,.3,.95],[.04,.4,.92],[.05,-.75,.66],[.05,-.95,-.3],[.85,.2,.45],[.7,.35,.6],[.85,.3,-.4],[.7,.45,-.55])],
+   [.56,KK(.25,.35,0,0,[.1,-.8,.6],[.05,-.99,.05],[.08,-.75,-.6],[.05,-.95,-.3],[.6,-.65,.4],[.5,-.7,.5],[.6,-.65,-.3],[.5,-.75,-.2])],
+   [.7,KK(.3,.15,0,-.12,[.15,-.6,.78],[.08,-.98,-.15],[.12,-.75,-.6],[.06,-.9,-.42],[.5,-.8,.3],[.4,-.85,.35],[.5,-.8,-.25],[.4,-.85,-.1])],
+   [1,KN]]}};
+function kickPose(m,p,dt){const B=m.bones;if(!B||!B.hips||p.gk||!KICK_PROC)return;
+  const bd=slBind(m,B),L=bd.limbs,h=bd.hipY,fz=(B._rab||raBind(m,B)).fz,id=p.card&&p.card.id;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  // arranque (lo pide libEvents)
+  if(m._kReq){const pw=m._kReq;m._kReq=0;const kind=pw>1.1?'super':pw>=.95?'tiro':pw>=.65?'centro':'pase';
+    let foot=KFOOT[id]||'r';if(kind==='pase'){const lat=-Math.cos(p.face)*ball.vx+Math.sin(p.face)*ball.vz;foot=lat>0?'l':'r';}
+    m._k={kind,t:0,foot,cur:m._ka>.3?KWIND.slice():m._k&&m._k.cur?m._k.cur:null,vel:m._k&&m._k.vel?m._k.vel:null,w:0};if(kind==='super'){burst(p.x,1,p.z,0xffd23a,16,8);ringFx(p.x,p.z,2.6,0xffd23a,.3);}}
+  const K=m._k;
+  // cargando el tiro: el cuerpo se enrosca (pecho atrás del lado que patea, brazo contrario al frente)
+  const chg=!K&&p.charging&&ball.owner===p&&!(p.stun>0)?Math.min(1,p.charge||0):0;m._kc=(m._kc||0)+(chg-(m._kc||0))*Math.min(1,dt*10);
+  const arc=!K&&p._arc&&ball.owner===p&&!(p.stun>0);m._ka=(m._ka||0)+((arc?1:0)-(m._ka||0))*Math.min(1,dt*(arc?7:20));
+  if(!K&&m._kc<.01&&m._ka<.01){if(m._kTilt){m._kTilt=null;}return;}
+  const foot=K?K.foot:(KFOOT[id]||'r'),oth=foot==='r'?'l':'r';
+  let P,w;
+  if(K){const S=KICKS[K.kind];K.t+=dt;const u=K.t/S.D;if(u>=1||p.stun>0||p.flyY>.05||p.slip>0||p.act){m._k=null;m._kTilt=null;return;}
+    const tgt=crv(S.k,u);
+    if(!K.cur)K.cur=KN.slice();if(!K.vel)K.vel=K.cur.map(()=>0);
+    const n=Math.max(1,Math.ceil(dt/(1/120))),hh=dt/n;   // piernas siguen la curva exacta (el golpe es instantáneo); cuerpo y brazos con resorte (látigo)
+    for(let s=0;s<n;s++)for(let i=0;i<tgt.length;i++){if(i>=4&&i<16){K.cur[i]=tgt[i];K.vel[i]=0;continue;}const lim=i>=16,ze=lim?.5:.62,om=lim?34:40;K.vel[i]+=(om*om*(tgt[i]-K.cur[i])-2*ze*om*K.vel[i])*hh;K.cur[i]+=K.vel[i]*hh;}
+    if(u<.04)K.cur=K.cur.map((v,i)=>v+(tgt[i]-v)*Math.min(1,dt*40));   // arranque: la pierna se arma de inmediato
+    P=K.cur;K.w=Math.min(1,K.w+dt/.04);w=K.w*(1-sm((u-.82)/.18));
+    if(!K.fx&&u>.08){K.fx=1;const v=new THREE.Vector3();(L[foot+'l']?L[foot+'l'].c:B.hips.b).getWorldPosition(v);
+      burst(v.x,v.y,v.z,0xffffff,K.kind==='pase'?4:10,K.kind==='pase'?3:6);if(K.kind!=='pase'){ringFx(v.x,v.z,1.4,0xffffff,.18);for(let i=0;i<4;i++)dust(p.x+rand(-.3,.3),p.z+rand(-.3,.3));}}}
+  else if(m._ka>.01){const a=sm(m._ka),tr=Math.sin(T*40)*.03*a;P=KWIND.map((v,i)=>v+(i===1?tr:0));w=a;   // cargando el súper: pierna atrás, temblando de fuerza
+    if(Math.random()<.35*a){const v=new THREE.Vector3();(L[foot+'l']?L[foot+'l'].c:B.hips.b).getWorldPosition(v);part(v.x,v.y,v.z,rand(-.6,.6),rand(.4,1.4),rand(-.6,.6),Math.random()<.5?0xffd23a:0xffffff,.16,0,rand(.25,.4));}}
+  else{const c=sm(m._kc);P=KN.map((v,i)=>v+(KICKS.tiro.k[0][1][i]-v)*.55*c);P[4]=KN[4];P[5]=KN[5];P[6]=KN[6];for(let i=4;i<16;i++)P[i]=KN[i];w=c;}
+  // cuerpo
+  m._kTilt=[P[0]*fz*w,Math.max(0,P[3])*h*w,0,.55*P[2]*(foot==='r'?1:-1)*w,0];
+  m.tilt.rotation.set(m._kTilt[0],0,m._kTilt[3]);m.tilt.position.y=m._kTilt[1];m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);
+  const eu=new THREE.Euler(m._kTilt[0],0,m._kTilt[3]),VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  // pecho: gira para que el hombro del lado que patea vaya atrás/adelante
+  const sp=B.sp2||B.sp;if(sp){const Tq=new THREE.Quaternion();m.tilt.getWorldQuaternion(Tq);const Ly=new THREE.Vector3(0,1,0).applyQuaternion(Tq);
+    if(m._kYs==null||m._kYf!==foot){const S=L[foot+'a'];if(S){const c=new THREE.Vector3(),c2=new THREE.Vector3();S.a.getWorldPosition(c);m.root.worldToLocal(c);rotBoneW(sp.b,Ly,.3);S.a.getWorldPosition(c2);m.root.worldToLocal(c2);rotBoneW(sp.b,Ly,-.3);m._kYs=(c2.z-c.z)*fz>0?1:-1;m._kYf=foot;}}
+    rotBoneW(sp.b,Ly,(m._kYs||1)*P[1]*w);}
+  // la cabeza mira al frente
+  if(B.hd){const hq=new THREE.Quaternion();B.hd.b.getWorldQuaternion(hq);setWorldQ(B.hd.b,hq.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0).applyQuaternion(Rq),-m._kTilt[0]*.6)));}
+  const lg=(k,o)=>{const G=L[k+'l'];if(G)slLimb(G,Rq,VA(G.sx*P[o],P[o+1],P[o+2]),VA(G.sx*P[o+3],P[o+4],P[o+5]),null,w);};
+  const am=(k,o,ww)=>{const A=L[k+'a'];if(A)slArm(A,Rq,VA(A.sx*P[o],P[o+1],P[o+2]),VA(A.sx*P[o+3],P[o+4],P[o+5]),ww);};
+  if(K||m._ka>.01){lg(foot,4);lg(oth,10);}
+  am(foot,16,K?w:w*.7);am(oth,22,K?w:w*.7);
+  // pie de apoyo en el piso (o en el aire si salta)
+  if(K||m._ka>.01){m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const o of B.all){o.b.getWorldPosition(v);mn=Math.min(mn,v.y);}
+    const margin=Math.max(.04,(B.restFootY||.08)*.9),want=margin+Math.max(0,P[3])*h*w,d=clamp(want-mn,-.35*h,.6*h);m._kTilt[1]+=d;m.tilt.position.y=m._kTilt[1];m.root.updateMatrixWorld(true);}}
+// ================== v185: ESTIRADAS DEL PORTERO CON ESCENARIOS (estilo Strikers) ==================
+// cada estirada tiene una acción: atrapar (junta las manos y la abraza), puñetazo (carga el brazo y golpea), punta de los dedos (un brazo al máximo, cuerpo en arco)
+// o no llegar (se pasa y golpea el piso). Se prepara según el tiro y cambia al resultado real en el contacto. Columna que se curva y gira, cabeza que sigue al balón.
+const GKDIVE_PROC=true;
+// pose: [ladeo, inclinación, altura(×cadera), curvatura de la columna(+ adelante), brazo del lado(3), antebrazo(3), otro brazo(3), antebrazo(3), muslo del lado(3), pierna(3), otro muslo(3), pierna(3), giro del pecho]
+const GD=(r,pi,l,b,la,lf,oa,of,lt,ls,ot,os,tw)=>[r,pi,l,b,...la,...lf,...oa,...of,...lt,...ls,...ot,...os,tw||0];
+const GD_READY=GD(0,.12,0,0,[.45,-.7,.35],[.35,-.45,.8],[.45,-.7,.35],[.35,-.45,.8],[.2,-.95,.15],[.1,-.97,-.2],[.2,-.95,.15],[.1,-.97,-.2]);
+const GK_FLAVOR={gato:{spin:1,lift:1.1,act:null},gigante:{lift:.75,act:'puno',shake:1.6},muralla:{lift:.6,act:'puno',shake:1.8,short:1},coletazo:{lift:1.05}};
+function gdPlan(p,kind,act,tC,fl){
+  const R=kind==='alta'?1.15:kind==='baja'?1.45:1.36,Lf=(kind==='alta'?.72:kind==='baja'?.16:.5)*(fl.lift||1),pi=kind==='alta'?-.12:.05,sp=fl.spin?2*Math.PI:0;
+  const legsAir=[[.06,-.99,.05],[.04,-.99,-.04],[-.15,-.75,.6],[-.06,-.97,-.25]];   // una pierna estirada, la otra recogida
+  const legsKick=[[.15,-.8,.55],[.05,-.97,-.2],[-.1,-.95,-.3],[-.05,-.6,-.8]];       // patalea en el aire
+  const crouch=GD(.32,.22,-.16,.25,[.7,.15,.55],[.55,.45,.7],[.55,-.25,.7],[.45,.15,.85],[.35,-.72,.55],[.2,-.96,-.2],[.1,-.96,.15],[.05,-.97,-.25],-.15);
+  const tW=Math.max(.2,tC-.13),tF=Math.min(.78,tC+.12),k=[[0,GD_READY],[.1,crouch]];
+  const air=(r,l,b,la,lf,oa,of,lg,tw,ex)=>GD(r+(ex||0),pi,l,b,la,lf,oa,of,lg[0],lg[1],lg[2],lg[3],tw);
+  if(act==='atrapa'){
+    k.push([tW,air(R*.9,Lf,.05,[.32,.86,.4],[.25,.85,.47],[.3,.85,.43],[.22,.84,.5],legsAir,.1)]);
+    k.push([tC,air(R,Lf*.85,.15,[.08,.9,.42],[-.05,.9,.43],[.08,.88,.46],[-.06,.88,.47],legsAir,.15)]);
+    k.push([tF,air(R+.05,Lf*.5,.45,[.55,.35,.76],[-.45,.3,.84],[.55,.3,.78],[-.45,.25,.86],[[.15,-.35,.92],[.1,-.97,-.2],[.12,-.3,.94],[.08,-.97,-.2]],.1)]);
+    k.push([.84,GD(1.55,.25,0,.5,[.55,.35,.76],[-.45,.3,.84],[.55,.3,.78],[-.45,.25,.86],[.15,-.3,.94],[.1,-.97,-.2],[.12,-.25,.96],[.08,-.97,-.2],.1)]);}
+  else if(act==='puno'){
+    k.push([tW,air(R*.88,Lf,-.05,[.55,.55,-.62],[.25,.95,.18],[.3,.88,.37],[.25,.88,.4],legsKick,-.45)]);   // carga el puño atrás
+    k.push([tC,air(R,Lf*.9,0,[.12,.96,.25],[.06,.98,.2],[.65,-.25,-.72],[.5,-.55,-.67],legsAir,.55)]);     // ¡puñetazo! el otro brazo atrás, el pecho gira
+    k.push([tF,air(R+.25,Lf*.55,-.1,[.3,.9,.3],[.2,.95,.25],[.7,-.15,-.7],[.5,-.4,-.77],legsKick,.75)]);
+    k.push([.84,GD(1.75,-.25,0,-.1,[.55,.75,.35],[.45,.8,.4],[.7,.3,-.6],[.55,.5,-.65],[.15,-.9,.4],[.08,-.97,-.2],[0,-.75,.66],[0,-.97,-.25],.4)]);}
+  else if(act==='punta'){
+    k.push([tW,air(R*.85,Lf*1.1,-.25,[.14,.98,.12],[.1,.99,.1],[.7,-.45,-.55],[.55,-.55,-.62],legsAir,-.2)]);   // todo el cuerpo en arco hacia el balón
+    k.push([tC,air(R*.95,Lf,-.4,[.1,.99,.05],[.25,.92,-.3],[.75,-.4,-.52],[.6,-.5,-.62],legsKick,-.3)]);      // la mano se dobla al tocarla
+    k.push([tF,GD(R+.1,-.7,Lf*.5,-.3,[.4,.9,-.15],[.35,.9,-.25],[.75,-.1,-.65],[.6,-.3,-.75],[.15,-.6,.78],[.08,-.97,-.2],[-.1,-.4,.91],[-.05,-.97,-.2],-.2)]);
+    k.push([.84,GD(1.5,-1.35,0,-.1,[.85,.45,.25],[.7,.6,.35],[.85,.4,.3],[.7,.55,.45],[.15,-.85,.5],[.08,-.97,-.2],[.12,-.9,.4],[.06,-.97,-.2],0)]);}
+  else{   // no llega: se estira de más y cae de cara
+    k.push([tW,air(R*.9,Lf,.05,[.3,.88,.36],[.24,.88,.42],[.28,.86,.42],[.22,.85,.48],legsAir,.1)]);
+    k.push([tC,air(R,Lf*.9,-.1,[.2,.95,.25],[.15,.96,.25],[.2,.94,.28],[.15,.95,.28],legsKick,.05)]);
+    k.push([tF,air(R+.1,Lf*.4,-.15,[.35,.85,.4],[.3,.8,.52],[.35,.8,.48],[.3,.75,.6],legsAir,0)]);
+    k.push([.84,GD(1.5,.65,0,-.1,[.6,.4,.7],[.45,.2,.87],[.6,.35,.72],[.45,.15,.88],[.12,-.97,.15],[.06,-.97,-.2],[.08,-.95,.3],[.05,-.97,-.2],0)]);}
+  k.push([1,k[k.length-1][1].slice()]);
+  if(fl.short)for(const e of k){if(e[0]<=0)continue;const v=e[1]=e[1].slice(),f=clamp((e[0]-.08)/.3,0,1);   // Muralla: no vuela; zancada larga de lado con el cuerpo tirado hacia el balón
+    v[0]=Math.min(.85,v[0]*.6);v[1]=clamp(v[1],-.4,.45);v[2]=v[2]*.12;
+    const LT=[.82,-.55,.15],LS=[.35,-.93,-.1],OT=[.15,-.95,.25],OS=[.08,-.97,-.2];for(let i=0;i<3;i++){v[16+i]=v[16+i]+(LT[i]-v[16+i])*f;v[19+i]=v[19+i]+(LS[i]-v[19+i])*f;v[22+i]=v[22+i]+(OT[i]-v[22+i])*f;v[25+i]=v[25+i]+(OS[i]-v[25+i])*f;}}
+  if(sp)for(const e of k){if(e[0]<=.1)continue;const f=clamp((e[0]-.12)/Math.max(.2,tF-.12),0,1);e[1]=e[1].slice();e[1][0]+=sp*(f*f*(3-2*f));}   // Gato: giro completo en el aire
+  return k;}
+const GD_UP=[[0,null],[.35,GD(.75,.25,0,.15,[.6,-.75,.25],[.4,-.85,.35],[.45,-.6,.65],[.35,-.5,.8],[.3,-.6,.75],[.15,-.97,-.2],[.15,-.85,.5],[.08,-.97,-.2])],
+  [.7,GD(.12,.18,-.04,.05,[.45,-.75,.4],[.35,-.55,.75],[.45,-.75,.4],[.35,-.55,.75],[.2,-.92,.3],[.1,-.97,-.2],[.2,-.92,.3],[.1,-.97,-.2])],[1,GD_READY]];
+// adivina la acción con el tiro que viene (el resultado real llega en el contacto)
+function gdGuess(p,fl){const sp=Math.hypot(ball.vx,ball.vy,ball.vz),tc=Math.abs(ball.vx)>.5?(p.x-ball.x)/ball.vx:.3,t=clamp(tc,0,.8),y=ball.y+ball.vy*t-6*t*t,dz=Math.abs(ball.z+ball.vz*t-p.z);
+  const st=p.card&&p.card.st||{},catchV=24+(st.ref||66)*.14;
+  let a=sp<catchV&&y<2.3?'atrapa':y>1.7||dz>2.4?'punta':'puno';if(fl.act&&a==='atrapa'&&sp>catchV*.8)a=fl.act;if(fl.act==='puno'&&a==='punta'&&y<2)a='puno';return {a,tc:clamp(tc,.12,.42)};}
+function gkDivePose(m,p,dt){const B=m.bones;if(!B||!B.hips||!GKDIVE_PROC||!p.gk)return;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x),id=p.card&&p.card.id,fl=GK_FLAVOR[id]||{};
+  if(p.dive>0&&(!m._gd||m._gd.ph==='up'&&m._gd.t>.1)){const h=p.diveH==null?1:p.diveH,kind=h>1.55?'alta':h<.65?'baja':'media',sd=sideOf(p,p.diveDir||1),gs=gdGuess(p,fl);
+    const tC=clamp(gs.tc/.6,.3,.62);
+    m._gd={ph:'dive',t:0,kind,sd,act:gs.a,tC,keys:gdPlan(p,kind,gs.a,tC,fl),cur:m._gd&&m._gd.cur?m._gd.cur:GD_READY.slice(),vel:m._gd&&m._gd.vel||null,w:m._gd?m._gd.w:0,land:0,sv:p.saveT||0};}
+  const G=m._gd;if(!G)return;G.t+=dt;
+  if(p.stun>0||p.frozen>0||(p.flyY>.05)){m._gd=null;m._gdTilt=null;return;}
+  const bd=slBind(m,B),L=bd.limbs,h=bd.hipY,fz=(B._rab||raBind(m,B)).fz,rb=rBind(m,B);
+  const lead=G.sd,oth=lead==='r'?'l':'r',SX=(L[lead+'a']||{sx:1}).sx,held=ball.gk===p;
+  // contacto: el resultado real decide (si no coincide con lo que adivinó, cambia la acción para el resto)
+  if((p.saveT||0)>G.sv+.05&&G.ph==='dive'){G.sv=p.saveT;const kd=p.saveKind||'';const real=held||['alta','baja','lado','pecho'].includes(kd)?'atrapa':kd==='fallo'?'fallo':kd==='punta'||kd==='travesano'?'punta':kd?'puno':G.act;
+    const u=G.t/.6;if(real!==G.act){G.act=real;G.keys=gdPlan(p,G.kind,real,clamp(u,.25,.62),fl);}G.hit=1;
+    if(real!=='fallo'){const v=new THREE.Vector3();(L[lead+'a']?L[lead+'a'].c:B.hips.b).getWorldPosition(v);burst(v.x,v.y,v.z,real==='atrapa'?0xffffff:0xfff2a0,real==='puno'?16:9,real==='puno'?8:5);if(real==='puno'){ringFx(v.x,v.z,2,0xfff2a0,.22);hitstop=Math.max(hitstop,.06);}}}
+  else if((p.saveT||0)<G.sv)G.sv=p.saveT||0;
+  if(held&&G.act!=='atrapa'&&G.ph==='dive'){G.act='atrapa';G.keys=gdPlan(p,G.kind,'atrapa',clamp(G.t/.6,.25,.62),fl);}
+  let tgt,rate=30;
+  if(G.ph==='dive'){const u=Math.min(1,G.t/.6);tgt=crv(G.keys,u);
+    if(u>=.8&&!G.land){G.land=1;G.bounce=1;dust(p.x,p.z);dust(p.x+rand(-.5,.5),p.z+rand(-.5,.5));puffFx(p.x,.3,p.z,0xd9d0b8,1.1,.22,.5);shakeAmt=Math.max(shakeAmt,.22*(fl.shake||1));G.sqv=-5*(fl.shake||1);}
+    if(u>=1&&!(p.dive>0)){G.ph='floor';G.t=0;if(G.cur){while(G.cur[0]>Math.PI)G.cur[0]-=2*Math.PI;}}}
+  if(G.ph==='floor'){tgt=G.keys[G.keys.length-1][1].map((v,i)=>i===0?((v+Math.PI)%(2*Math.PI))-Math.PI:v);
+    if(G.act==='fallo'&&G.t<.5){const s=Math.sin(Math.min(1,G.t/.5)*Math.PI*2);tgt=tgt.slice();tgt[5]=.4+.6*Math.max(0,s);tgt[6]=.5-.4*Math.max(0,s);if(G.t>.24&&!G.slam){G.slam=1;dust(p.x,p.z);}}   // golpea el piso de coraje
+    if((!(p.down>.25)&&G.t>(G.act==='fallo'?.5:0))||held){G.ph='up';G.t=0;G.from=G.cur.slice();}}
+  if(G.ph==='up'){const D=held?.5:.42,u=Math.min(1,G.t/D);const k=GD_UP.slice();k[0]=[0,G.from];tgt=crv(k,u);rate=26;if(u>=1){G.ph='out';G.t=0;}}
+  if(G.ph==='out'){tgt=GD_READY;G.w-=dt/.15;if(G.w<=0){m._gd=null;m._gdTilt=null;if(m.toonS0)B.model.scale.copy(m.toonS0);return;}}else G.w=Math.min(1,G.w+dt/.05);
+  // resortes: el cuerpo llega con rebote; brazos y piernas van un poco atrás (látigo)
+  if(!G.vel)G.vel=G.cur.map(()=>0);while(G.cur.length<tgt.length){G.cur.push(0);G.vel.push(0);}
+  {const n=Math.max(1,Math.ceil(dt/(1/120))),hh=dt/n;for(let s=0;s<n;s++)for(let i=0;i<tgt.length;i++){const lim=i>=4&&i<28,om=rate*(lim?1.05:1.25),ze=lim?.5:.6;G.vel[i]+=(om*om*(tgt[i]-G.cur[i])-2*ze*om*G.vel[i])*hh;G.cur[i]+=G.vel[i]*hh;}}
+  const P=G.cur,w=G.w;let armW=w;if(held&&G.ph!=='dive')armW=w*(Math.abs(P[0])>.6?1:.45);
+  G.sq=G.sq||0;G.sqv=G.sqv||0;{const om=18,ze=.32;G.sqv+=(-om*om*G.sq-2*ze*om*G.sqv)*dt;G.sq+=G.sqv*dt;}
+  let bnc=0;if(G.bounce>0){G.bounce=Math.max(0,G.bounce-dt/.3);const b=1-G.bounce;bnc=Math.sin(b*Math.PI)*.14*h*(1-b);}
+  // cuerpo (Coletazo además gira sobre sí mismo en el aire)
+  const yawSp=fl.twist&&G.ph==='dive'?SX*-2*Math.PI*sm(clamp((G.t/.6-.15)/.6,0,1)):0;
+  m._gdTilt=[P[1]*fz*w,0,0,-SX*P[0]*w,yawSp*w];
+  m.tilt.rotation.order='YXZ';m.tilt.rotation.set(m._gdTilt[0],m._gdTilt[4],m._gdTilt[3]);m.tilt.position.set(0,0,0);m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const eu=new THREE.Euler(m._gdTilt[0],m._gdTilt[4],m._gdTilt[3],'YXZ');
+  const VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  const Tq=new THREE.Quaternion();m.tilt.getWorldQuaternion(Tq);const TX=new THREE.Vector3(1,0,0).applyQuaternion(Tq),TY=new THREE.Vector3(0,1,0).applyQuaternion(Tq);
+  // columna desde la pose base: curvatura y giro repartidos entre las vértebras
+  for(const c of [B.hips])if(c&&c.b){const q0=(B.all.find(o=>o.b===c.b)||{}).q0;if(q0){c.b.quaternion.slerp(q0,w*.85);c.b.updateMatrixWorld(true);}}
+  const ch=rb.chain,n=ch.length||1;
+  for(const s of ch){const c=new THREE.Quaternion();s.b.getWorldQuaternion(c);const qb=Rq.clone().multiply(new THREE.Quaternion().setFromEuler(eu)).multiply(s.q);setWorldQ(s.b,c.slerp(qb,w*.85));}
+  for(const s of ch){rotBoneW(s.b,TX,P[3]*fz*w/n);rotBoneW(s.b,TY,-SX*P[28]*fz*w/n);}
+  // cabeza: sigue al balón
+  if(B.hd&&rb.hdQ){const hp=new THREE.Vector3();B.hd.b.getWorldPosition(hp);const d=new THREE.Vector3(ball.x,ball.y,ball.z).sub(hp);const ci=Tq.clone().invert(),ld=d.applyQuaternion(ci);
+    const yaw=clamp(Math.atan2(ld.x,ld.z*fz),-.7,.7),pit=clamp(Math.atan2(ld.y,Math.hypot(ld.x,ld.z)),-.6,.6);const c=new THREE.Quaternion();B.hd.b.getWorldQuaternion(c);
+    setWorldQ(B.hd.b,c.slerp(Tq.clone().multiply(rb.hdQ),w*.8));rotBoneW(B.hd.b,TY,yaw*.7*w);rotBoneW(B.hd.b,TX,-pit*.6*fz*w);}
+  const lg=(k,o)=>{const Gl=L[k+'l'];if(Gl)slLimb(Gl,Rq,VA(Gl.sx*P[o],P[o+1],P[o+2]),VA(Gl.sx*P[o+3],P[o+4],P[o+5]),null,w);};
+  const am=(k,o,ww)=>{const A=L[k+'a'];if(A)slLimb(A,Rq,VA(A.sx*P[o],P[o+1],P[o+2]),VA(A.sx*P[o+3],P[o+4],P[o+5]),null,ww);};
+  am(lead,4,armW);am(oth,10,armW);lg(lead,16);lg(oth,22);
+  // estela de la mano que golpea
+  if(G.ph==='dive'&&G.act!=='atrapa'&&Math.abs(G.t/.6-G.tC)<.1&&L[lead+'a']){const v=new THREE.Vector3();L[lead+'a'].c.getWorldPosition(v);part(v.x,v.y,v.z,rand(-.3,.3),rand(-.1,.3),rand(-.3,.3),0xffffff,.14,0,.22);}
+  // apoyo en el piso
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;const torso=new Set([B.hips.b,...ch.map(s=>s.b),B.hd&&B.hd.b]);
+  for(const o of B.all){o.b.getWorldPosition(v);mn=Math.min(mn,v.y-(torso.has(o.b)?.14*h:.04*h));}
+  const air=G.ph==='dive'&&!G.land;let lift=-(mn-m.root.position.y);
+  lift=air?Math.max(lift,lift+P[2]*h):lift+Math.max(0,P[2])*h;lift+=bnc;
+  m._gdTilt[1]=lift*w;m.tilt.position.y=m._gdTilt[1];
+  const q=clamp(G.sq,-.2,.15)*w;if(!m.toonS0)m.toonS0=B.model.scale.clone();const s0=m.toonS0;B.model.scale.set(s0.x*(1-q*.5),s0.y*(1+q),s0.z*(1-q*.5));
+  m.root.updateMatrixWorld(true);}
+// v185: atajadas de frente (sin estirada): el golpe del balón se siente en el cuerpo
+// pecho: el impacto lo empuja atrás y da un paso; alta: brinca y cae flexionando; baja: se agacha y la recoge;
+// rechazo de frente: despeja con los dos puños; pie: saca la pierna; cuerpo: se hace bolita; punta/travesaño: brinca con un brazo arriba
+function gkFrontPose(m,p,dt){const B=m.bones;if(!B||!B.hips||!p.gk||m._gd)return;
+  const st=p.saveT||0;if(st>(m._gfS||0)+.05&&!(p.dive>0)){const kd=p.saveKind||'';if(kd&&kd!=='fallo')m._gf={kd,t:0,sd:sideOf(p,p.saveZ||1),yv:0,y:0,pv:0,pp:0};}
+  m._gfS=st;const F=m._gf;if(!F){m._gfTilt=null;m._gfPrev=null;return;}F.t+=dt;
+  const D={pecho:.55,alta:.7,baja:.5,lado:.5,rechazo:.55,desvio:.55,pie:.55,cuerpo:.6,punta:.65,travesano:.65}[F.kd]||.5,u=F.t/D;
+  if(u>=1||p.stun>0||p.frozen>0||p.dive>0){m._gf=null;m._gfTilt=null;m._gfPrev=null;return;}
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x),w=sm(u/.08)*(1-sm((u-.7)/.3));
+  const bd=slBind(m,B),L=bd.limbs,h=bd.hipY,fz=(B._rab||raBind(m,B)).fz,kd=F.kd;
+  // impulsos (resortes): inclinación y altura
+  if(F.t<=dt*1.5){F.pv=kd==='pecho'||kd==='cuerpo'?-10:kd==='alta'||kd==='punta'||kd==='travesano'?-3:kd==='baja'?4:kd==='rechazo'||kd==='desvio'?-4:0;
+    F.yv=kd==='alta'||kd==='punta'||kd==='travesano'?9:kd==='rechazo'||kd==='desvio'?3:kd==='baja'?-3:0;}
+  const om=13,ze=.42;F.pv+=(-om*om*F.pp-2*ze*om*F.pv)*dt;F.pp+=F.pv*dt;F.yv+=(-om*om*F.y-2*ze*om*F.yv)*dt;F.y+=F.yv*dt;
+  const pit=F.pp*.85,lift=F.y*.5*h;
+  m._gfTilt=[pit*fz*w,Math.max(-.2*h,lift)*w];
+  const pv=m._gfPrev||[0,0];m.tilt.rotation.x+=m._gfTilt[0]-pv[0];m.tilt.position.y+=m._gfTilt[1]-pv[1];m._gfPrev=m._gfTilt.slice();m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const eu=new THREE.Euler(m.tilt.rotation.x,0,m.tilt.rotation.z);
+  const VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  const am=(k,a,b,ww)=>{const A=L[k+'a'];if(A)slLimb(A,Rq,VA(A.sx*a[0],a[1],a[2]),VA(A.sx*b[0],b[1],b[2]),null,ww);};
+  const lg=(k,a,b,ww)=>{const G=L[k+'l'];if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,ww);};
+  const lead=F.sd,oth=lead==='r'?'l':'r';
+  if(kd==='rechazo'||kd==='desvio'){const e=sm(u/.15)*(1-sm((u-.45)/.4));am('l',[.18,.88,.44],[.06,.9,.43],w*e);am('r',[.18,.88,.44],[.06,.9,.43],w*e);}   // los dos puños juntos, arriba de la cabeza (nunca frente a la cara)
+  else if(kd==='punta'||kd==='travesano'){const e=sm(u/.12)*(1-sm((u-.5)/.4));am(lead,[.25,.96,.1],[.15,.98,.1],w*e);am(oth,[.6,-.6,-.4],[.5,-.7,-.3],w*e*.8);}
+  else if(kd==='pie'){const e=sm(u/.12)*(1-sm((u-.5)/.4));lg(lead,[.75,-.6,.25],[.85,-.5,.2],w*e);am(lead,[.8,.2,.3],[.7,.4,.4],w*e*.7);am(oth,[.8,.1,-.3],[.7,.3,-.4],w*e*.7);}
+  else if(kd==='cuerpo'){const e=sm(u/.12)*(1-sm((u-.55)/.4));am('l',[.45,-.45,.77],[-.5,-.05,.86],w*e);am('r',[.45,-.45,.77],[-.5,-.05,.86],w*e);lg('l',[.15,-.5,.85],[.08,-.98,-.1],w*e*.6);lg('r',[.15,-.5,.85],[.08,-.98,-.1],w*e*.6);}
+  else if(kd==='alta'){const e=sm((F.y-.05)/.4);lg('l',[.12,-.6,.78],[.06,-.98,-.15],w*e);lg('r',[.12,-.75,.65],[.06,-.98,-.15],w*e);}   // en el aire recoge las rodillas
+  else if(kd==='baja'){const e=sm(u/.15)*(1-sm((u-.5)/.4));lg('l',[.3,-.6,.75],[.15,-.97,-.2],w*e);lg('r',[.3,-.6,.75],[.15,-.97,-.2],w*e);}
+  // un paso atrás con el impacto de pecho
+  if(kd==='pecho'&&u>.12&&u<.45){const e=Math.sin((u-.12)/.33*Math.PI);lg(oth,[.12,-.92,-.38],[.06,-.97,-.25],w*e);}
+  // nada debajo del piso
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const o of B.all){o.b.getWorldPosition(v);mn=Math.min(mn,v.y);}
+  const margin=Math.max(.04,(B.restFootY||.08)*.9);if(mn<margin){const d=margin-mn;m._gfTilt[1]+=d;m.tilt.position.y+=d;m.root.updateMatrixWorld(true);}}
+// ================== v187: POSTURA DEL PORTERO (estilo Strikers): muy agachado, piernas abiertas, puños al frente; pasos de lado pesados; sale a cortar con los brazos abiertos ==================
+function gkStance(m,p,dt){const B=m.bones;if(!B||!B.hips||!p.gk)return;
+  const busy=m._gd||m._bT!=null||m._gf||(p.react==='sentado'||p.react==='enojado')||ball.gk===p||p.distrib||p.dive>0||p.stun>0||p.frozen>0||p.flyY>.05||p.smother>0||p.highT>0||p.blockT>0||p.prepT>0||p.saveT>0||p.down>0;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  m._gsW=(m._gsW||0)+((busy?0:1)-(m._gsW||0))*Math.min(1,dt*(busy?18:8));const w=sm(m._gsW);if(w<.01){m._gsTilt=null;return;}
+  const bd=slBind(m,B),L=bd.limbs,h=bd.hipY,fz=(B._rab||raBind(m,B)).fz;
+  // velocidad en el espacio del portero
+  const ry=m.root.rotation.y,lx=p.vx*Math.cos(ry)-p.vz*Math.sin(ry),lz=(p.vx*Math.sin(ry)+p.vz*Math.cos(ry))*fz,sp=Math.hypot(lx,lz);
+  const rush=(p.rushing||p.claim)&&sp>2.5?1:0;m._gsR=(m._gsR||0)+(rush-(m._gsR||0))*Math.min(1,dt*8);const R=sm(m._gsR);
+  const st=Math.min(1,sp/2.2);m._gsS=(m._gsS||0)+(st-(m._gsS||0))*Math.min(1,dt*10);const S=m._gsS;
+  m._gsP=(m._gsP||0)+dt*(4+sp*2.4)*(S>.05?1:0);const ph=m._gsP,s1=Math.sin(ph),c1=Math.cos(ph);
+  const side=Math.abs(lx)>Math.abs(lz)?Math.sign(lx||1):0;   // pasos de lado (side ≠ 0) o hacia adelante/atrás
+  const br=Math.sin(T*3.1+p.idx)*.5+.5;   // respiración / balanceo de luchador
+  // cuerpo: agachado e inclinado; al pisar se ladea hacia el pie de apoyo (pesado)
+  const pit=(.28+.12*R)+.03*br,roll=side?-.1*S*s1:0;
+  m._gsTilt=[pit*fz*w,0,0,roll*w];
+  m.tilt.rotation.set(m._gsTilt[0],0,m._gsTilt[3]);m.tilt.position.set(0,0,0);m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const eu=new THREE.Euler(m.tilt.rotation.x,0,m.tilt.rotation.z);
+  const VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  const lim=(G,a,b,ww)=>{if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,ww);};
+  // piernas: muy abiertas y flexionadas (sumo). Al moverse de lado, la pierna que guía se abre y la otra la alcanza; adelante, pasos cortos
+  for(const k of ['l','r']){const G=L[k+'l'];if(!G)continue;const sx=G.sx,lead=side&&Math.sign(sx)===side?1:side?-1:0;
+    const ph2=ph+(k==='l'?0:Math.PI),lift=Math.max(0,Math.sin(ph2))*S,fw=Math.cos(ph2)*S*(side?0:.45);
+    const out=.55+(lead>0?.18*Math.max(0,s1):lead<0?-.15*Math.max(0,-s1):0)*S;
+    lim(G,[out,-.7+.25*lift,.22+.35*lift+fw],[.12,-.97,-.2+.3*lift],w);}
+  // brazos: puños al frente a la altura del pecho, codos afuera; al salir a cortar, brazos abiertos
+  const bob=.05*br+(S>.05?.06*s1:0);
+  const UA=[.62-.1*R,-.3+bob+.15*R,.72-.4*R],FA=[.18+.6*R,.1+bob,.97-.5*R];
+  lim(L.la,UA,FA,w*.95);lim(L.ra,[UA[0],UA[1]-2*bob*(S>.05?1:0),UA[2]],[FA[0],FA[1]-bob,FA[2]],w*.95);
+  // cabeza: mira al balón (ya lo hace glbLife), aquí solo compensa la inclinación
+  if(B.hd)rotBoneW(B.hd.b,new THREE.Vector3(1,0,0).applyQuaternion(Rq),-m._gsTilt[0]*.75);
+  // pies en el piso: baja el cuerpo hasta que el pie más bajo toque el pasto
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const b of B.toes){b.getWorldPosition(v);mn=Math.min(mn,v.y);}
+  const want=Math.max(.02,(B.restFootY||.06));const d=(want-mn)*w;m._gsTilt[1]=d;m.tilt.position.y=d;m.root.updateMatrixWorld(true);}
+// v187: momentos del portero estilo Strikers: mareado (se tambalea con la cabeza dando vueltas) y gol en contra (golpea el piso con los dos puños, se agarra la cabeza y se tira de espaldas)
+const GKL_K=(pi,lift,la,lf,lt,ls)=>[pi,lift,...la,...lf,...lt,...ls];
+const GK_LAMENT=[[0,GKL_K(.3,0,[.6,-.3,.72],[.18,.1,.97],[.55,-.7,.22],[.12,-.97,-.2])],
+ [.12,GKL_K(.15,0,[.35,.9,.25],[.2,.95,.2],[.5,-.75,.3],[.12,-.97,-.2])],                 // puños arriba
+ [.22,GKL_K(.75,-.08,[.25,-.55,.8],[.15,-.95,.25],[.5,-.6,.6],[.15,-.97,-.2])],            // ¡pum! contra el piso
+ [.3,GKL_K(.35,0,[.35,.9,.25],[.2,.95,.2],[.5,-.75,.3],[.12,-.97,-.2])],
+ [.4,GKL_K(.75,-.08,[.25,-.55,.8],[.15,-.95,.25],[.5,-.6,.6],[.15,-.97,-.2])],            // ¡pum! otra vez
+ [.55,GKL_K(-.05,0,[.7,.65,.3],[-.6,.75,-.2],[.45,-.85,.25],[.12,-.97,-.15])],            // se agarra la cabeza
+ [.72,GKL_K(-.15,0,[.7,.65,.3],[-.6,.75,-.2],[.45,-.85,.25],[.12,-.97,-.15])],
+ [.85,GKL_K(-1.45,0,[.85,.45,-.25],[.6,.75,-.25],[.35,-.25,.9],[.15,-.85,-.5])],          // se tira de espaldas
+ [1,GKL_K(-1.5,0,[.95,.25,-.15],[.75,.6,-.25],[.35,-.2,.92],[.12,-.9,-.42])]];
+function gkMoments(m,p,dt){const B=m.bones;if(!B||!B.hips||!p.gk||m._gd||m._r)return;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  const lam=(p.react==='sentado'||p.react==='enojado')&&!(p.stun>0),diz=p.stun>0&&!(p.flyY>.05)&&!(p.dive>0)&&!(p.elecT>0);
+  if(lam){if(m._gl==null)m._gl=0;m._gl+=dt;}else m._gl=null;
+  if(diz){m._gz=(m._gz||0)+dt;}else m._gz=0;
+  m._gmW=(m._gmW||0)+(((lam||diz)?1:0)-(m._gmW||0))*Math.min(1,dt*10);const w=sm(m._gmW);if(w<.01){m._gmTilt=null;return;}
+  const bd=slBind(m,B),L=bd.limbs,h=bd.hipY,fz=(B._rab||raBind(m,B)).fz;let P,roll=0,yawH=0;
+  if(m._gl!=null){P=crv(GK_LAMENT,Math.min(1,m._gl/2.6));
+    const ph=Math.min(1,m._gl/2.6);if((ph>.21&&!m._glA)||(ph>.39&&!m._glB)){if(ph>.39)m._glB=1;else m._glA=1;for(let i=0;i<10;i++)dust(p.x+rand(-.8,.8)+Math.sin(p.face)*.6,p.z+rand(-.8,.8)+Math.cos(p.face)*.6);shakeAmt=Math.max(shakeAmt,.35);ringFx(p.x+Math.sin(p.face)*.6,p.z+Math.cos(p.face)*.6,2,0xd9d0b8,.25);}
+    if(ph<.1){m._glA=0;m._glB=0;}}
+  else{const t=m._gz;roll=.22*Math.sin(t*5);yawH=Math.sin(t*7)*.5;P=GKL_K(.25+.08*Math.sin(t*3.3),0,[.75,-.62,.2+.15*Math.sin(t*5)],[.55,-.83,.1],[.55,-.75,.25],[.12,-.97,-.15]);}   // mareado: brazos colgando, se balancea
+  m._gmTilt=[P[0]*fz*w,0,roll*w];
+  m.tilt.rotation.set(m._gmTilt[0],0,m._gmTilt[2]);m.tilt.position.set(0,0,0);m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const eu=new THREE.Euler(m._gmTilt[0],0,m._gmTilt[2]);
+  const VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  const lim=(G,o,ww)=>{if(G)slLimb(G,Rq,VA(G.sx*P[o],P[o+1],P[o+2]),VA(G.sx*P[o+3],P[o+4],P[o+5]),null,ww);};
+  for(const c of [B.hips,B.sp,B.sp2])if(c&&c.b){const q0=c.q0||(B.all.find(o=>o.b===c.b)||{}).q0;if(q0){c.b.quaternion.slerp(q0,w*.8);c.b.updateMatrixWorld(true);}}
+  lim(L.la,2,w);lim(L.ra,2,w);lim(L.ll,8,w);lim(L.rl,8,w);
+  if(B.hd&&yawH)rotBoneW(B.hd.b,new THREE.Vector3(0,1,0).applyQuaternion(Rq),yawH*w);
+  // apoyo: el cuerpo o los pies tocan el pasto
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;const torso=new Set([B.hips.b,B.sp&&B.sp.b,B.sp2&&B.sp2.b,B.hd&&B.hd.b]);
+  for(const o of B.all){o.b.getWorldPosition(v);mn=Math.min(mn,v.y-(torso.has(o.b)?.2*h:0));}
+  const d=(Math.max(.03,B.restFootY||.06)-mn)*w;m._gmTilt[1]=d;m.tilt.position.y=d;m.root.updateMatrixWorld(true);}
+// v188: Muralla con el balón: lo abraza agachado; saque con la mano: lo levanta atrás de la cabeza y lo avienta de lado; mano a mano: se abre como muro
+function gkHoldThrow(m,p,dt){const B=m.bones;if(!B||!B.hips||!p.gk||m._gd||m._r)return;
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  const hold=ball.gk===p&&!p.distrib&&!(p.dive>0)&&!(p.down>0),thr=p.distrib&&p.distrib.type==='mano',wall=p.smother>0&&!(p.dive>0);
+  const on=hold||thr||wall;m._ghW=(m._ghW||0)+((on?1:0)-(m._ghW||0))*Math.min(1,dt*(on?12:8));const w=sm(m._ghW);if(w<.01){m._ghTilt=null;m._hug=0;return;}
+  if(on)m._ghK=thr?'thr':wall?'wall':'hold';const K=m._ghK;m._hug=K==='hold'?1:0;
+  const bd=slBind(m,B),L=bd.limbs,fz=(B._rab||raBind(m,B)).fz;
+  let pit=.38,yaw=0,lt=[.55,-.72,.3],ls=[.12,-.97,-.2],rt=lt,rs=ls,arms=null;
+  if(K==='wall'){pit=.55;lt=rt=[.75,-.6,.2];arms=[[.95,-.3,.1],[.9,-.35,.25],[.95,-.3,.1],[.9,-.35,.25]];}
+  else if(K==='thr'){const t=p.distrib?p.distrib.t:.7,u1=sm(t/.3),u2=sm((t-.3)/.12),u3=sm((t-.42)/.3);
+    pit=-.12*u1*(1-u2)+.35*u2;yaw=(-.7*u1*(1-u2)+.55*u2*(1-.5*u3));   // se enrosca atrás y suelta girando
+    lt=[.35,-.8,.5*u2+.1];ls=[.1,-.98,-.15];rt=[.45,-.85,-.2];rs=[.1,-.98,-.15];
+    const RA=u2<.01?[.35+.05*u1,.4+.5*u1,-.3-.5*u1]:[.35+.5*u2,.9-1.0*u2-.3*u3,-.8+1.55*u2],RF=u2<.01?[.2,.75*u1+.1,-.1-.5*u1]:[.2+.4*u2,.85-.9*u2-.3*u3,-.6+1.4*u2];
+    arms=[[.45,.1+.2*u1,.85],[.35,.2+.2*u1,.9],RA,RF];}   // la mano izquierda apunta al compañero
+  m._ghTilt=[pit*fz*w,0,yaw*w];
+  m.tilt.rotation.set(m._ghTilt[0],0,0);m.tilt.position.set(0,0,0);m.root.updateMatrixWorld(true);
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);const eu=new THREE.Euler(m._ghTilt[0],0,0);
+  const VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);
+  for(const c of [B.hips,B.sp,B.sp2])if(c&&c.b){const q0=c.q0||(B.all.find(o=>o.b===c.b)||{}).q0;if(q0){c.b.quaternion.slerp(q0,w*.8);c.b.updateMatrixWorld(true);}}
+  const sp=B.sp2||B.sp;if(sp&&yaw){const Tq=new THREE.Quaternion();m.tilt.getWorldQuaternion(Tq);rotBoneW(sp.b,new THREE.Vector3(0,1,0).applyQuaternion(Tq),yaw*fz*w*(L.ra?Math.sign(L.ra.sx):1));}
+  const lim=(G,a,b,ww)=>{if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,ww);};
+  lim(L.ll,lt,ls,w);lim(L.rl,rt,rs,w);
+  if(arms){lim(L.la,arms[0],arms[1],w);lim(L.ra,arms[2],arms[3],w);}
+  if(B.hd)rotBoneW(B.hd.b,new THREE.Vector3(1,0,0).applyQuaternion(Rq),-m._ghTilt[0]*.7);
+  m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const b of B.toes){b.getWorldPosition(v);mn=Math.min(mn,v.y);}
+  const d=(Math.max(.02,B.restFootY||.06)-mn);m._ghTilt[1]=d;m.tilt.position.y=d;m.root.updateMatrixWorld(true);}
+function hitPose(m,p,dt){const B=m.bones;if(!B||!B.hips)return;
+  const isGK=p.gk&&p.swipeT>0;
+  if((p.act==='body'||isGK)&&m._bT==null){m._bT=0;m._hq0=null;m._bLead=null;m._bFx=0;m._bK=isGK?'gk':'body';m._bS=null;if(m._bK==='body'){const id=p.card&&p.card.id;m._bStyle=HIT_STYLE[id]||'hombro';}else m._bStyle=GKSW_STYLE[p.card&&p.card.id]||'manotazo';}
+  if(m._bT==null)return;m._bT+=dt/(1+.45*(p.actPw||0));const GA=m._bK==='gk'?(GK_SW[m._bStyle]||GK_SW.manotazo):null,D=GA?GA.D:HIT_DUR,t=m._bT,u=t/D;
+  const end=()=>{m._bT=null;m._slTilt=null;m._bIn=null;B.model.visible=true;if(m._tw)m._tw.visible=false;if(m._sh)m._sh.visible=false;for(const o of B.all)if(o._hs){o.b.scale.copy(o.s0);o._hs=0;}};
+  if(u>=1||p.stun>0||p.flyY>.05||p.slip>0){end();return;}
+  const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x),w=sm(u/.14)*(1-sm((u-.62)/.38)),st=m._bStyle;
+  const ld=m._bStyle==='caza'?sm((u-.06)/.32)*(1-sm((u-.6)/.38)):sm((u-.12)/.22)*(1-sm((u-.55)/.4));   // empuje del golpe (pico a la mitad)
+  const bd=slBind(m,B),fz=(B._rab||raBind(m,B)).fz,h=bd.hipY,L=bd.limbs;
+  const Rq=new THREE.Quaternion();m.root.getWorldQuaternion(Rq);let VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize();
+  const wU=w;let lean=0,lift=0,roll=0,yaw=0;
+  let lead=p.idx%2?'l':'r';
+  if(m._bK==='gk'){if(m._bLead==null){const v=new THREE.Vector3(ball.x,1,ball.z);m.root.worldToLocal(v);const la=L.la;m._bLead=la&&Math.sign(v.x||1)===la.sx?'l':'r';}lead=m._bLead;}
+  const trail=lead==='r'?'l':'r',SX=(L[lead+'a']||{sx:1}).sx;
+  if(st==='hombro'||st==='rugby'||st==='llamas'){lean=(st==='rugby'?.5:.36)*(.4+.6*ld);}
+  else if(st==='cuernos')lean=.75*(.35+.65*ld);
+  else if(st==='empujon')lean=.28*ld;
+  else if(st==='caza'){lean=.8*ld;lift=Math.sin(Math.PI*clamp((u-.12)/.55,0,1))*.55*h;}
+  else if(st==='cadera'){yaw=1.1*ld;roll=.25*ld;lean=.1*ld;}
+  let gF=null;if(GA){const g=crv(GA.body,u);lean=g[0];lift=g[1]*h;gF=g[2]*h*fz+(lean>0?h*Math.sin(lean)*.5*fz:0);yaw=g[3]*-SX*fz;roll=g[4];}
+  m._slTilt=[lean*fz,lift,gF!=null?gF:lean>0?h*Math.sin(lean)*.5*fz:0,roll*(lead==='r'?-1:1)*(GA?SX:1),yaw];
+  m.tilt.rotation.set(m._slTilt[0],m._slTilt[4],m._slTilt[3]);m.tilt.position.y=m._slTilt[1];m.tilt.position.z=m._slTilt[2];m.root.updateMatrixWorld(true);
+  {const eu=new THREE.Euler(m._slTilt[0],m._slTilt[4],m._slTilt[3]);VA=(x,y,z)=>new THREE.Vector3(x,y,z*fz).normalize().applyEuler(eu);}   // direcciones relativas al cuerpo inclinado
+  // tornado: desaparece y gira un remolino; caparazón: se mete
+  if(st==='tornado'){const inT=u>.12&&u<.78;B.model.visible=!inT;hitTornado(m,inT,Math.sin(Math.PI*clamp((u-.12)/.66,0,1)));
+    if(inT!==m._bIn){m._bIn=inT;puffFx(p.x,1,p.z,0xdfeeff,1.4,.25,.7);}if(inT)return;}
+  if(st==='caparazon'){const inS=u>.1&&u<.82;B.model.visible=!inS;hitShell(m,inS,clamp((u-.1)/.12,0,1),dt,h);m._slTilt[1]=0;m._slTilt[4]=0;m.tilt.position.y=0;m.tilt.rotation.y=0;
+    if(inS!==m._bIn){m._bIn=inS;puffFx(p.x,.6,p.z,0xffffff,1.1,.22,.6);}return;}
+  if(wU<.002)return;
+  // torso: el hombro de adelante gira hacia el frente
+  const sp=(B.sp2||B.sp);if(sp&&(st==='hombro'||st==='rugby'||st==='llamas')){const Tq=new THREE.Quaternion();m.tilt.getWorldQuaternion(Tq);const Ly=new THREE.Vector3(0,1,0).applyQuaternion(Tq);   // gira sobre el eje del torso inclinado
+    if(m._bYs==null){const S=L[lead+'a'];const c=new THREE.Vector3(),c2=new THREE.Vector3();S.a.getWorldPosition(c);m.root.worldToLocal(c);rotBoneW(sp.b,Ly,.3);S.a.getWorldPosition(c2);m.root.worldToLocal(c2);rotBoneW(sp.b,Ly,-.3);m._bYs=(c2.z-c.z)*fz>0?1:-1;}
+    rotBoneW(sp.b,Ly,m._bYs*.55*ld*wU);}
+  if(st==='cuernos'&&B.hd){rotBoneW(B.hd.b,new THREE.Vector3(1,0,0).applyQuaternion(Rq),-.45*ld*fz*SL_SIGN*wU);}
+  else if(B.hd){const hq=new THREE.Quaternion();B.hd.b.getWorldQuaternion(hq);const Fq=Rq.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),m._slTilt[4]||0)),hl=Fq.clone().invert().multiply(hq);   // la cabeza conserva la orientación de la carrera aunque el cuerpo se incline
+    if(!m._hq0)m._hq0=hl.clone();const tq=hl.clone().slerp(m._hq0,.85*wU);setWorldQ(B.hd.b,Fq.clone().multiply(tq));}
+  const wA=st==='caza'?sm(u/.3)*(1-sm((u-.6)/.4)):wU;   // en la cacería los brazos suben más suave
+  const arm=(k,a,b)=>{const A=L[k+'a'];if(A)slArm(A,Rq,VA(A.sx*a[0],a[1],a[2]),VA(A.sx*b[0],b[1],b[2]),wA);};
+  const leg=(k,a,b)=>{const G=L[k+'l'];if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,wU*ld);};
+  if(GA){   // v176: manotazo del portero (cada uno el suyo)
+    const wG=sm(u/.12)*(1-sm((u-.84)/.16));
+    const U=crv(GA.lu,u),F=crv(GA.lf,u),TU=crv(GA.tu||GA.lu,u),TF=crv(GA.tf||GA.lf,u);
+    if(GA.sym){   // golpe con los dos brazos: espejo exacto (columna derecha y brazos desde la pose base, sin heredar el giro de la animación)
+      for(const c of [B.hips,B.sp,B.sp2])if(c&&c.b){const q0=c.q0||(B.all.find(o=>o.b===c.b)||{}).q0;if(q0){c.b.quaternion.slerp(q0,wG);c.b.updateMatrixWorld(true);}}
+      for(const k of ['l','r']){const A=L[k+'a'];if(A)slLimb(A,Rq,VA(A.sx*U[0],U[1],U[2]),VA(A.sx*F[0],F[1],F[2]),null,wG);}}
+    else{
+    {const A=L[lead+'a'];if(A)slArm(A,Rq,VA(A.sx*U[0],U[1],U[2]),VA(A.sx*F[0],F[1],F[2]),wG);}
+    {const A=L[trail+'a'];if(A)slArm(A,Rq,VA(A.sx*TU[0],TU[1],TU[2]),VA(A.sx*TF[0],TF[1],TF[2]),wG);}}
+    // piernas: abiertas y flexionadas al caer/agacharse
+    if(lift<-.06*h){const k=clamp(-lift/(.22*h),0,1)*wG;const lg=(kk,a,b)=>{const G=L[kk+'l'];if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,k);};
+      lg('l',[.35,-.75,.45],[.1,-.98,-.1]);lg('r',[.35,-.75,.45],[.1,-.98,-.1]);}
+    else if(lift>.12*h){const k=clamp(lift/(.4*h),0,1)*wG;const lg=(kk,a,b)=>{const G=L[kk+'l'];if(G)slLimb(G,Rq,VA(G.sx*a[0],a[1],a[2]),VA(G.sx*b[0],b[1],b[2]),null,k);};
+      lg(lead,[.15,-.6,.75],[.05,-.95,.15]);lg(trail,[.15,-.85,-.3],[.05,-.6,-.75]);}
+    // estela de la mano y efectos al contacto
+    const hb=L[lead+'a']&&L[lead+'a'].c;if(hb&&u>GA.cu-.16&&u<GA.cu+.08){const v=new THREE.Vector3();hb.getWorldPosition(v);
+      for(let i=0;i<2;i++)part(v.x+rand(-.08,.08),v.y+rand(-.08,.08),v.z+rand(-.08,.08),rand(-.4,.4),rand(-.2,.4),rand(-.4,.4),Math.random()<.5?0xffffff:0xfff2a0,.16,0,rand(.18,.3));}
+    if(!m._bFx&&u>=GA.cu){m._bFx=1;const v=new THREE.Vector3();(hb||B.hips.b).getWorldPosition(v);
+      if(st==='puno'||st==='manotazo'){ringFx(v.x,v.z,st==='puno'?4.2:3,0xfff1c4,.35);if(st==='puno')ringFx(v.x,v.z,2.4,0xffffff,.28);for(let i=0;i<14;i++)dust(v.x+rand(-1,1),v.z+rand(-1,1));shakeAmt=Math.max(shakeAmt,st==='puno'?.9:.65);}
+      else if(st==='zarpazo')clawFx(v.x,v.y,v.z,p.face||0);
+      else{ringFx(p.x,p.z,2.6,0xbfe8ff,.3);for(let i=0;i<10;i++)dust(p.x+rand(-1.2,1.2),p.z+rand(-1.2,1.2));}
+      burst(v.x,v.y,v.z,0xfff6a0,14,7);}
+    if(st==='pinza'&&u>.55&&u<.75&&Math.random()<.6)dust(p.x+rand(-.4,.4),p.z+rand(-.4,.4));}
+  else if(st==='hombro'||st==='llamas'||st==='rugby'){arm(lead,[.3,-.95,-.05],[.22,-.97,.12]);arm(trail,[.35,-.85,-.4],[.25,-.9,-.3]);
+    if(st==='llamas'&&Math.random()<.6){const v=new THREE.Vector3();(L[lead+'a']?L[lead+'a'].a:B.hips.b).getWorldPosition(v);part(v.x,v.y,v.z,rand(-1,1),rand(1,3),rand(-1,1),Math.random()<.5?0xff7a1a:0xffd23a,.3,-2,rand(.5,.9));}}
+  else if(st==='cuernos'){arm('l',[.32,-.8,-.5],[.22,-.88,-.4]);arm('r',[.32,-.8,-.5],[.22,-.88,-.4]);}
+  else if(st==='empujon'){const e=ld;arm('l',[.32,-.35+.3*e,.5+.5*e],[.18,-.2+.25*e,1]);arm('r',[.32,-.35+.3*e,.5+.5*e],[.18,-.2+.25*e,1]);}
+  else if(st==='caza'){const U=[.3,.1+.5*ld,1],F=[.2,.05+.4*ld,1];arm('l',U,F);arm('r',U,F);if(lift>.05*h){leg('l',[.12,-.8,-.5],[.05,-.6,-.8]);leg('r',[.12,-.85,-.35],[.05,-.75,-.6]);}}
+  else if(st==='cadera'){arm('l',[.6,-.75,0],[.7,-.35,.3]);arm('r',[.6,-.75,0],[.7,-.35,.3]);}
+  // nada debajo del piso
+  {m.root.updateMatrixWorld(true);const v=new THREE.Vector3();let mn=1e9;for(const o of B.all){o.b.getWorldPosition(v);if(v.y<mn)mn=v.y;}
+   let hm=1e9;for(const hb of [B.lh,B.rh])if(hb){hb.getWorldPosition(v);hm=Math.min(hm,v.y);}   // los puños/manos no se entierran
+   const margin=Math.max(.04,(B.restFootY||.08)*.9),d=Math.max(margin-mn,.1*h-hm);if(d>0){m._slTilt[1]+=d;m.tilt.position.y=m._slTilt[1];m.root.updateMatrixWorld(true);}}}
+function toonExag(c,mean,k,dt,rate){if(!c)return;const q=c.b.quaternion;if(!mean.has(c)){mean.set(c,q.clone());return;}const mq=mean.get(c);mq.slerp(q,Math.min(1,dt*rate));
+  // q = media · (media⁻¹ · q)^k
+  _tq1.copy(mq).invert().multiply(q);if(_tq1.w<0){_tq1.x*=-1;_tq1.y*=-1;_tq1.z*=-1;_tq1.w*=-1;}const ang=2*Math.acos(Math.min(1,_tq1.w));if(ang<1e-4)return;
+  const sn=Math.sin(ang/2);_tv1.set(_tq1.x/sn,_tq1.y/sn,_tq1.z/sn);_tq2.setFromAxisAngle(_tv1,Math.min(2.6,ang*k));q.copy(mq).multiply(_tq2);}
+function toonRun(m,p,dt){const P=!m.toonOff&&((p.card&&TOONRUN[p.card.id])||(m.toonId&&TOONRUN[m.toonId]));const B=m.bones;if(!B)return;
+  if(!_tq1){_tq1=new THREE.Quaternion();_tq2=new THREE.Quaternion();_tq3=new THREE.Quaternion();_tv1=new THREE.Vector3();_tv2=new THREE.Vector3();_tv3=new THREE.Vector3();}
+  const on=!!P&&TOONCLIPS.has(m.curA)&&!(p.frozen>0)&&!(p.stun>0)&&!(p.flyY>.05);m.toonW=(m.toonW||0)+((on?1:0)-(m.toonW||0))*Math.min(1,dt*6);
+  const w=m.toonW;if(!m.toonMean)m.toonMean=new Map();if(!m.toonS0)m.toonS0=B.model.scale.clone();
+  if(w<.01||!P){B.model.scale.copy(m.toonS0);return;}
+  const M=m.toonMean,L=k=>1+(k-1)*w;const jf=_sm(m,'_jf',(m.curA==='jog'||m.curA==='jog_back')?1:0,dt,6);   // trote ↔ carrera sin salto
+  for(const c of [B.lul,B.rul,B.ll,B.rl])toonExag(c,M,L(P.leg),dt,1.6);
+  for(const c of [B.la,B.ra,B.lfa,B.rfa])toonExag(c,M,L(P.arm),dt,1.6);
+  for(const c of [B.sp,B.sp2])toonExag(c,M,L(P.sp),dt,1.6);
+  if(P.hipK!=null&&B.hips){if(!B._hc)B._hc={b:B.hips.b};toonExag(B._hc,M,L(P.hipK),dt,1.6);}   // v171: cadera más quieta (caparazón de la tortuga sin bambolearse)
+  // rebote extra de la cadera y estirar/aplastar según si va subiendo o bajando
+  let vy=0;if(B.hips){const h=B.hips.b;if(m.toonHy==null)m.toonHy=h.position.y;m.toonHy+=(h.position.y-m.toonHy)*Math.min(1,dt*3);const d=h.position.y-m.toonHy;h.position.y=m.toonHy+d*L(P.bob);
+    vy=(h.position.y-(m.toonPy==null?h.position.y:m.toonPy))/Math.max(dt,1e-3);m.toonPy=h.position.y;}
+  const hs=(B.hipsH||1),st=Math.tanh(vy/(hs*6))*P.sq*w;m.toonSt=(m.toonSt||0)+(st-(m.toonSt||0))*Math.min(1,dt*18);
+  const s0=m.toonS0,e=m.toonSt;B.model.scale.set(s0.x*(1-e*.5),s0.y*(1+e),s0.z*(1-e*.5));
+  // inclinación al frente y cabeza suelta (se va un poco atrás cuando el cuerpo sube)
+  if(B.sp&&P.lean){_tq3.setFromAxisAngle(B.sp.ax,P.lean*w*(B.fwd||1));B.sp.b.quaternion.premultiply(_tq3);}
+  if(P.armFwd&&B.la&&B.ra){for(const c of [B.la,B.ra]){_tq3.setFromAxisAngle(c.ax,P.armFwd*.5*jf*w*(B.fwd||1));c.b.quaternion.premultiply(_tq3);}}
+  if(P.armOut&&B.la&&B.ra){_tq3.setFromAxisAngle(B.la.az,B.lsx*P.armOut*w);B.la.b.quaternion.premultiply(_tq3);_tq3.setFromAxisAngle(B.ra.az,B.rsx*P.armOut*w);B.ra.b.quaternion.premultiply(_tq3);}
+  if(P.fore){for(const c of [B.lfa,B.rfa])if(c)c.b.quaternion.slerp(c.q0,P.fore*w);}
+  if(false&&P.elbow&&jf>.01){   // v171: reemplazado por runArms (también en trote)
+const R=m.root,ex=_tv2,hz=_tv3;R.updateMatrixWorld(true);R.getWorldQuaternion(_tq1);ex.set(1,0,0).applyQuaternion(_tq1);   // codo doblado hacia el frente (bisagra de lado a lado)
+    const A=P.elbow*.55*jf*w,sv=_ev||(_ev=new THREE.Vector3()),ev2=_ev2||(_ev2=new THREE.Vector3()),EF=m._ef||(m._ef={}),BK=m._bk||(m._bk={});
+    for(const [k,c,h,u] of [['l',B.lfa,B.lh,B.la],['r',B.rfa,B.rh,B.ra]])if(c&&h&&u){u.b.getWorldPosition(sv);R.worldToLocal(sv);const top=sv.y-.12*(B.hipsH||1);   // la mano nunca sube arriba del hombro
+      const hpos=()=>{h.getWorldPosition(hz);R.worldToLocal(hz);return hz;},elb=()=>{c.b.getWorldPosition(ev2);R.worldToLocal(ev2);return ev2;};
+      // el brazo no sube por detrás más arriba de cierto ángulo
+      const e0=elb(),over=e0.y-(sv.y-.28*(B.hipsH||1)),a2=_sm(BK,k,over>0?Math.min(.9,over/Math.max(.1,e0.distanceTo(sv))*1.2):0,dt,10)*w;
+      if(a2>.002){const sg=sgnOf(m,'bk'+k,()=>{const y0=elb().y;_tq2.setFromAxisAngle(ex,.2);rotW(u.b,_tq2);const r=elb().y<y0?1:-1;_tq2.setFromAxisAngle(ex,-.2);rotW(u.b,_tq2);return r;});
+        _tq2.setFromAxisAngle(ex,a2*sg);rotW(u.b,_tq2);}
+      const qa=_eq||(_eq=new THREE.Quaternion());qa.copy(c.b.quaternion).slerp(c.q0,w*jf);
+      const sg=sgnOf(m,'el'+k,()=>{c.b.quaternion.copy(qa);c.b.updateMatrixWorld(true);const z0=hpos().z;_tq2.setFromAxisAngle(ex,.3);rotW(c.b,_tq2);return hpos().z>z0?1:-1;});
+      const put=f=>{c.b.quaternion.copy(qa);c.b.updateMatrixWorld(true);if(f>0){_tq2.setFromAxisAngle(ex,A*f*sg);rotW(c.b,_tq2);}};
+      let ft=0;for(const f of [1,.8,.6,.4,.2]){put(f);if(hpos().y<top){ft=f;break;}}
+      put(_sm(EF,k,ft,dt,8));}}
+  if(P.hand){if(!B._hq0){B._hq0=new Map();for(const o of B.all)if(o.b===B.lh||o.b===B.rh)B._hq0.set(o.b,o.q0);}
+    for(const hb of [B.lh,B.rh]){const q0=hb&&B._hq0.get(hb);if(q0)hb.quaternion.slerp(q0,P.hand*w*(.7+.3*jf));}
+    if(!_hq.length){for(let i=0;i<3;i++)_hq.push(new THREE.Quaternion());for(let i=0;i<6;i++)_hv.push(new THREE.Vector3());}
+    }
+  {const sc=B.model.scale.clone();B.model.scale.copy(m.toonS0);m.root.updateMatrixWorld(true);runArms(m,B,P,w,dt,jf);B.model.scale.copy(sc);}   // los brazos se calculan sin el estirado (si no, los giros salen torcidos)   // v171: brazos de corredor hechos a mano (reemplaza los de la animación al correr)
+  if(B.hd&&P.hd){_tq3.setFromAxisAngle(B.hd.ax,-e*2.2*P.hd*(B.fwd||1)-P.lean*w*.6*(B.fwd||1));B.hd.b.quaternion.premultiply(_tq3);}}
 const SHOWMAN={zurdito:0,expreso:1,rey:1,coletazo:1,malabares:1,turbo:1};
 function sideOf(p,dz,dx){const r=-Math.cos(p.face)*(dx||0)+Math.sin(p.face)*dz;return r>0?'r':'l';}
 function libEvents(p,m){
   const M=n=>ANIMMETA[n]||{};const ev=(n,o)=>goA(m,n,Object.assign({restart:true},o));
   // reacciones (máxima prioridad)
+  if(REACT_PROC&&!p.gk&&(m._r||p.flyY>.05||p.flyVy>0||(p.stun>.95&&!(p.slip>0)&&!(p.spinT>0)))){p._flyE=0;p._stE=0;p._stMax=0;if(m.curA!=='idle'&&act(m,'idle'))goA(m,'idle',{fade:.15});m.lockUntil=T+.1;return;}   // v179: la reacción la dibuja reactPose
   if((p.flyVy>0||p.flyY>.05)&&!p._flyE){p._flyE=1;ev('fly_back',{from:.25,ts:1.25,lock:1.1,fade:.08});return;}
   if(p._flyE&&!(p.flyY>.02)&&!(p.flyVy>0)){p._flyE=0;ev('getup',{from:.25,ts:2.3,lock:.85,fade:.12});return;}
   if(p._arc&&act(m,'penalty')){if(m.curA!=='penalty'||!p._arcE){p._arcE=1;ev('penalty',{from:.74,ts:.02,lock:.3,fade:.1});}else m.lockUntil=T+.2;return;}   // v165: pierna atrás lista en el arco del súper
@@ -2183,6 +2947,7 @@ function libEvents(p,m){
   if(p.stun>0&&p._stE&&!p._stMax)p._stMax=p.stun;
   if(!(p.stun>0)&&p._stE){p._stE=0;const long=(p._stMax||0)>2.4;p._stMax=0;if(m.curA==='knocked')ev(long&&act(m,'getup_slow')?'getup_slow':'getup',long?{from:2.2,ts:3,lock:1,fade:.12}:{from:.3,ts:2.3,lock:.75,fade:.12});}
   // gol: festejo o lamento
+  if(p.gk&&m.bones&&(p.react==='sentado'||p.react==='enojado'||p.stun>0)&&!(p.flyY>.05)){if(m.curA!=='gk_idle'&&act(m,'gk_idle'))goA(m,'gk_idle',{fade:.12});m.lockUntil=T+.1;return;}   // v187: lo dibuja gkMoments
   if(p.react&&!p._reE){p._reE=1;const happy=HAPPY.includes(p.react);
     const n=happy?(p.card&&SHOWMAN[p.card.id]!=null&&Math.random()<.6?pick(['dance','hiphop','silly']):pick(BIGARMS[p.card&&p.card.id]?['victory2','fistpump','victory1']:['victory1','victory2','cheer','cheer2','fistpump'])):pick(['sad1','sad2','disappointed','angry']);
     ev(n,{fade:.25,lock:3});return;}
@@ -2190,6 +2955,7 @@ function libEvents(p,m){
   // portero
   if(p.gk){
     // v67: la animación se elige por la altura y la distancia del balón (lo mismo que decide la atajada)
+    if(GKDIVE_PROC&&m.bones&&(p.dive>0||m._gd)){p._dvE=1;if(m.curA!=='gk_idle'&&act(m,'gk_idle'))goA(m,'gk_idle',{fade:.12});m.lockUntil=T+.1;if(!(ball.gk===p))return;}   // v184: la estirada la dibuja gkDivePose
     if(p.dive>0&&!p._dvE){p._dvE=1;const sd=sideOf(p,p.diveDir||1),h=p.diveH==null?1:p.diveH,n=(h<.6&&act(m,'gk_dive_low_'+sd)?'gk_dive_low_':h>1.3&&act(m,'gk_dive_high_'+sd)?'gk_dive_high_':'gk_dive_')+sd,mt=M(n),take=mt.key||.3,land=mt.land||1.3;
       ev(n,{from:Math.max(0,take-.08),ts:(land-take+.08)/.5,lock:1.1,fade:.05});return;}
     if(!(p.dive>0))p._dvE=0;
@@ -2212,9 +2978,10 @@ function libEvents(p,m){
     if(!p.distrib)p._diE=0;
   }else{
     // jugadores de campo: barrida, tiros, pases, cabezazos, control (v70: pases con el pie que toca, súper tiro, control de pecho/muslo, pisar el balón)
-    if(p.act==='slide'&&!p._slE){p._slE=1;const n=pick(act(m,'tackle3')?['tackle1','tackle2','tackle3']:['tackle1','tackle2']),k=M(n).key||.6;ev(n,{from:Math.max(0,k-.35),ts:1.5,lock:.6,fade:.05});return;}
+    if(SLIDE_PROC&&m.bones&&(p.act==='slide'||m._slT!=null)){p._slE=1;}else if(p.act==='slide'&&!p._slE){p._slE=1;const n=window.__forceSlide||pick(act(m,'tackle3')?['tackle1','tackle2','tackle3']:['tackle1','tackle2']),k=M(n).key||.6;ev(n,{from:Math.max(0,k-.35),ts:1.5,lock:.6,fade:.05});return;}
     if(p.act!=='slide')p._slE=0;
     if(!ball.owner&&!ball.gk&&Math.hypot(ball.x-p.x,ball.z-p.z)<3)p._rcvY=ball.y;
+    if(p.kickT>0&&!p._kE&&KICK_PROC&&m.bones&&ball.y<=1.4){p._kE=1;m._kReq=p.kickPow||1;}   // v182: patada hecha a mano (cabezazos y chilenas siguen con su animación)
     if(p.kickT>0&&!p._kE){p._kE=1;const high=ball.y>1.4,pw=p.kickPow||1;let n,ts=1.5,lock=.45;
       if(high)n=pw>=1&&ball.y>1.8&&Math.random()<.35?'bicycle':'header';
       else if(pw>1.1&&act(m,'penalty')){n='penalty';ts=1.6;}
@@ -2251,7 +3018,8 @@ function libLoco(p,m,sp){
   goA(m,n,{fade:.14});const a=m.L&&m.L[n];if(a)a.setEffectiveTimeScale(ts);
 }
 function animLib(m,p,dt){
-  const sp=window.ONLINE?Math.max(Math.hypot(p.vx,p.vz),p._mv||0):Math.hypot(p.vx,p.vz);   // v96: en línea también cuenta lo que lo mueve el servidor (ya no se desliza sin correr)libEvents(p,m);
+  const sp=window.ONLINE?Math.max(Math.hypot(p.vx,p.vz),p._mv||0):Math.hypot(p.vx,p.vz);   // v96: en línea también cuenta lo que lo mueve el servidor (ya no se desliza sin correr)
+  libEvents(p,m);   // v171: esta llamada estaba pegada al comentario desde v96 y no corría (patadas, barridas, controles, levantarse...)
   // v77: después de tirarse se levanta con la misma animación (sin saltar de acostado a parado)
   if(p.gk&&/^gk_dive/.test(m.curA||'')&&!(p.dive>0)&&m.L){const a=m.L[m.curA],mt=ANIMMETA[m.curA]||{},d=a?a.getClip().duration:0,land=mt.land||1.3;
     if(a&&a.time<d-.08&&!p.distrib&&!(p.stun>0)&&!(sp>2.6&&!(p.down>0))){if(a.time>=land){if(!p._gu)p._gu=ball.gk===p?1.45:clamp((d-a.time)/(Math.max(.25,p.down||0)+.5),1.3,2.4);a.setEffectiveTimeScale(p._gu);}m.lockUntil=T+.05;}
@@ -2259,12 +3027,16 @@ function animLib(m,p,dt){
   else p._gu=0;
   if(!(m.lockUntil&&T<m.lockUntil))libLoco(p,m,sp);
   const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);}
-  m.mixer.update((p.frozen>0)?0:(p.rooted>0)?dt*.25:dt);   // v95: congelado = quieto; atrapado = forcejea lento
+  m.mixer.update((p.frozen>0)?0:(p.rooted>0)?dt*.25:(m._slT!=null||(p.act==='slide'&&SLIDE_PROC)||m._bT!=null||m._r||m._k||m._gd)?dt*.15:dt);   // v173: en la barrida la animación casi se detiene (la pose la pone slidePose). v95: congelado = quieto; atrapado = forcejea lento
   // altura de cadera adaptada a cada personaje
   if(Bz&&Bz.hips&&ANIMMETA._hips&&m.curA&&m.L&&m.L[m.curA]){const h=Bz.hips.b,r=Bz.hips.p0,c=ANIMMETA._hips;h.position.set(r.x,h.position.y*(r.y/c[1]),r.z);}
   Bz&&Bz.feet.forEach(f=>f.scale.setScalar(m.foot));
+  if(Bz)toonRun(m,p,dt);
+  if(Bz&&SLIDE_PROC)slidePose(m,p,dt);
+  if(Bz)hitPose(m,p,dt);if(Bz&&m._bT==null&&!m._r&&m._slT==null)kickPose(m,p,dt);else if(m._k||m._kTilt){m._k=null;m._kTilt=null;}if(Bz)reactPose(m,p,dt);if(Bz&&p.gk){gkDivePose(m,p,dt);gkFrontPose(m,p,dt);gkStance(m,p,dt);gkMoments(m,p,dt);gkHoldThrow(m,p,dt);}   // v174: meter cuerpo / manotazo del portero, uno distinto por personaje   // v173: barrida hecha a mano
+  // v170: carrera caricaturesca (exagera la animación según el personaje)
   // brazos un poco separados del cuerpo (personajes anchos)
-  if(Bz&&Bz.la&&Bz.ra&&Bz.armOut){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
+  if(Bz&&Bz.la&&Bz.ra&&Bz.armOut&&m._slT==null&&m._bT==null&&!m._r&&!m._kTilt){/* v173: no en la barrida */if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
   // v67: despeje con el puño y tapada con la pierna (no hay animación de Mixamo: se dobla el hueso encima de la animación)
   if(Bz&&p.gk&&p.saveT>0&&!(p.dive>0)){const kd=p.saveKind,hi=(p.saveY||0)>1.45,leg=kd==='pie',punch=!leg&&hi&&(kd==='travesano'||kd==='desvio'||kd==='punta');
     if(leg||punch){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}const u=clamp((.7-p.saveT)/.45,0,1),e=Math.sin(u*Math.PI)*(u<.5?1:1),r=sideOf(p,p.saveZ||1)==='r';
@@ -2272,10 +3044,10 @@ function animLib(m,p,dt){
       else{const c=r?Bz.rul:Bz.lul,sx=r?Bz.rsx:Bz.lsx;if(c){_gq2.setFromAxisAngle(c.az,sx*.95*e);c.b.quaternion.premultiply(_gq2);}}}}
   // pies pegados al piso: corregir la altura según el pie más bajo
   m.footAdj=0;
-  if(Bz&&Bz.toes.length&&Bz.restFootY!=null&&!AIRCLIPS.has(m.curA)&&!(p.flyY>0)){const v=_fv||(_fv=new THREE.Vector3());let mn=1e9;for(const b of Bz.toes){b.getWorldPosition(v);Bz.model.worldToLocal(v);mn=Math.min(mn,v.y);}
+  if(Bz&&Bz.toes.length&&Bz.restFootY!=null&&!AIRCLIPS.has(m.curA)&&!(p.flyY>0)&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const v=_fv||(_fv=new THREE.Vector3());let mn=1e9;for(const b of Bz.toes){b.getWorldPosition(v);Bz.model.worldToLocal(v);mn=Math.min(mn,v.y);}
     const want=(Bz.restFootY-mn)*Bz.model.scale.y;p._fadj=(p._fadj||0)+(clamp(want,-.5,.5)-(p._fadj||0))*Math.min(1,dt*12);m.footAdj=p._fadj;}else p._fadj=(p._fadj||0)*.9;
   // v44: nada debajo del piso. Tabla precalculada por personaje y animación: punto más bajo del cuerpo (cm) a lo largo del clip
-  if(FLOORFIX&&m.id&&m.curA&&m.L&&m.L[m.curA]){const cv=FLOORFIX[m.id]&&FLOORFIX[m.id][m.curA];
+  if(FLOORFIX&&m.id&&m.curA&&m.L&&m.L[m.curA]&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const cv=FLOORFIX[m.id]&&FLOORFIX[m.id][m.curA];
     if(cv){const a=m.L[m.curA],d=a.getClip().duration||1,tt=a.loop===THREE.LoopOnce?Math.min(a.time,d):a.time%d,u=Math.min(.9999,Math.max(0,tt/d))*(cv.length-1),i=Math.floor(u),f=u-i,j=Math.min(i+1,cv.length-1);
       const low=(cv[i]+(cv[j]-cv[i])*f)*.01*CHAR_SCALE+(m.footAdj||0)+(p.flyY||0);if(low<0)m.footAdj=(m.footAdj||0)-low;}}
   if(!m.lockUntil||T>=m.lockUntil){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
@@ -2677,7 +3449,7 @@ function gripOf(p,m,o){const I=ikV(),B=m.bones,pl=B._palm;palmW(m,'l',I.PL);palm
 function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
   for(const p of players){if(!p.gk)continue;const m=p.mesh;if(!m||!m.glb||!m.bones||!palmOf(m))continue;
     m.root.updateMatrixWorld(true);
-    const held=ball.gk===p,free=!ball.owner&&!ball.gk,ca=m.curA||'',catching=/^gk_(catch|dive|scoop|miss|block)/.test(ca);
+    const held=ball.gk===p,free=!ball.owner&&!ball.gk,ca=m.curA||'',catching=/^gk_(catch|dive|scoop|miss|block)/.test(ca)||!!m._gd;
     // ¿va a llegarle el balón? las palmas lo buscan los últimos metros
     let wt=0;if(free&&catching&&!(p.stun>0)){gripOf(p,m,I.G);const dx=ball.x-I.G.x,dy=ball.y-I.G.y,dz=ball.z-I.G.z,dist=Math.hypot(dx,dy,dz),cl=-(dx*ball.vx+dy*ball.vy+dz*ball.vz)/(dist||1);
       if(cl>1||dist<.5)wt=clamp((1.9-dist)/1.3,0,1)*(ca==='gk_miss'?.7:1);}
@@ -2688,12 +3460,13 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
       ikArm(m,'l',I.tL,p._ikw);ikArm(m,'r',I.tR,p._ikw);}
     // con el balón: las palmas lo sujetan por los lados. Si las manos de la animación quedan separadas (levantándose) lo abraza contra el pecho
     let cw=0,hw=0;p._grip=p._grip||new THREE.Vector3();gripOf(p,m,p._grip);
-    if(held&&!p.distrib){hw=1;if(I.PL.distanceTo(I.PR)>2*(BR+.1)*1.15||(/^gk_dive/.test(ca)&&!(p.dive>0)&&p._gu))cw=1;}
+    if(held&&!p.distrib){hw=1;if(I.PL.distanceTo(I.PR)>2*(BR+.1)*1.15||(/^gk_dive/.test(ca)&&!(p.dive>0)&&p._gu)||(m._gd&&m._gd.ph!=='dive')||m._hug)cw=1;}
     p._clw=(p._clw||0)+(cw-(p._clw||0))*Math.min(1,dt*10);p._hw=(p._hw||0)+(hw-(p._hw||0))*Math.min(1,dt*12);
     if(p._hw>.01){const sc=m.bones.lh.matrixWorld.getMaxScaleOnAxis(),R=BR+m.bones._palm.lth*sc*.8;
       I.ax.subVectors(I.PL,I.PR);if(I.ax.lengthSq()<.0025)I.ax.set(Math.cos(gkFace(p)),0,-Math.sin(gkFace(p)));I.ax.normalize();
       if(p._clw>.01&&m.bones.sp2){m.bones.sp2.b.getWorldPosition(I.a);I.a.x+=Math.sin(gkFace(p))*(R+.08);I.a.z+=Math.cos(gkFace(p))*(R+.08);I.a.y-=.05;p._grip.lerp(I.a,p._clw);
         I.b.set(Math.cos(gkFace(p)),0,-Math.sin(gkFace(p)));if(I.b.dot(I.ax)<0)I.b.negate();I.ax.lerp(I.b,p._clw).normalize();}
+      if(p._grip.y<BR+.03)p._grip.y=BR+.03;   // v185: tirado en el piso, el balón no se mete en el pasto
       I.tL.copy(p._grip).addScaledVector(I.ax,R);I.tR.copy(p._grip).addScaledVector(I.ax,-R);ikArm(m,'l',I.tL,p._hw);ikArm(m,'r',I.tR,p._hw);}
     p._gripR=p._gripR||new THREE.Vector3();{const B=m.bones;palmW(m,'r',p._gripR);(B.ra?B.ra.b:B.rh).getWorldPosition(I.a);I.b.subVectors(p._gripR,I.a).normalize();p._gripR.addScaledVector(I.b,BR*.8);}
     p._gripT=T;
@@ -3191,7 +3964,8 @@ function ease(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
 function glbLife(p,m,dt){
   // cabeza que sigue al balón y respiración (todos los personajes 3D)
   const B=m.bones;if(!B||!_gq1)return;
-  if(B.hd&&ball){let a=Math.atan2(ball.x-p.x,ball.z-p.z)-(p.face||0);while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;a=clamp(a,-.55,.55);
+  if(B.hd&&ball){let a=Math.atan2(ball.x-p.x,ball.z-p.z)-(p.face||0);while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;a=clamp(a,-.55,.55)*((m._bT!=null||m._slT!=null||m._r)?0:1);   // v174: en golpes/barridas mira al frente
+
     p._hy=(p._hy||0)+(a-(p._hy||0))*Math.min(1,dt*6);_gq2.setFromAxisAngle(B.hd.ay,p._hy*(B.fwd||1));B.hd.b.quaternion.premultiply(_gq2);}
 }
 function gkGLBPose(p,m,dt){
@@ -3250,6 +4024,7 @@ function updateFX(dt){
     p.m.material.opacity=Math.min(1,p.life/p.max*1.6);p.m.rotation.x+=dt*6;p.m.rotation.y+=dt*5;}
   for(const e of effects){if(e.type==='ring'){e.life-=dt;const k=1-e.life/e.max;e.mesh.scale.setScalar(Math.max(.01,e.r*k));e.mesh.material.opacity=Math.max(0,e.life/e.max);if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
     if(e.type==='bolt'){e.life-=dt;e.mesh.material.opacity=Math.max(0,e.life/e.max);if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
+    if(e.type==='claw'){e.t+=dt;const k=clamp((e.t-e.delay)/e.dur,0,1);e.mesh.scale.y=Math.min(1,k*5)*1;e.mesh.material.opacity=k<.25?1:Math.max(0,1-(k-.25)/.75);if(k>=1){e.done=true;scene.remove(e.mesh);}}
     if(e.type==='puff'){e.life-=dt;const k=1-e.life/e.max;e.mesh.scale.setScalar(Math.max(.01,e.r*(.2+.8*Math.sqrt(k))));e.mesh.material.opacity=Math.max(0,e.op*e.life/e.max);if(e.life<=0){e.done=true;scene.remove(e.mesh);}}
     if(e.type==='flames'){e.life-=dt;const k=Math.max(0,e.life/e.max),n=e.rate*k*dt;for(let q=0;q<n+(Math.random()<n%1?1:0);q++){const a=rand(0,6.28),d=Math.sqrt(Math.random())*e.r;
         part(e.x+Math.cos(a)*d,.12,e.z+Math.sin(a)*d,rand(-.3,.3),rand(1.4,3)*(e.small?.6:1),rand(-.3,.3),[0xffe066,0xffa020,0xff5a1a][q%3],rand(.3,.55)*(e.small?.8:1),-1.5,rand(.45,.9)*(.6+.4*k)*(e.small?.7:1));}
@@ -3279,6 +4054,23 @@ function scuffFx(p){const G=groundOf();if(G.k==='hielo')return;if(G.k==='lava'){
   m.position.set(p.x+d.x*1.4,.046,p.z+d.z*1.4);m.renderOrder=2;scene.add(m);effects.push({type:'decal',mesh:m,life:5,op:.85});}
 function grassKick(p){const G=groundOf(),col=G.k==='hielo'?0xe6f7ff:G.k==='pasto'?(Math.random()<.5?0x5f9a35:0x7fbf45):0xa89a8a,d=p.actDir||{x:0,z:0};
   for(let i=0;i<2;i++)part(p.x+rand(-.3,.3),.15,p.z+rand(-.3,.3),d.x*rand(2,5)+rand(-1.5,1.5),rand(2,4),d.z*rand(2,5)+rand(-1.5,1.5),col,.55,9,rand(.6,1.1));}
+// ================== v172: CAMBIOS DE DIRECCIÓN ==================
+// Se inclina hacia la curva (más con más velocidad y giro más cerrado); en un giro fuerte frena con el cuerpo atrás,
+// levanta polvo y sale con el cuerpo adelante. Todo suavizado: aunque se cambie de dirección a cada rato no se traba.
+// turnW: cuánto se inclina cada personaje (los pesados menos y más lento)
+const TURN_PROC=true;let BANK_SIGN=1;
+function turnFx(p,m,dt,sp){if(dt<=0)return;const P=(p.card&&TOONRUN[p.card.id])||{},W=P.turnW==null?1:P.turnW,Rt=P.turnR||9;
+  let yr=p._vface-(p._pvf==null?p._vface:p._pvf);while(yr>Math.PI)yr-=Math.PI*2;while(yr<-Math.PI)yr+=Math.PI*2;p._pvf=p._vface;
+  const yawRate=clamp(yr/dt,-12,12),free=!(p.stun>0)&&!(p.slip>0)&&!(p.flyY>.05)&&!(p.kickT>0)&&p.act!=='slide'&&!(p.frozen>0)&&!(p.rooted>0);
+  const bankT=free&&sp>1.5?clamp(BANK_SIGN*yawRate*sp*.014*W,-.28*W,.28*W):0;
+  // giro fuerte: cuánto falta para mirar a donde va
+  let df=p.face-p._vface;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
+  if(free&&sp>3.2&&Math.abs(df)>1.5&&!(p._brkCD>T)){p._brk=.2;p._brkCD=T+.45;dust(p.x,p.z);}
+  if(p._brk>0)p._brk-=dt;
+  const acc=(sp-(p._psp==null?sp:p._psp))/dt;p._psp=sp;
+  const pitchT=free?(p._brk>0?-.22*W:clamp(acc*.012,-.1,.12)*W):0;
+  m._bank=(m._bank||0)+(bankT-(m._bank||0))*Math.min(1,dt*Rt);m._pitch=(m._pitch||0)+(pitchT-(m._pitch||0))*Math.min(1,dt*Rt*1.2);
+  m.tilt.rotation.z=m._bank;m.tilt.rotation.x+=m._pitch;}
 function syncPlayer(p,dt){
   const m=p.mesh,sp=Math.hypot(p.vx,p.vz);
   if(!p._csh&&scene){p._csh=new THREE.Mesh(new THREE.PlaneGeometry(1.9,1.9),new THREE.MeshBasicMaterial({map:cshTex(),transparent:true,opacity:.5,depthWrite:false}));p._csh.rotation.x=-Math.PI/2;p._csh.renderOrder=1;scene.add(p._csh);}
@@ -3295,10 +4087,12 @@ function syncPlayer(p,dt){
    const want=look?Math.atan2(ball.x-p.x,ball.z-p.z):p.face;if(p._vface==null)p._vface=p.face;let df=want-p._vface;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
    if(p._hdT==null||T-p._hdT>.18){p._hd1=p._hd0;p._hd0=p.face;p._hdT=T;}
    let dh=p._hd1==null?0:p.face-p._hd1;while(dh>Math.PI)dh-=Math.PI*2;while(dh<-Math.PI)dh+=Math.PI*2;
-   if(!look&&!p._look&&(Math.abs(df)>2.5||Math.abs(dh)>2.6)&&sp>3.4&&!p.gk&&m.glb&&ANIMLIB&&!(p._turnCD>T)&&!(m.lockUntil&&T<m.lockUntil)&&act(m,'turn180')){p._turnCD=T+2.2;p._hd1=p.face;goA(m,'turn180',{restart:true,from:.1,ts:1.8,lock:.22,fade:.06});p._vface=want;}
+   if(!look&&!p._look&&(Math.abs(df)>2.5||Math.abs(dh)>2.6)&&sp>3.4&&!p.gk&&m.glb&&ANIMLIB&&!(p._turnCD>T)&&!(m.lockUntil&&T<m.lockUntil)&&act(m,'turn180')&&!TURN_PROC){   // v172: con personajes 3D el giro ya es procedural (turnFx)
+    p._turnCD=T+2.2;p._hd1=p.face;goA(m,'turn180',{restart:true,from:.1,ts:1.8,lock:.22,fade:.06});p._vface=want;}
    else if(p.gk&&ANIMLIB&&m.glb&&!(p.dive>0)&&!(p.smother>0))p._vface+=df*Math.min(1,dt*9);   // v77: el portero gira suave (antes daba la vuelta de golpe al agarrar)
    else if(p.kickT>0||p.gk||!(ANIMLIB&&m.glb))p._vface=want;else p._vface+=df*Math.min(1,dt*(look?8:16));p._look=look;}
   if(p.slip>0)m.root.rotation.y+=dt*22;else m.root.rotation.y=p._vface;
+  if(TURN_PROC&&!p.gk&&ANIMLIB&&m.glb)turnFx(p,m,dt,sp);
   const sw=Math.sin(p.anim)*Math.min(.95,sp*.13);
   m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
   m.tilt.position.y=Math.abs(Math.sin(p.anim))*Math.min(.08,sp*.012);m.tilt.rotation.x=Math.min(.22,sp*.025);m.tilt.rotation.z=0;
@@ -3323,6 +4117,18 @@ function syncPlayer(p,dt){
   if(m.glb){m.tilt.rotation.x*=.25;let df=p.face-(p._pf===undefined?p.face:p._pf);while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p._pf=p.face;
     const tgt=clamp(-df/Math.max(dt,.001)*.05,-.28,.28)*Math.min(1,sp/5);p._lean=(p._lean||0)+(tgt-(p._lean||0))*Math.min(1,dt*7);
     if(!p.act&&p.stun<=0&&!(p.gk&&p.dive>0))m.tilt.rotation.z=p._lean;}
+  if(m._ghTilt&&!m._gdTilt&&!m._gmTilt){m.tilt.rotation.x=m._ghTilt[0];m.tilt.rotation.z=0;m.tilt.position.y=m._ghTilt[1];}
+  else if(m._gmTilt&&!m._gdTilt){m.tilt.rotation.x=m._gmTilt[0];m.tilt.rotation.z=m._gmTilt[2];m.tilt.position.y=m._gmTilt[1];}
+  else if(m._gsTilt&&!m._gdTilt){m.tilt.rotation.x+=m._gsTilt[0];m.tilt.rotation.z+=m._gsTilt[3];m.tilt.position.y+=m._gsTilt[1];}
+  if(m._gfTilt&&!m._gdTilt){m.tilt.rotation.x+=m._gfTilt[0];m.tilt.position.y+=m._gfTilt[1];}
+  if(m._gdTilt){const g=m._gdTilt;m.tilt.rotation.order='YXZ';m.tilt.rotation.set(g[0],g[4]||0,g[3]);m.tilt.position.set(0,g[1],0);}
+  else if(m._kTilt&&m._slT==null&&m._bT==null&&!m._r){const K_=m._kTilt;m.tilt.rotation.set(K_[0],0,K_[3]);m.tilt.position.y=K_[1];}
+  else if((m._slT!=null||m._bT!=null)&&m._slTilt){m.tilt.rotation.x=m._slTilt[0];m.tilt.rotation.z=m._slTilt[3]||0;m.tilt.rotation.y=m._slTilt[4]||0;m.tilt.position.y=m._slTilt[1];m.tilt.position.z=m._slTilt[2];}else{if(m.tilt.position.z)m.tilt.position.z=0;if(m.tilt.rotation.y)m.tilt.rotation.y=0;}   // v173: barrida / v174: golpes
+  if(m._r&&m._r.tilt){const R=m._r.tilt;m.tilt.rotation.order='YXZ';m.tilt.quaternion.copy(R[0]);m.tilt.position.set(0,R[1],0);if(p.elecT>0){m.tilt.rotation.z+=rand(-.12,.12);m.tilt.rotation.x+=rand(-.06,.06);}}
+  else if(m.tilt.rotation.order!=='XYZ'&&!m._gdTilt)m.tilt.rotation.order='XYZ';
+  {const B=m.bones,k=m._chK=(m._chK||0)+(((p.tChg>0)?1:0)-(m._chK||0))*Math.min(1,dt*12);   // v176: cargando la entrada: se agacha y se inclina, listo para lanzarse
+   if(B&&k>.01&&m._slT==null&&m._bT==null){const fz=(B._rab||raBind(m,B)).fz,h=(B._slb||slBind(m,B)).hipY,q=.5+.5*Math.sin(T*28)*Math.min(1,(p.tChg||0)/.5);
+     m.tilt.rotation.x=.32*k*fz;m.tilt.position.y=-(.07+.03*q)*h*k;}}
   m.stars.visible=p.stun>0;m.stars.rotation.y=T*6;
   m.bubble.visible=p.gk&&shield[p.team]>0;
   const em=m.jersey.emissive;
@@ -3525,7 +4331,7 @@ function hud(){
   const gkMode=ball.gk&&ball.gk.team===0&&!ball.gk.distrib;
   if(gkMode!==lastGk){lastGk=gkMode;lastMode=null;document.body.classList.toggle('gkmode',gkMode);if(gkMode){bA.firstChild.textContent='Largo';bB.textContent='Mano';bC.textContent='Corto';}}
   const atk=attackMode();
-  if(!gkMode&&atk!==lastMode){lastMode=atk;document.body.classList.toggle('def',!atk);bA.firstChild.textContent=atk?'Tiro':'Barrida';bB.textContent=atk?'Pase':'Cuerpo';bC.textContent=atk?'Centro':'Presionar';}
+  if(!gkMode&&atk!==lastMode){lastMode=atk;document.body.classList.toggle('def',!atk);bA.firstChild.textContent=atk?'Tiro':'Entrada';bB.textContent=atk?'Pase':'Cambiar';bC.textContent=atk?'Centro':'Presionar';}
   hset('bp',user&&user.charging?Math.round(user.charge*100):0,v=>bA.style.setProperty('--p',v));
 }
 // v127: íconos de los botones del partido (el ícono manda; la palabra va chiquita abajo)
@@ -3565,7 +4371,7 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 </script>
-<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb?v=59", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=56", "s": "assets/cards/zurdito_s.webp?v=169"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=56", "s": "assets/cards/cazador_s.webp?v=169"}, "perro": {"c": "assets/cards/perro_c.webp?v=56", "s": "assets/cards/perro_s.webp?v=169"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_s.webp?v=169"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=56", "s": "assets/cards/coletazo_s.webp?v=169"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=56", "s": "assets/cards/expreso_s.webp?v=169"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=56", "s": "assets/cards/pausa_s.webp?v=169"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=56", "s": "assets/cards/gigante_s.webp?v=169"}, "rey": {"c": "assets/cards/rey_c.webp?v=56", "s": "assets/cards/rey_s.webp?v=169"}, "gato": {"c": "assets/cards/gato_c.webp?v=56", "s": "assets/cards/gato_s.webp?v=169"}, "toro": {"c": "assets/cards/toro_c.webp?v=56", "s": "assets/cards/toro_s.webp?v=169"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=56", "s": "assets/cards/vikingo_s.webp?v=169"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=56", "s": "assets/cards/muralla_s.webp?v=169"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=56", "s": "assets/cards/ciclon_s.webp?v=169"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=56", "s": "assets/cards/malabares_s.webp?v=169"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=56", "s": "assets/cards/ruleta_s.webp?v=169"}, "leon": {"c": "assets/cards/leon_c.webp?v=56", "s": "assets/cards/leon_s.webp?v=169"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=56", "s": "assets/cards/turbo_s.webp?v=169"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp","lodo":"assets/powers/lodo.webp","enredadera":"assets/powers/enredadera.webp","rafaga":"assets/powers/rafaga.webp","iman":"assets/powers/iman.webp","bolapicos":"assets/powers/bolapicos.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
+<script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb", "cazador": "assets/models/cazador.glb", "perro": "assets/models/perro.glb", "sangre": "assets/models/sangre.glb", "coletazo": "assets/models/coletazo.glb", "expreso": "assets/models/expreso.glb?v=176", "pausa": "assets/models/pausa.glb", "gigante": "assets/models/gigante.glb", "rey": "assets/models/rey.glb", "gato": "assets/models/gato.glb", "toro": "assets/models/toro.glb", "vikingo": "assets/models/vikingo.glb", "muralla": "assets/models/muralla.glb", "ciclon": "assets/models/ciclon.glb", "malabares": "assets/models/malabares.glb", "ruleta": "assets/models/ruleta.glb", "leon": "assets/models/leon.glb", "turbo": "assets/models/turbo.glb"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=56", "s": "assets/cards/zurdito_s.webp?v=169"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=56", "s": "assets/cards/cazador_s.webp?v=169"}, "perro": {"c": "assets/cards/perro_c.webp?v=56", "s": "assets/cards/perro_s.webp?v=169"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_s.webp?v=169"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=56", "s": "assets/cards/coletazo_s.webp?v=169"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=56", "s": "assets/cards/expreso_s.webp?v=169"}, "pausa": {"c": "assets/cards/pausa_c.webp?v=56", "s": "assets/cards/pausa_s.webp?v=169"}, "gigante": {"c": "assets/cards/gigante_c.webp?v=56", "s": "assets/cards/gigante_s.webp?v=169"}, "rey": {"c": "assets/cards/rey_c.webp?v=56", "s": "assets/cards/rey_s.webp?v=169"}, "gato": {"c": "assets/cards/gato_c.webp?v=56", "s": "assets/cards/gato_s.webp?v=169"}, "toro": {"c": "assets/cards/toro_c.webp?v=56", "s": "assets/cards/toro_s.webp?v=169"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=56", "s": "assets/cards/vikingo_s.webp?v=169"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=56", "s": "assets/cards/muralla_s.webp?v=169"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=56", "s": "assets/cards/ciclon_s.webp?v=169"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=56", "s": "assets/cards/malabares_s.webp?v=169"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=56", "s": "assets/cards/ruleta_s.webp?v=169"}, "leon": {"c": "assets/cards/leon_c.webp?v=56", "s": "assets/cards/leon_s.webp?v=169"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=56", "s": "assets/cards/turbo_s.webp?v=169"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp","lodo":"assets/powers/lodo.webp","enredadera":"assets/powers/enredadera.webp","rafaga":"assets/powers/rafaga.webp","iman":"assets/powers/iman.webp","bolapicos":"assets/powers/bolapicos.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
 window.ANIMURL='assets/anims.glb?v=70';window.ANIMMETAURL='assets/anims.json?v=70';</script>
 <script>
 // ================== DATOS ==================
@@ -3593,12 +4399,12 @@ P('zurdito','Zurdito','Pequeño hechicero','DEL','legendaria',{vel:85,tir:90,pas
 P('cazador','Cazador Polaco','Cazador del bosque','DEL','comun',{vel:66,tir:80,pas:60,reg:64,def:40,fis:72},'Aparece donde cae el balón y no perdona dentro del área.','Definición','Velocidad',{skin:0,hair:'#8a6a4a',style:'corto'}),
 P('perro','Perro de Presa','Hombre lobo','MED','comun',{vel:70,tir:55,pas:62,reg:58,def:80,fis:82},'Muerde tobillos los tres minutos y no suelta al rival.','Barrida y presión','Técnica',{skin:1,hair:'#6b6b6b',style:'picos'}),
 P('sangre','Sangre Caliente','Demonio de fuego','DEF','comun',{vel:64,tir:45,pas:52,reg:48,def:82,fis:86},'Choca con todo lo que se mueve; mándalo contra la reja.','Cuerpo devastador','Disciplina',{skin:2,hair:'#ff6a1a',style:'picos'}),
-P('coletazo','Coletazo','Hombre escorpión','POR','comun',{vel:72,ref:76,alc:70,sal:82,pas:70,fis:60},'Portero loco: sale a jugar y hace atajadas imposibles.','Salidas y atajadas espectaculares','Imprudente',{skin:1,hair:'#2b1a10',style:'afro'}),
+P('coletazo','Coletazo','Hombre escorpión','DEL','comun',{vel:70,tir:74,pas:62,reg:68,def:50,fis:70},'Pica con todo: remata desde cualquier lado y no se deja quitar el balón.','Remate y fuerza','Imprudente',{skin:1,hair:'#2b1a10',style:'afro'}),
 P('pausa','La Pausa','Tortuga sabia','MED','rara',{vel:52,tir:68,pas:92,reg:84,def:60,fis:70},'Pisa el balón, levanta la cabeza y pone el pase perfecto.','Pase y control','Velocidad',{skin:0,hair:'#5a8a2a',style:'calvo'}),
 P('gigante','Gigante Belga','Troll de montaña','POR','rara',{vel:50,ref:74,alc:94,sal:70,pas:66,fis:90},'Tan grande que tapa casi toda la portería.','Alcance enorme','Reacción lenta abajo',{skin:1,hair:'#6a7a5a',style:'rapado'}),
 P('rey','Rey del Nilo','Faraón','DEL','rara',{vel:84,tir:82,pas:70,reg:82,def:38,fis:62},'Sereno y letal: aparece por la banda y define cruzado.','Velocidad y definición','Juego aéreo',{skin:2,hair:'#111111',style:'corto'}),
 P('expreso','Expreso Lateral','Hombre guepardo','DEF','comun',{vel:94,tir:52,pas:68,reg:66,def:70,fis:60},'Sube y baja la banda sin cansarse; el más rápido del campo.','Velocidad pura','Choque',{skin:1,hair:'#d9a830',style:'corto'}),
-P('gato','El Gato','Hombre gato','POR','comun',{vel:60,ref:76,alc:64,sal:60,pas:55,fis:62},'Reflejos rápidos bajo los palos.','Reflejos','Poco alcance',{skin:1,hair:'#2b1a10',style:'corto'}),
+P('gato','El Gato','Hombre gato','MED','comun',{vel:78,tir:58,pas:70,reg:76,def:56,fis:52},'Ágil y escurridizo: siempre cae de pie y se escapa entre todos.','Agilidad y regate','Poco físico',{skin:1,hair:'#2b1a10',style:'corto'}),
 P('pulpo','Pulpo','Cervantes','POR','rara',{vel:52,ref:74,alc:90,sal:62,pas:58,fis:70},'Brazos larguísimos, llega a las esquinas.','Alcance','Lento en salidas',{skin:0,hair:'#5a3a1a',style:'corto'}),
 P('arana','Araña','Montes','POR','epica',{vel:70,ref:86,alc:78,sal:88,pas:66,fis:64},'Sale a achicar y cierra el ángulo.','Salidas y reflejos','Físico normal',{skin:2,hair:'#111111',style:'rapado'}),
 P('muralla','Muralla Naranja','Gólem de piedra','POR','legendaria',{vel:50,ref:84,alc:96,sal:76,pas:72,fis:96},'Un muro de roca bajo los palos: casi nada le entra.','Alcance y físico','Lento para salir',{skin:1,hair:'#7a7a7a',style:'calvo'}),
@@ -3609,9 +4415,9 @@ P('ruleta','Ruleta','Maestro del giro','MED','epica',{vel:66,tir:78,pas:90,reg:9
 P('leon','León Sueco','Rey león','DEL','epica',{vel:70,tir:90,pas:66,reg:78,def:38,fis:88},'Acrobático y arrogante: remata de cualquier forma.','Remate acrobático y físico','Velocidad',{skin:1,hair:'#c98a2a',style:'picos'}),
 P('turbo','Turbo Francés','Velocista','DEL','legendaria',{vel:97,tir:86,pas:68,reg:86,def:32,fis:64},'Arranca y ya nadie lo alcanza.','Velocidad y definición','Juego aéreo',{skin:2,hair:'#111111',style:'rapado'}),
 ];
-const PBY=Object.fromEntries(PLAYERS.map(p=>[p.id,p]));
+const PBY=Object.fromEntries(PLAYERS.map(p=>[p.id,p]));const GK_ID='muralla';const gkLvl=()=>(save.players[GK_ID]||{lvl:1}).lvl;
 // v42: jugadores listos. Los demás siguen definidos arriba pero no aparecen todavía (colección, sobres, tienda, rivales)
-const READY=new Set(["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"]);const PLAYERS_ALL=PLAYERS.slice();PLAYERS.splice(0,PLAYERS.length,...PLAYERS_ALL.filter(p=>READY.has(p.id)));
+const READY=new Set(["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"]);const PLAYERS_ALL=PLAYERS.slice();PLAYERS.splice(0,PLAYERS.length,...PLAYERS_ALL.filter(p=>READY.has(p.id)));
 Object.assign(CARDS.bomba,{rar:'comun',desc:'Cae del cielo y manda a volar a los rivales del área.'});
 Object.assign(CARDS.cascara,{rar:'comun',desc:'El primer rival que la pisa se resbala y suelta el balón.'});
 Object.assign(CARDS.rayo,{rar:'rara',desc:'Aturde a todos los rivales del área por unos segundos.'});
@@ -3633,7 +4439,7 @@ const LEAGUES=[
  {n:'Templo del Desierto',min:1800,ic:'🏜️',c1:'#ff4d5e',c2:'#6a1020'},{n:'Tundra de Hielo',min:2600,ic:'❄️',c1:'#16c7b0',c2:'#0a4a42'},
  {n:'Volcán',min:3500,ic:'🌋',c1:'#ff7a1a',c2:'#5a1a08'},{n:'Coliseo de Leyendas',min:4500,ic:'👑',c1:'#ffcc33',c2:'#7a5200'}];
 // v148: en qué arena se desbloquea cada carta (los sobres y la tienda solo dan cartas de tu arena o anteriores, como en Clash)
-const AR_P={zurdito:0,cazador:0,perro:0,sangre:0,coletazo:0, expreso:1,gato:1,pausa:1, toro:2,rey:2, gigante:3,vikingo:3, ruleta:4,leon:4, ciclon:5,malabares:5, muralla:6, turbo:7};
+const AR_P={zurdito:0,cazador:0,perro:0,sangre:0,coletazo:0, expreso:1,gato:1,pausa:1, toro:2,rey:2, vikingo:3, ruleta:4,leon:4, ciclon:5,malabares:5, muralla:6, turbo:7};
 const AR_C={bomba:0,cascara:0,rayo:0,turbo:0, enredadera:1,lodo:1, punetazo:2,superbalon:2, rafaga:3,escudo:3, tornado:4,iman:4, hielo:5, meteorito:6, bolapicos:7};
 const KITS={
  clasico:{n:'Azul Clásico',rar:'comun',j:'#2f7bff',d:'#173f99',s:'#ffffff',pat:'franja',cost:0},
@@ -3690,7 +4496,7 @@ function defSave(){return{v:2,name:'',nameN:0,hist:[],streak:0,best:0,ads:{d:0,n
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
   packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},nums:{},equip:{kit:'clasico',boots:'negro'},seen:{},
   settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false,land:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
-const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "gigante", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"];
+const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "pausa", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo"];
 function migrate(s){
   const d=defSave();
   // v76: sobres ganados con tiempo de apertura; ciclo de sobres por victoria
@@ -3704,12 +4510,14 @@ function migrate(s){
   }
   const o=Object.assign(d,s,{settings:Object.assign(d.settings,s.settings||{})});
   // v42: si la plantilla guardada tenía jugadores ocultos, se cambian por jugadores listos
-  if(!READY.has(o.squad.gk))o.squad.gk='coletazo';o.squad.f=o.squad.f.filter(id=>READY.has(id)&&PBY[id]&&PBY[id].pos!=='POR');   // v160: un portero (p. ej. Muralla) no puede quedar de jugador de campo
+  if(!READY.has(o.squad.gk))o.squad.gk=GK_ID;o.squad.f=o.squad.f.filter(id=>READY.has(id)&&PBY[id]&&PBY[id].pos!=='POR');   // v160: un portero (p. ej. Muralla) no puede quedar de jugador de campo
   while(o.squad.f.length<4){const ex=R18.find(id=>PBY[id].pos!=='POR'&&!o.squad.f.includes(id));if(!ex)break;o.squad.f.push(ex);}
   if(o.squad.f.length<4){const ex=Object.keys(o.players).find(id=>PBY[id].pos!=='POR'&&!o.squad.f.includes(id));o.squad.f.push(ex||'toro');}
   if(!o.players.zurdito)o.players.zurdito={lvl:1,copies:0};
-  if(!s.todos18){for(const id of ['zurdito','cazador','perro','sangre','coletazo','expreso','pausa','gigante','rey','gato','toro','vikingo','muralla','ciclon','malabares','ruleta','leon','turbo'])if(!o.players[id])o.players[id]={lvl:1,copies:0};o.todos18=true;}
-  if(o.squad.gk&&PBY[o.squad.gk]&&PBY[o.squad.gk].pos!=='POR')o.squad.gk='coletazo';
+  if(!s.todos18){for(const id of ['zurdito','cazador','perro','sangre','coletazo','expreso','pausa','rey','gato','toro','vikingo','muralla','ciclon','malabares','ruleta','leon','turbo'])if(!o.players[id])o.players[id]={lvl:1,copies:0};o.todos18=true;}
+  // v186: portero único (como en Strikers): Muralla en las dos porterías. Su nivel es el de tu Muralla (si no la tienes, nivel 1). El Gigante sale del juego por ahora
+  o.squad.gk=GK_ID;for(const k of Object.keys(o.players))if(!READY.has(k))delete o.players[k];o.squad.f=o.squad.f.filter(id=>READY.has(id)&&id!==GK_ID);
+  while(o.squad.f.length<4){const ex=R18.find(id=>PBY[id]&&PBY[id].pos!=='POR'&&!o.squad.f.includes(id)&&o.players[id]);if(!ex)break;o.squad.f.push(ex);}
   if(!s.obst1){for(const id of ['lodo'])if(!o.powers[id])o.powers[id]={lvl:1,copies:0};o.obst1=true;}
   // v95: el muro y el barril se cambian por la enredadera y la ráfaga (con su nivel y sus copias); el mazo también
   {const MAPW={muro:'enredadera',barril:'rafaga'};for(const [a,b] of Object.entries(MAPW)){const pa=o.powers[a];if(pa){const pb=o.powers[b]||{lvl:1,copies:0};o.powers[b]={lvl:Math.max(pa.lvl,pb.lvl),copies:pa.copies+pb.copies};delete o.powers[a];}
@@ -3717,7 +4525,7 @@ function migrate(s){
    for(const k of Object.keys(o.powers))if(!CARDS[k])delete o.powers[k];if(Array.isArray(o.deck))o.deck=o.deck.filter(k=>CARDS[k]);
    for(const k of ['bomba','cascara','rayo','turbo'])if(o.deck.length<4&&!o.deck.includes(k))o.deck.push(k);}
   if(!s.ataque1){for(const id of ['punetazo','tornado','meteorito'])if(!o.powers[id])o.powers[id]={lvl:1,copies:0};o.ataque1=true;}
-  if(!s.raras3D){for(const id of ['pausa','gigante','rey','expreso'])if(!o.players[id])o.players[id]={lvl:1,copies:0};o.raras3D=true;}
+  if(!s.raras3D){for(const id of ['pausa','rey','expreso'])if(!o.players[id])o.players[id]={lvl:1,copies:0};o.raras3D=true;}
   if(!s.starters3D){for(const id of ['cazador','perro','sangre','coletazo'])if(!o.players[id])o.players[id]={lvl:1,copies:0};
     o.squad={form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']};o.starters3D=true;o.zurditoAligned2=true;}
   if(!s.zurditoAligned2){const F=FORMS[o.squad.form].s;let i=F.findIndex(s=>s.r==='DEL');if(i<0)i=3;if(!o.squad.f.includes('zurdito'))o.squad.f[i]='zurdito';o.zurditoAligned2=true;}
@@ -3753,8 +4561,8 @@ const rarOf=id=>isPower(id)?CARDS[id].rar:PBY[id].rar;
 function kitColors(k,b,side){if(!KITS[k])k='clasico';const V=kitSide(k,side||'L'),B={c:kitBoot(k)};return{id:k,side:side||'L',V,pat:V.pat,anim:k==='dorado'?1:k==='arcoiris'?2:0,j:hexN(V.j),d:hexN(V.col||V.c2||V.j),s:hexN(V.c2||V.col||V.j),sh:hexN(V.sh||V.j),so:hexN(V.so||V.j),b:hexN(B.c)};}
 // v68: número de cada jugador (el dueño lo puede cambiar)
 function numOf(id){const n=save.nums&&save.nums[id];return n>=1&&n<=99?n:(DEFNUM[id]||10);}
-function mySquadCards(){const g=PBY[save.squad.gk];const nums={};for(const id of [save.squad.gk,...save.squad.f])nums[id]=numOf(id);return{form:save.squad.form,nums,kit:kitColors(save.equip.kit,save.equip.boots),gk:{card:g,lvl:save.players[g.id].lvl},f:save.squad.f.map(id=>({card:PBY[id],lvl:save.players[id].lvl}))};}
-function teamOvr(){const F=FORMS[save.squad.form].s;let t=ovr(PBY[save.squad.gk],save.players[save.squad.gk].lvl);save.squad.f.forEach((id,i)=>{t+=ovr(PBY[id],save.players[id].lvl,PBY[id].pos!==F[i].r);});return Math.round(t/5);}
+function mySquadCards(){const g=PBY[save.squad.gk];const nums={};for(const id of [save.squad.gk,...save.squad.f])nums[id]=numOf(id);return{form:save.squad.form,nums,kit:kitColors(save.equip.kit,save.equip.boots),gk:{card:g,lvl:gkLvl()},f:save.squad.f.map(id=>({card:PBY[id],lvl:save.players[id].lvl}))};}
+function teamOvr(){const F=FORMS[save.squad.form].s;let t=ovr(PBY[save.squad.gk],gkLvl());save.squad.f.forEach((id,i)=>{t+=ovr(PBY[id],save.players[id].lvl,PBY[id].pos!==F[i].r);});return Math.round(t/5);}
 function toast(t){const e=document.createElement('div');e.className='toast ct';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2200);}
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function xpNeed(l){return 100+l*50;}
@@ -4059,7 +4867,7 @@ function renderSquad(){
   if(SWAP){const t=SWAP.pw?$('#sc-squad .deck6'):$('#sc-squad .mpitch');if(t)t.scrollIntoView({block:'center',behavior:'smooth'});}
 }
 function placeIn(id,sl){const pl=PBY[id];
-  if(sl==='gk'){if(pl.pos!=='POR'){toast('Solo un portero va en la portería');renderSquad();return;}save.squad.gk=id;}
+  if(sl==='gk'){toast('Muralla es el portero de todos los partidos');renderSquad();return;}
   else{if(pl.pos==='POR'){toast('Un portero no puede jugar de campo');renderSquad();return;}const i=+sl,prev=save.squad.f.indexOf(id);if(prev>=0){[save.squad.f[i],save.squad.f[prev]]=[save.squad.f[prev],save.squad.f[i]];}else save.squad.f[i]=id;}
   persist();uiSnd('carta');toast(pl.nick+' alineado');renderSquad();popIn('#sc-squad .mslot[data-slot="'+sl+'"]');}
 // ================== v125: tocar carta → Info / Usar · sustituir como en los juegos de cartas ==================
@@ -4321,7 +5129,7 @@ function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div
 function openHow(){showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Cómo jugar</div>
   <p class="desc"><b>Joystick:</b> mueve a tu jugador. Controlas al que trae el balón; sin balón, al más cercano.</p>
   <p class="desc"><b>Con balón:</b> Tiro (mantén para cargar; al máximo sale súper tiro), Pase y Centro. Si te llega un centro, pica Tiro para rematar.</p>
-  <p class="desc"><b>Sin balón:</b> Barrida, Cuerpo (si chocas al que la lleva, se la robas) y Presionar.</p>
+  <p class="desc"><b>Sin balón:</b> Entrada (cada personaje entra a su manera: barrida o su golpe especial; mantén para cargarla), Cambiar de jugador y Presionar.</p>
   <p class="desc"><b>Poderes:</b> toca una carta y luego la cancha. Gastan energía, que va al doble en el último minuto.</p>
   <p class="desc"><b>Alineación:</b> elige formación y pon a cada jugador en su posición. Fuera de posición rinde menos (⚠️).</p></div>`);$('#mx').onclick=closeModal;}
 function openNews(){showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Novedades</div>
@@ -4406,7 +5214,7 @@ function makeOpponent(){
   const ok2=Object.keys(KITS).filter(k=>k!==save.equip.kit),kk=ok2[Math.floor(Math.random()*ok2.length)];
   const bk=Object.keys(BOOTS)[Math.floor(Math.random()*6)];
   return{name:botName(Math.random),av:AVATARS[Math.floor(Math.random()*AVATARS.length)],c:Object.keys(COUNTRIES)[Math.floor(Math.random()*17)],trophies:Math.max(0,save.trophies+Math.round(rand(-50,50))),
-    squad:{form,kit:kitColors(kk,bk),gk:{card:pick('POR'),lvl},f:FORMS[form].s.map(s=>({card:pick(s.r),lvl}))},deck:shuffle(Object.keys(CARDS)).slice(0,6),plvl:lvl,li};
+    squad:{form,kit:kitColors(kk,bk),gk:{card:PBY[GK_ID],lvl},f:FORMS[form].s.map(s=>({card:pick(s.r),lvl}))},deck:shuffle(Object.keys(CARDS)).slice(0,6),plvl:lvl,li};
 }
 function matchmaking(){
   const opp=makeOpponent();let cancel=false;
@@ -4508,8 +5316,8 @@ window.matchIntro=matchIntro;
 window.SPECT=false;
 // v99: partido de prueba con los personajes que ya tienen voz (repartidos en los dos equipos) y todos los poderes
 function spectDemo(opp){const c=id=>({card:PBY[id],lvl:MAXLVL}),nums={};
-  const A={form:'ataque',nums,kit:kitColors(save.equip.kit,save.equip.boots),gk:c('gato'),f:['sangre','pausa','leon','zurdito'].map(c)};
-  const B=Object.assign({},opp.squad,{form:'ataque',gk:c('gigante'),f:['vikingo','perro','turbo','rey'].map(c)});
+  const A={form:'ataque',nums,kit:kitColors(save.equip.kit,save.equip.boots),gk:c(GK_ID),f:['sangre','pausa','leon','gato'].map(c)};
+  const B=Object.assign({},opp.squad,{form:'ataque',gk:c(GK_ID),f:['vikingo','coletazo','turbo','rey'].map(c)});
   window.SPECT_SQ=[A,B];
   window.SPECT_DK=[['bomba','cascara','lodo','enredadera','rayo','hielo','turbo','punetazo'],['rafaga','escudo','tornado','superbalon','iman','meteorito','bolapicos','hielo']];
   opp.name='Equipo Rival';}
@@ -4695,7 +5503,7 @@ bgfxStart();
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
 // v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
 (function(){const boot=document.getElementById('boot');if(!boot)return;{const art=boot.querySelector('.bt-art'),im=new Image();im.onload=()=>{art.style.setProperty('--art','url(assets/ui/carga.webp?v=140)');art.classList.add('img');};im.src='assets/ui/carga.webp?v=140';}const fill=document.getElementById('btFill'),pct=document.getElementById('btPct'),st=document.getElementById('btSt'),tip=document.getElementById('btTip');
-  const TIPS=window.GAME_TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Usa Cuerpo para empujar al rival y quedarte con el balón.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
+  const TIPS=window.GAME_TIPS=['Suelta el tiro en la franja dorada para un ¡TIRO PERFECTO!','El súper tiro cuesta 3 de energía: úsalo cuando cuente.','Cambia de dirección de golpe para dar un arrancón.','La bomba avisa con un círculo rojo: ¡sal de ahí!','En los últimos 45 segundos la energía se carga al doble.','Mantén Entrada para cargarla: llega más lejos y pega más fuerte, pero si fallas tardas más en levantarte.','El aro blanco en el pasto marca dónde va a caer el balón.','Con Escudo tu portería se cubre de energía unos segundos.'];
   let ti=Math.floor(Math.random()*TIPS.length);tip.textContent=TIPS[ti];
   const tipT=setInterval(()=>{tip.style.opacity=0;setTimeout(()=>{ti=(ti+1)%TIPS.length;tip.textContent=TIPS[ti];tip.style.opacity=1;},300);},3200);
   const t0=performance.now();let shown=0,done=false;
