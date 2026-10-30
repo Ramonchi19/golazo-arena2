@@ -1,5 +1,6 @@
 window.GZ_ARENAS=window.GZ_ARENAS||{};
 window.GZ_ARENAS[3]=function(G){
+window.GZ_FIELD_MOTIF='campana';   // v203: grabado en el césped de esta arena
 
 const L=32,HW=16,GW=4.5,GH=2.9,B=HW+1.0,E=L+1.2;
 // ===== paleta del pueblo: tarde dorada, piedra clara, tejas rojas =====
@@ -12,10 +13,10 @@ const pickC=v=>Array.isArray(v)?v[Math.floor(Math.random()*v.length)]:v;
 
 const renderer=G.renderer;
 
-const scene=G.root,REAL=G.scene;REAL.background=new THREE.Color('#f3d2a6');REAL.fog=new THREE.Fog('#f0cfa8',80,180);
+const scene=G.root,REAL=G.scene;REAL.background=new THREE.Color('#e9906a');REAL.fog=new THREE.Fog('#e39a78',90,210);   // v193: atardecer
 const camera=G.camera;
-const hemi=new THREE.HemisphereLight(0xfff0dc,0x7a6a50,.47);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffd9a0,.62);sun.position.set(-16,42,22);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+const hemi=new THREE.HemisphereLight(0xffc8a8,0x5a4058,.5);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffa868,.66);sun.position.set(-34,24,26);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);}   // v203: sombras según la calidad
 Object.assign(sun.shadow.camera,{left:-50,right:50,top:36,bottom:-36,near:8,far:120});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;scene.add(sun);
 const U={uTime:{value:0},uWind:{value:1}};
 
@@ -200,55 +201,155 @@ function makeBird(){const g=new THREE.Group();const m=new THREE.MeshBasicMateria
   for(const s of [-1,1]){const w=new THREE.Mesh(new THREE.PlaneGeometry(.7,.18),m);w.position.x=s*.35;w.userData.s=s;g.add(w);}g.visible=false;scene.add(g);birds.push(g);}
 function launchBird(b){b.visible=true;const s=Math.random()<.5?-1:1;b.userData={x:L+10+Math.random()*10,y:10+Math.random()*4,z:(Math.random()-.5)*30,vx:-7-Math.random()*4,vz:s*(2+Math.random()*3),ph:Math.random()*6};}
 
-// ===== armar la arena =====
+
+// =====================================================================
+// v193: PUEBLO ESTADIO — piezas de Tripo (assets/arenas/pueblo). Gradas leves (5 filas), casitas detrás,
+// ayuntamiento detrás de la portería rival, campanarios en las 4 esquinas, canal de agua a los costados.
+// =====================================================================
+const PDIR='assets/arenas/pueblo/',GM={};
+const loadG=n=>new Promise(res=>loader.load(PDIR+n+'.glb?v=203',g=>{GM[n]=g;res();},undefined,e=>{console.warn('falta',n,e);res();}));
+// material: lambert con un poco de luz propia en lo amarillo claro (ventanas y faroles)
+function arenaMat(src){const map=src.map||null;if(map){map.encoding=THREE.LinearEncoding;map.anisotropy=4;map.needsUpdate=true;}
+  const m=new THREE.MeshLambertMaterial({map,color:0xffffff});
+  m.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+      {vec3 c=diffuseColor.rgb;float lit=smoothstep(.72,.9,min(c.r,c.g))*smoothstep(.12,.3,c.g-c.b);totalEmissiveRadiance+=c*(lit*1.15+.06);}`);};
+  m.customProgramCacheKey=()=>'puebloMat';return m;}
+const PREP={};
+const TRIM={pueblo_porteria:-5.11*Math.PI/180};   // la portería viene girada 5.11° de Tripo: se endereza
+function prep(n){if(PREP[n])return PREP[n];const g=GM[n];if(!g)return null;const s=g.scene;s.rotation.y=TRIM[n]||0;
+  const mats=new Map();s.traverse(o=>{if(o.isMesh){if(!mats.has(o.material))mats.set(o.material,arenaMat(o.material));o.material=mats.get(o.material);o.castShadow=true;o.receiveShadow=true;}});
+  if(CUT[n])cutTris(s,CUT[n]);
+  if(LEGDROP[n])dropLegs(s,LEGDROP[n]);
+  s.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(s);return PREP[n]={s,box,size:box.getSize(new THREE.Vector3())};}
+// quitar partes de un modelo: triángulos cuyos 3 vértices cumplen la condición (coordenadas 0..1 de su caja)
+const CUT={};
+// alargar hasta el piso los pilares de enfrente del techo (DROP[n] = cuánto bajar, en unidades del modelo)
+const LEGDROP={};
+function dropLegs(s,dy){s.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(s),mn=box.min,sz=box.getSize(new THREE.Vector3()),meshes=[];s.traverse(m=>{if(m.isMesh)meshes.push(m);});
+  for(const m of meshes){const geo=m.geometry.clone();geo.applyMatrix4(m.matrixWorld);const p=geo.attributes.position;
+    for(let i=0;i<p.count;i++){const fx=(p.getX(i)-mn.x)/sz.x,fy=(p.getY(i)-mn.y)/sz.y;if(fx<.72&&fy<.12)p.setY(i,p.getY(i)-dy);}
+    geo.computeVertexNormals();geo.computeBoundingSphere();m.geometry=geo;m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);s.add(m);}}
+function cutTris(s,fn){s.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(s),mn=box.min,sz=box.getSize(new THREE.Vector3()),meshes=[];s.traverse(m=>{if(m.isMesh)meshes.push(m);});
+  for(const m of meshes){const geo=m.geometry.clone();geo.applyMatrix4(m.matrixWorld);const p=geo.attributes.position,idx=geo.index?geo.index.array:null,cnt=idx?idx.length:p.count,keep=[];
+    const ok=v=>fn((p.getX(v)-mn.x)/sz.x,(p.getY(v)-mn.y)/sz.y,(p.getZ(v)-mn.z)/sz.z);
+    for(let t=0;t<cnt;t+=3){const a=idx?idx[t]:t,b=idx?idx[t+1]:t+1,c=idx?idx[t+2]:t+2;if(!(ok(a)&&ok(b)&&ok(c)))keep.push(a,b,c);}
+    geo.setIndex(keep);m.geometry=geo;m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);s.add(m);}}
+// FACE: giro para que el frente de cada modelo mire a +z
+const FACE={pueblo_grada_principal:0,pueblo_casas:0,pueblo_ayuntamiento:0,pueblo_marcador:Math.PI/2,pueblo_techo:Math.PI/2};
+function place(n,o){const P=prep(n);if(!P)return null;o=o||{};
+  const inner=P.s.clone(true),wrap=new THREE.Group(),rot=new THREE.Group();rot.add(inner);
+  const c=P.box.getCenter(new THREE.Vector3());inner.position.set(-c.x,-P.box.min.y,-c.z);
+  rot.rotation.y=(FACE[n]||0)+(o.spin||0);wrap.add(rot);
+  const turned=Math.abs(Math.sin(rot.rotation.y))>.5,W0=turned?P.size.z:P.size.x,D0=turned?P.size.x:P.size.z,H0=P.size.y;
+  let k=o.s||null;if(!k)k=o.w?o.w/W0:o.d?o.d/D0:o.h?o.h/H0:1;
+  wrap.scale.set(o.w?o.w/W0:k,o.h?o.h/H0:(o.ys||k),o.d?o.d/D0:k);
+  wrap.position.set(o.x||0,o.y||0,o.z||0);wrap.rotation.y=o.ry||0;scene.add(wrap);return wrap;}
+
+// filas de asiento medidas (f = fondo desde el frente, h = fracción del alto)
+const ROWS={pueblo_grada_principal:[[.22,.35],[.37,.42],[.5,.5],[.64,.57],[.78,.64]]};
+const SEATS=[];   // {x,y,z,ry}
+function seatsStraight(n,cx,cz,ry,W,D,H,sp){const R=ROWS[n];if(!R)return;const cs=Math.cos(ry),sn=Math.sin(ry);
+  for(const [f,h] of R){const lz=D/2-f*D;for(let lx=-W/2+sp*.6;lx<=W/2-sp*.5;lx+=sp){
+    SEATS.push({x:cx+lx*cs+lz*sn,y:h*H,z:cz-lx*sn+lz*cs,ry});}}}
+
+function bentStand(n,C,a0,r,D,H,sp){const P=prep(n);if(!P)return;const g=new THREE.Group();
+  const src=P.s.clone(true);const rot=new THREE.Group();rot.add(src);const c=P.box.getCenter(new THREE.Vector3());src.position.set(-c.x,-P.box.min.y,-c.z);rot.rotation.y=FACE[n]||0;
+  const tmp=new THREE.Group();tmp.add(rot);tmp.updateMatrixWorld(true);
+  const turned=Math.abs(Math.sin(rot.rotation.y))>.5,W0=turned?P.size.z:P.size.x,D0=turned?P.size.x:P.size.z,H0=P.size.y;
+  const v=new THREE.Vector3();
+  src.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();geo.applyMatrix4(o.matrixWorld);const pa=geo.attributes.position;
+    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);
+      const t=(v.x+W0/2)/W0,back=(D0/2-v.z)/D0*D,th=a0+t*Math.PI/2,rr=r+back;
+      pa.setXYZ(i,C.x+Math.cos(th)*rr,v.y/H0*H,C.z+Math.sin(th)*rr);}
+    geo.computeVertexNormals();geo.computeBoundingSphere();const m=new THREE.Mesh(geo,o.material);m.castShadow=true;m.receiveShadow=true;g.add(m);});
+  scene.add(g);
+  const R=ROWS[n]||[];for(const [f,h] of R){const rr=r+f*D,len=rr*Math.PI/2,cnt=Math.max(1,Math.floor(len/sp));
+    for(let k=0;k<cnt;k++){const th=a0+(k+.5)/cnt*Math.PI/2;SEATS.push({x:C.x+Math.cos(th)*rr,y:h*H,z:C.z+Math.sin(th)*rr,ry:Math.atan2(-Math.cos(th),-Math.sin(th))});}}
+  return g;}
+
+// ===== medidas del estadio del pueblo =====
+const ZS=HW+3.6,XS=L+4.5,RC=7,X0=XS-RC,Z0=ZS-RC;
+const GD=7.5,GH2=7.5;          // grada: fondo y alto (5 filas leves)
+const ST=9;                    // ancho de la calle empedrada detrás de las gradas
+const SP=1.45;
+let waterT=null;
+function drawNets(){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72;
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(0,32);g.lineTo(32,0);g.lineTo(64,32);g.lineTo(32,64);g.closePath();g.stroke();
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  const mat=new THREE.MeshBasicMaterial({map:t,color:0xf4f4f0,transparent:true,alphaTest:.25,side:THREE.DoubleSide,depthWrite:false});
+  const panel=(w,h,x,y,z,ry,rx)=>{const gg=new THREE.PlaneGeometry(w,h),uv=gg.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/.9,uv.getY(i)*h/.9);
+    const m=new THREE.Mesh(gg,mat);m.position.set(x,y,z);m.rotation.set(rx||0,ry,0,'YXZ');scene.add(m);};
+  for(const s of [-1,1]){const X=s*L;panel(2*C.GW,HB,X+s*D,HB/2,0,Math.PI/2);
+    panel(2*C.GW,Math.hypot(D,C.GH-HB),X+s*D/2,(C.GH+HB)/2,0,Math.PI/2,Math.atan2(s*D,-(C.GH-HB)));
+    for(const z of [-C.GW,C.GW])panel(D,(C.GH+HB)/2,X+s*D/2,(C.GH+HB)/4,z,0);}}
+function canalTex(){const c=document.createElement('canvas');c.width=64;c.height=256;const g=c.getContext('2d');g.fillStyle='#4fa8c4';g.fillRect(0,0,64,256);
+  for(let i=0;i<60;i++){g.strokeStyle='rgba(255,255,255,'+(.15+Math.random()*.3)+')';g.lineWidth=1+Math.random()*2;const y=Math.random()*256,x0=Math.random()*64;g.beginPath();g.moveTo(x0,y);g.lineTo(x0+6+Math.random()*14,y+2);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
+// ===== armar el estadio del pueblo =====
 async function build(){
-  const town=['wall','wall-window-shutters','wall-window-round','wall-door','wall-wood','wall-wood-window-shutters','wall-wood-door','wall-wood-window-round','roof-point','roof-high-point','chimney','pillar-stone','pillar-wood',
-    'fountain-round','fountain-center','stall-red','stall-green','stall-bench','stall-stool','cart','cart-high','lantern','hedge','hedge-large','banner-red','banner-green','windmill','tree','tree-high-round','tree-crooked','rock-large','fence'].map(n=>T_+n);
-  await Promise.all(['cliff_block_rock','cliff_block_stone','flower_redA','flower_yellowA','flower_purpleA','plant_bush','plant_bushDetailed','tree_oak','tree_default','tree_fat','stump_round'].concat(town).map(loadK));
+  await Promise.all(['pueblo_grada_principal','pueblo_casas','pueblo_ayuntamiento','pueblo_campanario','pueblo_techo','pueblo_porteria','pueblo_marcador','pueblo_farol'].map(loadG));
   const SMK=radTex('rgba(240,240,240,.9)','rgba(240,240,240,0)');
-  // banqueta elevada de piedra a los lados y en las esquinas (el borde alto)
-  const TH=1.45;
-  for(const s of [-1,1]){for(let x=-E-9;x<=E+9;x+=2.5)for(let r=0;r<4;r++)plateau(x,s*(B+1.25+r*2.5),2.52,2.52,TH,true);
-    for(const e of [-1,1])for(let z=GW+7.5;z<=B+.5;z+=2.5)for(let k=0;k<3;k++)plateau(e*(E+2.2+k*2.5),s*z,2.52,2.52,TH,true);}
-  cobblePlane(L+1.3,L+30,-B-10,B+10);cobblePlane(-L-26,-L-1.3,-B-10,B+10);
-  for(const s of [-1,1]){
-    // pretil, faroles, banderas y puestos sobre la banqueta
-    for(let x=-E-7;x<=E+7;x+=3.4)piece('fence',x,TH,s*(B+1.78),3.4,s>0?Math.PI/2:-Math.PI/2);
-    for(let x=-E+3;x<=E-3;x+=9)piece('lantern',x,TH,s*(B+.9),2.2,0);
-    for(let x=-E+7.5;x<=E-7;x+=18)piece(Math.random()<.5?'banner-red':'banner-green',x,TH,s*(B+1.95),3.4,s>0?Math.PI/2:-Math.PI/2);
-    for(let x=-E+1;x<=E;x+=6.5+Math.random()*3){const r=Math.random();
-      if(r<.35)piece(Math.random()<.5?'stall-red':'stall-green',x,TH,s*(B+2.6),3.2,s>0?-Math.PI/2:Math.PI/2);
-      else if(r<.55)piece(Math.random()<.5?'cart':'cart-high',x,TH,s*(B+2.4),3.2,Math.random()*6);
-      else if(r<.75)piece('stall-bench',x,TH,s*(B+1.6),3.4,0);
-      else kenney(pickC(['flower_redA','flower_yellowA','flower_purpleA']),3.4,x,s*(B+1.4),null,{sway:.5,noShadow:true});}
-    // casas en fila
-    for(let x=-E-6;x<=E+6;x+=4.2+Math.random()*1.4){if(Math.random()<.15)continue;house(x,s*(B+7.8),s>0?Math.PI/2:-Math.PI/2,Math.random()<.45?2:1,Math.random()<.4);}
-    for(let x=-E-6;x<=E+6;x+=3+Math.random()*3)kenney(pickC(['tree_oak','tree_default','tree_fat']),4.6,x,s*(B+13+Math.random()*8),null,{sway:.035,var:.3});
-    for(let x=-E+5;x<=E-5;x+=21)laundry(x,s*(B+5.6),x+4.2,s*(B+5.6),TH+3.3);
-  }
-  // los dos extremos iguales (local y visita), en espejo
-  for(const e of [1,-1]){const X=d=>e*(L+d),Z=z=>e*z,face=e>0?Math.PI:0,side=e>0?-Math.PI/2:Math.PI/2;
-    piece('fountain-round',X(10),0,0,3.2,0);piece('fountain-center',X(10),0,0,3.2,0);fountains.push(new THREE.Vector3(X(10),0,0));
-    windmill(X(20),Z(-9),e);house(X(19),Z(8.5),face,2,false);house(X(23.5),Z(5),face,1,true);house(X(24),Z(-2.5),face,2,true);
-    piece('stall-bench',X(6.5),0,-6.5,3.4,0);piece('stall-bench',X(6.5),0,6.5,3.4,0);
-    for(const z of [-8,8])piece('lantern',X(4.2),0,z,2.2,0);
-    piece('banner-red',X(4.7),0,Z(-GW-2),3.4,face);piece('banner-green',X(4.7),0,Z(GW+2),3.4,face);
-    piece('tree',X(13.5),0,Z(-11),3,0);piece('tree-high-round',X(13.5),0,Z(11),3,0);
-    piece('stall-red',X(7),0,Z(-12.2),3.2,side);piece('stall-green',X(7),0,Z(12.2),3.2,side);piece('cart',X(3.6),0,Z(-6.4),3.2,e>0?.4+Math.PI:.4);
-    piece('stall-stool',X(9),0,Z(-14),3.4,0);piece('stall-stool',X(9.8),0,Z(-14.6),3.4,0);
-    for(const z of [-3.5,3.5])piece('hedge',X(4.4),0,z,3.4,face);
-    for(let k=0;k<9;k++){const zz=-3.6+k*.9;kenney(['flower_redA','flower_yellowA','flower_purpleA'][k%3],3.4,X(5.3),zz,k*1.3,{sway:.5,noShadow:true});}
-    bunting(X(4.2),-8,X(4.2),8,4.6);
-    for(const [a,b] of [[19,8.5],[24,-2.5]])hangSign(X(a)-e*1.95,Z(b)+1.1,4.2,e);
-    for(let k=0;k<8;k++)pigeon(X(6.4+(k%4)*2.3),Z((k<4?-1:1)*(4.9+(k%2)*.9)));
-    cat(X(10),Z(3.05),.9);cat(X(7),Z(-12.2),null);
-  }
-  // palomas y gatos en los lados, iguales de cada lado
-  for(const s of [-1,1]){for(let k=0;k<4;k++)pigeon(-L+8+k*16,s*(B+4.6));cat(-L+10,s*(B+.9),TH);cat(L-10,s*(B+.9),TH);}
+  const at=(x,z,ry,lx,ly,lz)=>new THREE.Vector3(x+lx*Math.cos(ry)+lz*Math.sin(ry),ly,z-lx*Math.sin(ry)+lz*Math.cos(ry));
+  // empedrado alrededor de la cancha (debajo de gradas y casas)
+  cobblePlane(-XS-30,XS+40,-ZS-30,ZS+30);{const cb=scene.children[scene.children.length-1];cb.position.y=-.06;}
+  // --- canal de agua a los costados, con bordillo de piedra ---
+  {const z0=HW+1.75,z1=ZS-.15,zc=(z0+z1)/2,w=z1-z0,X=X0-1;waterT=canalTex();waterT.repeat.set(1,2*X/6);
+   for(const side of [-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,2*X),new THREE.MeshLambertMaterial({map:waterT,emissive:0x0a2a3a,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-8}));m.rotation.set(-Math.PI/2,0,Math.PI/2);m.position.set(0,.1,side*zc);scene.add(m);
+     for(const e of [-1,1]){const k=mesh(new THREE.BoxGeometry(2*X+.4,.36,.34),'#cdbfa5');k.position.set(0,.16,side*(zc+e*(w/2+.12)));scene.add(k);}
+     for(const x of [-X,X]){const k=mesh(new THREE.BoxGeometry(.34,.36,w+.6),'#cdbfa5');k.position.set(x,.16,side*zc);scene.add(k);}}}
+
+  // --- las dos tribunas largas: 4 módulos de grada ---
+  const mW=2*X0/4,mX=i=>-X0+mW*(i+.5);
+  for(const side of [-1,1]){const ry=side<0?0:Math.PI,cz=side*(ZS+GD/2);
+    for(let i=0;i<4;i++){place('pueblo_grada_principal',{x:mX(i),z:cz,ry,w:mW,d:GD,h:GH2});seatsStraight('pueblo_grada_principal',mX(i),cz,ry,mW,GD,GH2,SP);}
+    // techo de tejas en las orillas: las patas sobre la pared de atrás y el techo vuela hacia la cancha
+    for(const i of [0,3]){if(!GM.pueblo_techo)continue;
+      if(!PREP.pueblo_techo){const b=new THREE.Box3().setFromObject(GM.pueblo_techo.scene).getSize(new THREE.Vector3());LEGDROP.pueblo_techo=GH2*.92/(mW/b.z);}
+      const P=prep('pueblo_techo');const k=mW/P.size.z,Dr=P.size.x*k,H0=P.size.y*k;
+      // la caja ya incluye los pilares alargados: se apoya en el piso y el techo queda a la misma altura
+      place('pueblo_techo',{x:mX(i),z:side*(ZS+GD*.95-.41*Dr),y:0,ry:side<0?0:Math.PI,s:k});}
+    // casitas con balcones detrás de la grada (encierran el estadio)
+    const P=prep('pueblo_casas');if(P){const cw=2*(X0+2)/4,k=cw/P.size.x;for(let i=0;i<4;i++)place('pueblo_casas',{x:-(X0+2)+cw*(i+.5),z:side*(ZS+GD+ST+P.size.z*k/2),ry,s:k});}
+    // papel picado sobre el canal y faroles en la orilla
+    for(let i=0;i<3;i++){const x1=-X0+4+i*(2*X0-8)/3,x2=x1+(2*X0-8)/3;bunting(x1,side*(HW+2.6),x2,side*(HW+2.6),5.2);}
+    for(let i=0;i<=4;i++){const x=-X0+2+i*(2*X0-4)/4;place('pueblo_farol',{x,z:side*(ZS+.6),h:6.5});addGlow(new THREE.Vector3(x,6.2,side*(ZS+.6)),2.6);}
+    for(let k=0;k<5;k++)pigeon(-X0+6+k*(2*X0-12)/4,side*(HW+1.4));
+    cat(-X0+10,side*(ZS+GD*.97),GH2,null);}
+
+  // --- detrás de TU portería (x<0): grada; atrás, casitas ---
+  for(let i=0;i<2;i++){const cz=-Z0+Z0*(i+.5),cx=-(XS+GD/2),ry=Math.PI/2;
+    place('pueblo_grada_principal',{x:cx,z:cz,ry,w:Z0,d:GD,h:GH2});seatsStraight('pueblo_grada_principal',cx,cz,ry,Z0,GD,GH2,SP);}
+  {const P=prep('pueblo_casas');if(P){const cw=Z0,k=cw/P.size.x;for(let i=0;i<2;i++)place('pueblo_casas',{x:-(XS+GD+ST+P.size.z*k/2),z:-Z0+cw*(i+.5),ry:Math.PI/2,s:k});}}
+
+  // --- las cuatro esquinas: la grada doblada ---
+  for(const sx of [-1,1])for(const sz of [-1,1]){const a0=sx>0?(sz<0?-Math.PI/2:0):(sz<0?Math.PI:Math.PI/2);
+    bentStand('pueblo_grada_principal',{x:sx*X0,z:sz*Z0},a0,RC,GD,GH2,SP);}
+
+  // --- el ayuntamiento detrás de la portería RIVAL (x>0), del ancho de ese lado ---
+  {const P=prep('pueblo_ayuntamiento');if(P){const W=2*Z0+2,k=W/P.size.x;place('pueblo_ayuntamiento',{x:XS+P.size.z*k/2,z:0,ry:-Math.PI/2,s:k});
+    smokes.push({x:XS+P.size.z*k*.6,y:P.size.y*k*.62,z:-W*.32});}}
+
+  // --- campanarios en las cuatro esquinas ---
+  for(const sz of [-1,1]){const x=X0+RC+3,z=sz*(ZS+GD+ST/2);place('pueblo_campanario',{x,z,h:19,ry:Math.atan2(-x,-z)});}
+  // la calle: faroles, macetas y gente del pueblo (palomas y gatos)
+  for(const side of [-1,1]){const zc=side*(ZS+GD+ST/2);
+    for(let i=0;i<=5;i++){const x=-X0+i*(2*X0)/5;place('pueblo_farol',{x,z:side*(ZS+GD+ST-1),h:6});addGlow(new THREE.Vector3(x,5.8,side*(ZS+GD+ST-1)),2.4);}
+    for(let k=0;k<6;k++)pigeon(-X0+4+k*(2*X0-8)/5+(Math.random()-.5)*3,zc+(Math.random()-.5)*4);
+    cat(-X0*.4,zc,0,null);cat(X0*.5,zc+1.5,0,null);
+    laundry(-X0*.6,side*(ZS+GD+ST+1),-X0*.6+7,side*(ZS+GD+ST+1),8);laundry(X0*.3,side*(ZS+GD+ST+1),X0*.3+7,side*(ZS+GD+ST+1),8);}
+
+  // --- dos pantallas en las esquinas del lado rival, inclinadas hacia la cancha ---
+  {const r=RC+GD*.55,x=X0+r*.7071,z=-(Z0+r*.7071);place('pueblo_marcador',{x,z,y:GH2*.55,ry:Math.atan2(-x,-z),w:12});}
+
+  // --- porterías: el modelo del pueblo, con el hueco del tamaño de la portería del juego ---
+  {const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.4;
+   for(const s of [-1,1])place('pueblo_porteria',{x:s*(L+.396*D),z:0,ry:s>0?0:Math.PI,w:D,d:2*C.GW/.842,h:C.GH/.912});}
+
+  if(typeof NETS==='undefined'||!NETS.length)drawNets();
+  // --- vida del pueblo: palomas en la plaza, moscas/mariposas, pájaros, humo de chimeneas ---
   for(let i=0;i<10;i++)makeFly();for(let i=0;i<5;i++)makeBird();
-  for(let i=0;i<70;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:DROP,transparent:true,depthWrite:false,opacity:.0}));sp.scale.setScalar(.22);scene.add(sp);drops.push({sp,life:0});}
   for(let i=0;i<40;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:SMK,transparent:true,depthWrite:false,opacity:0}));sp.scale.setScalar(1.2);scene.add(sp);smokeSprites.push({sp,life:0});}
-  
+  if(window.GZ_CROWD_ON&&typeof buildCrowd==='function')buildCrowd();
 }
 function gyH(){return 7+Math.random()*3;}
 
@@ -362,6 +463,7 @@ function update(dt){dt=Math.min(.05,dt);U.uTime.value+=dt;t0+=dt;const T=U.uTime
   for(const m of mists){m.m.material.opacity=.18+Math.sin(T*.4+m.ph)*.06;m.m.position.y=.75+Math.sin(T*.3+m.ph)*.15;}
   for(const m of mushrooms){const b=gk>0?Math.sin(T*16)*.12*gk:Math.sin(T*1.5+m.position.x)*.012;m.scale.set(1-b*.5,1+b,1-b*.5);}
   if(waterTex)waterTex.offset.y-=dt*.25;
+  if(waterT)waterT.offset.y-=dt*(.22+gk*.4);
   for(const c of critters)c.upd(c,dt,T,gk);
   for(const m of mills)m.rotation.x+=dt*(.6+gk*3);
   for(const p of pennants)p.rotation.x=Math.sin(T*3+p.userData.ph)*.35*U.uWind.value;
@@ -378,5 +480,6 @@ function update(dt){dt=Math.min(.05,dt);U.uTime.value+=dt;t0+=dt;const T=U.uTime
     u.life-=dt;l.position.y-=dt*.7;l.position.x+=Math.sin(T*2+u.ph)*dt*.9+dt*.4;l.position.z+=Math.cos(T*1.7+u.ph)*dt*.6;l.rotation.set(T*2+u.ph,T*1.3,T+u.ph);if(l.position.y<.05||u.life<=0){u.life=0;l.visible=false;}}
   }
 build();
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
 return {update,onGoal:()=>{goalT=2.8;}};
 };

@@ -1,5 +1,6 @@
 window.GZ_ARENAS=window.GZ_ARENAS||{};
 window.GZ_ARENAS[5]=function(G){
+window.GZ_FIELD_MOTIF='timon';   // v203: grabado en el césped de esta arena
 
 const L=32,HW=16,GW=4.5,GH=2.9,B=HW+1.0,E=L+1.2;
 // ===== paleta del bosque: verdes profundos, troncos oscuros, hongos rojos, faroles ámbar =====
@@ -15,7 +16,7 @@ const renderer=G.renderer;
 const scene=G.root,REAL=G.scene;REAL.background=new THREE.Color('#9fd8f2');REAL.fog=new THREE.Fog('#a8dcf2',90,200);
 const camera=G.camera;
 const hemi=new THREE.HemisphereLight(0xffffff,0x8a7a5a,.5);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xfff4dc,.62);sun.position.set(-16,42,22);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+const sun=new THREE.DirectionalLight(0xfff4dc,.62);sun.position.set(-16,42,22);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);}   // v203: sombras según la calidad
 Object.assign(sun.shadow.camera,{left:-50,right:50,top:36,bottom:-36,near:8,far:120});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;scene.add(sun);
 const U={uTime:{value:0},uWind:{value:1}};
 
@@ -59,6 +60,33 @@ function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
 field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
+// opción: césped como el de la arena 1 en lugar de las losas
+const TILES=field.material.map;let GRASS=null;
+function grassTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const X=x=>(x+36)*PX,Z=z=>(z+24)*PX,q=4,STK=!!window.strikersGrass;
+  if(STK)strikersGrass(g,W,H,PX,X,Z);else for(let x=-36,i=0;x<36;x+=q,i++)for(let z=-24,j=0;z<24;z+=q,j++){g.fillStyle=(i+j)%2?'#9db150':'#89a444';g.fillRect(X(x),Z(z),q*PX+1,q*PX+1);}
+  const t=new THREE.CanvasTexture(c);if(STK&&window.strikersFinish)strikersFinish(g,W,H,X(0),Z(0),PX,t);   // hojitas de pasto y logo del centro
+  // fuera de la cancha: arena de playa (el césped solo dentro, con esquinas redondeadas)
+  {const m=1.2,x0=X(-L-m),z0=Z(-HW-m),w=2*(L+m)*PX,h=2*(HW+m)*PX,r=((window.SIM&&SIM.C&&SIM.C.CR)||7)*PX+m*PX;
+   g.save();g.beginPath();g.rect(0,0,W,H);g.moveTo(x0+r,z0);g.arcTo(x0,z0,x0,z0+h,r);g.arcTo(x0,z0+h,x0+w,z0+h,r);g.arcTo(x0+w,z0+h,x0+w,z0,r);g.arcTo(x0+w,z0,x0,z0,r);g.closePath();g.clip('evenodd');
+   g.fillStyle='#e8d29c';g.fillRect(0,0,W,H);
+   for(let i=0;i<1400;i++){g.fillStyle=Math.random()<.5?'rgba(190,160,110,.18)':'rgba(255,248,225,.22)';g.beginPath();g.arc(Math.random()*W,Math.random()*H,2+Math.random()*10,0,7);g.fill();}
+   // piedritas en el borde del césped que se van perdiendo en la arena
+   const bx=L+m,bz=HW+m,rr=r/PX,sdf=(x,z)=>{const qx=Math.abs(x)-(bx-rr),qz=Math.abs(z)-(bz-rr);return Math.hypot(Math.max(qx,0),Math.max(qz,0))+Math.min(Math.max(qx,qz),0)-rr;};
+   for(let i=0;i<9000;i++){const x=(Math.random()-.5)*72,z=(Math.random()-.5)*48,d=sdf(x,z);if(d<0||d>3.2)continue;const a=1-d/3.2;if(Math.random()>a*a+.05)continue;
+     const sx=X(x),sz=Z(z),rw=(.22+Math.random()*.38)*PX*(.6+a*.5),rh=rw*(.6+Math.random()*.35),ang=Math.random()*3.14,v=(Math.random()-.5)*26|0;
+     g.globalAlpha=.35+a*.6;g.fillStyle='rgba(70,55,40,.35)';g.beginPath();g.ellipse(sx+rw*.18,sz+rw*.2,rw,rh,ang,0,7);g.fill();
+     g.fillStyle=`rgb(${176+v},${164+v},${146+v})`;g.beginPath();g.ellipse(sx,sz,rw,rh,ang,0,7);g.fill();
+     g.fillStyle='rgba(255,255,255,.22)';g.beginPath();g.ellipse(sx-rw*.25,sz-rh*.3,rw*.45,rh*.35,ang,0,7);g.fill();}
+   g.globalAlpha=1;
+   g.restore();
+   g.strokeStyle='rgba(150,120,80,.35)';g.lineWidth=PX*.18;g.beginPath();g.moveTo(x0+r,z0);g.arcTo(x0,z0,x0,z0+h,r);g.arcTo(x0,z0+h,x0+w,z0+h,r);g.arcTo(x0+w,z0+h,x0+w,z0,r);g.arcTo(x0+w,z0,x0,z0,r);g.closePath();g.stroke();}
+  g.strokeStyle=STK?'#f6faf0':'rgba(240,234,214,.9)';g.lineWidth=PX*(STK?.25:.22);
+  (window.GZ_RR?GZ_RR(g,X(-L),Z(-HW),2*L*PX,2*HW*PX,(SIM.C.CR||0)*PX):g.strokeRect(X(-L),Z(-HW),2*L*PX,2*HW*PX));g.beginPath();g.moveTo(X(0),Z(-HW));g.lineTo(X(0),Z(HW));g.stroke();
+  g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-8.6),9*PX,17.2*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();t.needsUpdate=true;return t;}
+function setGrass(on){if(on&&!GRASS)GRASS=grassTex();field.material.map=on?GRASS:TILES;field.material.needsUpdate=true;}
+if(window.GZ_PLAYA_GRASS)setGrass(true);
 (function(){const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.fillStyle='#55772f';g.fillRect(0,0,S,S);
   for(let i=0;i<300;i++){g.fillStyle=pickC(['rgba(90,120,50,.4)','rgba(60,90,35,.4)','rgba(170,110,50,.35)']);g.beginPath();g.arc(Math.random()*S,Math.random()*S,4+Math.random()*20,0,7);g.fill();}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(14,14);
@@ -169,44 +197,156 @@ function gull(){const g=new THREE.Group();const m=new THREE.MeshBasicMaterial({c
   for(const s of [-1,1]){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,.22),m);w.position.x=s*.45;w.userData.s=s;g.add(w);}
   g.userData={cx:(Math.random()-.5)*80,cz:(Math.random()<.5?-1:1)*(B+12+Math.random()*14),r:5+Math.random()*8,h:9+Math.random()*6,sp:.25+Math.random()*.2,ph:Math.random()*6};scene.add(g);gulls.push(g);}
 
-// ===== armar la arena =====
+const PDIR='assets/arenas/playa/',GM={};
+const loadG=n=>new Promise(res=>loader.load(PDIR+n+'.glb?v=203',g=>{GM[n]=g;res();},undefined,e=>{console.warn('falta',n,e);res();}));
+// material: lambert con un poco de luz propia en lo amarillo claro (ventanas y faroles)
+function arenaMat(src){const map=src.map||null;if(map){map.encoding=THREE.LinearEncoding;map.anisotropy=4;map.needsUpdate=true;}
+  const m=new THREE.MeshLambertMaterial({map,color:0xffffff});
+  m.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+      {vec3 c=diffuseColor.rgb;float lit=smoothstep(.72,.9,min(c.r,c.g))*smoothstep(.12,.3,c.g-c.b);totalEmissiveRadiance+=c*(lit*.75+.08);}`);};
+  m.customProgramCacheKey=()=>'playaMat';return m;}
+const PREP={};
+function prep(n){if(PREP[n])return PREP[n];const g=GM[n];if(!g)return null;const s=g.scene;s.rotation.y=TRIM[n]||0;
+  const mats=new Map();s.traverse(o=>{if(o.isMesh){if(!mats.has(o.material))mats.set(o.material,arenaMat(o.material));o.material=mats.get(o.material);o.castShadow=true;o.receiveShadow=true;}});
+  s.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(s);return PREP[n]={s,box,size:box.getSize(new THREE.Vector3())};}
+// FACE: giro para que el frente de cada modelo mire a +z
+const FACE={playa_palco:Math.PI/2};
+const TRIM={playa_taberna:-5.5*Math.PI/180};   // la taberna viene girada de Tripo
+function place(n,o){const P=prep(n);if(!P)return null;o=o||{};
+  const inner=P.s.clone(true),wrap=new THREE.Group(),rot=new THREE.Group();rot.add(inner);
+  const c=P.box.getCenter(new THREE.Vector3());inner.position.set(-c.x,-P.box.min.y,-c.z);
+  rot.rotation.y=(FACE[n]||0)+(o.spin||0);wrap.add(rot);
+  const turned=Math.abs(Math.sin(rot.rotation.y))>.5,W0=turned?P.size.z:P.size.x,D0=turned?P.size.x:P.size.z,H0=P.size.y;
+  let k=o.s||null;if(!k)k=o.w?o.w/W0:o.d?o.d/D0:o.h?o.h/H0:1;
+  wrap.scale.set(o.w?o.w/W0:k,o.h?o.h/H0:(o.ys||k),o.d?o.d/D0:k);
+  wrap.position.set(o.x||0,o.y||0,o.z||0);wrap.rotation.y=o.ry||0;scene.add(wrap);return wrap;}
+
+// filas de asiento medidas (f = fondo desde el frente, h = fracción del alto)
+const ROWS={playa_grada:[[.25,.37],[.43,.46],[.62,.54],[.79,.62]]};
+const SEATS=[];   // {x,y,z,ry}
+function seatsStraight(n,cx,cz,ry,W,D,H,sp){const R=ROWS[n];if(!R)return;const cs=Math.cos(ry),sn=Math.sin(ry);
+  for(const [f,h] of R){const lz=D/2-f*D;for(let lx=-W/2+sp*.6;lx<=W/2-sp*.5;lx+=sp){
+    SEATS.push({x:cx+lx*cs+lz*sn,y:h*H,z:cz-lx*sn+lz*cs,ry});}}}
+
+function bentStand(n,C,a0,r,D,H,sp){const P=prep(n);if(!P)return;const g=new THREE.Group();
+  const src=P.s.clone(true);const rot=new THREE.Group();rot.add(src);const c=P.box.getCenter(new THREE.Vector3());src.position.set(-c.x,-P.box.min.y,-c.z);rot.rotation.y=FACE[n]||0;
+  const tmp=new THREE.Group();tmp.add(rot);tmp.updateMatrixWorld(true);
+  const turned=Math.abs(Math.sin(rot.rotation.y))>.5,W0=turned?P.size.z:P.size.x,D0=turned?P.size.x:P.size.z,H0=P.size.y;
+  const v=new THREE.Vector3();
+  src.traverse(o=>{if(!o.isMesh)return;const geo=o.geometry.clone();geo.applyMatrix4(o.matrixWorld);const pa=geo.attributes.position;
+    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i);
+      const t=(v.x+W0/2)/W0,back=(D0/2-v.z)/D0*D,th=a0+t*Math.PI/2,rr=r+back;
+      pa.setXYZ(i,C.x+Math.cos(th)*rr,v.y/H0*H,C.z+Math.sin(th)*rr);}
+    geo.computeVertexNormals();geo.computeBoundingSphere();const m=new THREE.Mesh(geo,o.material);m.castShadow=true;m.receiveShadow=true;g.add(m);});
+  scene.add(g);
+  const R=ROWS[n]||[];for(const [f,h] of R){const rr=r+f*D,len=rr*Math.PI/2,cnt=Math.max(1,Math.floor(len/sp));
+    for(let k=0;k<cnt;k++){const th=a0+(k+.5)/cnt*Math.PI/2;SEATS.push({x:C.x+Math.cos(th)*rr,y:h*H,z:C.z+Math.sin(th)*rr,ry:Math.atan2(-Math.cos(th),-Math.sin(th))});}}
+  return g;}
+
+
+// =====================================================================
+// v194: PLAYA PIRATA — una caleta cerrada por acantilados. Gradas de muelle en los lados,
+// el palco elevado con la pantalla detrás de la portería rival, el arco de roca con el galeón encallado,
+// vigías sobre pilotes, río a los costados, mar de fondo.
+// =====================================================================
+const ZS=HW+3.6,XS=L+4.5,X0=26,Z0E=12;
+const GD=8,GHH=8*.537/.481,SP=1.45;
+let canalT=null;
+function canalTex2(){const c=document.createElement('canvas');c.width=64;c.height=256;const g=c.getContext('2d');g.fillStyle='#38b4cf';g.fillRect(0,0,64,256);
+  for(let i=0;i<60;i++){g.strokeStyle='rgba(255,255,255,'+(.15+Math.random()*.3)+')';g.lineWidth=1+Math.random()*2;const y=Math.random()*256,x0=Math.random()*64;g.beginPath();g.moveTo(x0,y);g.lineTo(x0+6+Math.random()*14,y+2);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
+const FIRE=radTex('rgba(255,236,150,1)','rgba(255,110,20,0)'),torches=[];
+function torch(x,y,z,s){s=s||1;const g=new THREE.Group();g.position.set(x,y,z);scene.add(g);const parts=[];
+  for(let i=0;i<4;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:FIRE,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));sp.scale.setScalar(.9*s);g.add(sp);parts.push({sp,ph:Math.random()*6,k:i/4});}
+  torches.push({parts,s});}
+function drawNets(){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72;
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(0,32);g.lineTo(32,0);g.lineTo(64,32);g.lineTo(32,64);g.closePath();g.stroke();
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  const mat=new THREE.MeshBasicMaterial({map:t,color:0xf4f4f0,transparent:true,alphaTest:.25,side:THREE.DoubleSide,depthWrite:false});
+  const panel=(w,h,x,y,z,ry,rx)=>{const gg=new THREE.PlaneGeometry(w,h),uv=gg.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/.9,uv.getY(i)*h/.9);
+    const m=new THREE.Mesh(gg,mat);m.position.set(x,y,z);m.rotation.set(rx||0,ry,0,'YXZ');scene.add(m);};
+  for(const s of [-1,1]){const X=s*L;panel(2*C.GW,HB,X+s*D,HB/2,0,Math.PI/2);
+    panel(2*C.GW,Math.hypot(D,C.GH-HB),X+s*D/2,(C.GH+HB)/2,0,Math.PI/2,Math.atan2(s*D,-(C.GH-HB)));
+    for(const z of [-C.GW,C.GW])panel(D,(C.GH+HB)/2,X+s*D/2,(C.GH+HB)/4,z,0);}}
+
+// ===== cascadas: punto del modelo → mundo, lámina de agua sutil, laguna y arroyo al río =====
+function worldPt(wrap,n,fx,fy,fz){const P=prep(n);if(!P)return null;wrap.updateMatrixWorld(true);const rot=wrap.children[0],inner=rot.children[0];
+  return rot.localToWorld(new THREE.Vector3(P.box.min.x+fx*P.size.x,P.box.min.y+fy*P.size.y,P.box.min.z+fz*P.size.z).add(inner.position));}
+const falls=[],fmist=[],lagoons=[];
+const MIST=radTex('rgba(255,255,255,.8)','rgba(230,245,255,0)');
+function fallTex(){const c=document.createElement('canvas');c.width=64;c.height=256;const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,64,0);gr.addColorStop(0,'rgba(170,225,240,0)');gr.addColorStop(.2,'rgba(190,235,248,.55)');gr.addColorStop(.8,'rgba(190,235,248,.55)');gr.addColorStop(1,'rgba(170,225,240,0)');g.fillStyle=gr;g.fillRect(0,0,64,256);
+  for(let i=0;i<40;i++){g.strokeStyle='rgba(255,255,255,'+(.15+Math.random()*.3)+')';g.lineWidth=1+Math.random()*2;const x=10+Math.random()*44,y=Math.random()*256;g.beginPath();g.moveTo(x,y);g.lineTo(x,y+20+Math.random()*40);g.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
+function waterfall(top,base,face,riverPt){const h=top.y-base.y,t=fallTex();t.repeat.set(1,Math.max(1,h/8));
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(2.4,h+.4),new THREE.MeshBasicMaterial({map:t,transparent:true,opacity:.75,depthWrite:false,side:THREE.DoubleSide}));
+  m.position.set(base.x+face.x*.5,base.y+h/2,base.z+face.z*.5);m.rotation.y=Math.atan2(face.x,face.z);scene.add(m);falls.push(t);
+  // lagunita donde cae el agua, con piedras alrededor
+  const pc=new THREE.Vector3(base.x+face.x*3,0,base.z+face.z*3),R=3.4,pt=canalTex2();pt.repeat.set(1,1);
+  const pool=new THREE.Mesh(new THREE.CircleGeometry(R,28),new THREE.MeshLambertMaterial({map:pt,emissive:0x08303a,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-8}));
+  pool.rotation.x=-Math.PI/2;pool.position.set(pc.x,.11,pc.z);scene.add(pool);lagoons.push(pt);
+  for(let i=0;i<16;i++){const a=i/16*Math.PI*2+Math.random()*.2,r=R+.25+Math.random()*.3;const st=mesh(new THREE.DodecahedronGeometry(.4+Math.random()*.35,0),pickC(['#b8a07a','#a89070','#c6b08a']));
+    st.position.set(pc.x+Math.cos(a)*r,.12,pc.z+Math.sin(a)*r);st.rotation.set(Math.random(),Math.random()*6,0);scene.add(st);}
+  // espuma muy suave donde cae
+  for(let i=0;i<6;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:MIST,transparent:true,depthWrite:false,opacity:0}));scene.add(sp);fmist.push({sp,x:base.x+face.x*1.6,z:base.z+face.z*1.6,life:Math.random()*1.5});}
+  // arroyo de la laguna al río del costado
+  const a0=new THREE.Vector3(pc.x,.11,pc.z).addScaledVector(new THREE.Vector3().subVectors(riverPt,pc).setY(0).normalize(),R*.8);
+  const len=a0.distanceTo(riverPt);if(len>1){const W=1.8,ang=Math.atan2(riverPt.x-a0.x,riverPt.z-a0.z),st=canalTex2();st.repeat.set(1,len/6);
+    const rib=new THREE.Mesh(new THREE.PlaneGeometry(W,len),new THREE.MeshLambertMaterial({map:st,emissive:0x08303a,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-8}));
+    rib.rotation.set(-Math.PI/2,0,ang+Math.PI);rib.position.set((a0.x+riverPt.x)/2,.105,(a0.z+riverPt.z)/2);scene.add(rib);lagoons.push(st);
+    for(let k=1;k<len;k+=1.3)for(const e of [-1,1]){const px=a0.x+(riverPt.x-a0.x)*k/len+Math.cos(ang)*e*(W/2+.3),pz=a0.z+(riverPt.z-a0.z)*k/len-Math.sin(ang)*e*(W/2+.3);
+      const r=mesh(new THREE.DodecahedronGeometry(.3+Math.random()*.2,0),'#b8a07a');r.position.set(px,.12,pz);scene.add(r);}}}
+
+// ===== armar la caleta =====
 async function build(){
-  const pir=['castle-wall','castle-window','tower-complete-large','tower-complete-small','tower-watch','cannon','ship-pirate-large','ship-small','boat-row-small','palm-straight','palm-bend','palm-detailed-bend','palm-detailed-straight',
-    'chest','barrel','crate','crate-bottles','flag-pirate-high','flag-high-pennant','structure-platform-dock','platform-planks','rocks-a','rocks-sand-a','rocks-sand-b','patch-sand-foliage','grass-plant'].map(n=>P_+n);
-  await Promise.all(pir.map(loadK));
-  sea();
-  // arena de playa alrededor del fuerte
-  sandPlane(-E-14,E+14,-B-10,B+10,-.05);
-  // murallas del fuerte a los lados (cara interior fuera de la línea) con torres en las esquinas
-  const WS=.85;
-  for(const s of [-1,1]){let k=0;for(let x=-E-1.7;x<=E+1.8;x+=2*WS,k++){const w=pp(k%4===2?'castle-window':'castle-wall',x,s*(B+1.25),WS,0,0);}
-    for(const e of [-1,1]){pp('tower-complete-large',e*(E+2.6),s*(B+1.4),1,0,0);
-      for(let z=GW+7.2;z<=B-.5;z+=2*WS)pp('castle-wall',e*(E+1.9),s*z,WS*.75,Math.PI/2,0);}
-    for(const x of [-22,-8,8,22]){const cn=pp('cannon',x,s*(B+1.6),.9,s>0?0:Math.PI,3.74);if(cn)cannons.push({o:cn,x,y:4.4,z:s*(B+.6)});}}
-  wallDetails(WS);
-  // detrás de las murallas: playa con palmeras, rocas y botes; mar con barcos
-  for(const s of [-1,1]){
-    for(let x=-E-10;x<=E+10;x+=4.5+Math.random()*3)palm(pickC(['palm-detailed-straight','palm-detailed-bend','palm-straight','palm-bend']),x,s*(B+5.5+Math.random()*3),1.1+Math.random()*.4,Math.random()*6);
-    for(let x=-E-8;x<=E+8;x+=11+Math.random()*4)pp(pickC(['rocks-sand-a','rocks-sand-b','rocks-a']),x,s*(B+9.6+Math.random()*1.5),.7+Math.random()*.4,Math.random()*6,-.1);
-    pp('boat-row-small',-12,s*(B+8.8),1,Math.random()*6,-.05);pp('boat-row-small',14,s*(B+8.6),1,Math.random()*6,-.05);
-    foam(-E-14,s*(B+10.2),E+14,s*(B+10.2));
-    const sh=pp('ship-small',(s>0?-18:18),s*(B+22),1,s>0?Math.PI/2:-Math.PI/2,-.6);if(sh)ships.push({o:sh,ph:Math.random()*6,y:-.6});}
-  // extremos (local y visita iguales): muelle con barco pirata, palmeras, tesoro, banderas y cañones
-  for(const e of [1,-1]){const X=d=>e*(L+d),face=e>0?-Math.PI/2:Math.PI/2;
-    for(const sz of [-1,1]){pp('flag-pirate-high',X(3.2),sz*(GW+2),1,e>0?Math.PI:0,0);
-      palm('palm-detailed-bend',X(5.5),sz*(GW+5.2),1.25,sz>0?Math.PI*.5:-Math.PI*.5);palm('palm-detailed-straight',X(8),sz*(GW+3.2),1.15,Math.random()*6);
-      pp('barrel',X(3.4),sz*(GW+5.6),.9,Math.random()*6);pp('crate',X(4.4),sz*(GW+6.6),.9,Math.random()*6);pp('crate-bottles',X(3.6),sz*(GW+7.4),.9,Math.random()*6);
-      const cn=pp('cannon',X(6.6),sz*(GW+1.4),.9,face,0);if(cn)cannons.push({o:cn,x:X(6.6),y:.8,z:sz*(GW+1.4)});}
-    const ch=pp('chest',X(5.2),0,1,face,0);for(let i=0;i<6;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:SPK,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));sp.scale.setScalar(.4);scene.add(sp);sparks.push({sp,x:X(5.2),z:0,ph:Math.random()*6});}
-    pp('patch-sand-foliage',X(7.5),-7.5,.6,0,0);pp('patch-sand-foliage',X(7.5),7.5,.6,Math.PI,0);
-    for(let k=0;k<5;k++)pp('structure-platform-dock',X(10.5+k*2.4),0,1,0,-.2);
-    const big=pp('ship-pirate-large',X(28),-3*e,1.1,e>0?Math.PI/2:-Math.PI/2,-.7);if(big)ships.push({o:big,ph:Math.random()*6,y:-.7});
-    pp('boat-row-small',X(13),4*e,1,Math.random()*6,-.05);
-    foam(X(14),-B-10,X(14),B+10);}
+  await Promise.all(['playa_grada','playa_palco','playa_galeon','playa_arco_roca','playa_acantilado','playa_acantilado_curvo','playa_vigia','playa_taberna','playa_porteria','playa_pantalla','playa_porton','playa_empalizada','playa_farol','playa_palmera'].map(loadG));
+  sandPlane(-220,220,-220,220,-.06);   // ya no hay mar: todo es tierra; el agua baja de las cascadas
+  // --- río a los costados de la cancha ---
+  {const z0=HW+1.75,z1=ZS-.15,zc=(z0+z1)/2,w=z1-z0,X=X0;canalT=canalTex2();canalT.repeat.set(1,2*X/6);
+   for(const side of [-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,2*X),new THREE.MeshLambertMaterial({map:canalT,emissive:0x08303a,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-8}));
+     m.rotation.set(-Math.PI/2,0,Math.PI/2);m.position.set(0,.1,side*zc);scene.add(m);
+     for(const e of [-1,1]){const k=mesh(new THREE.BoxGeometry(2*X+.4,.36,.4),'#c9a46a');k.position.set(0,.16,side*(zc+e*(w/2+.14)));scene.add(k);}
+     for(const x of [-X,X]){const k=mesh(new THREE.BoxGeometry(.4,.36,w+.6),'#c9a46a');k.position.set(x,.16,side*zc);scene.add(k);}}}
+  const at=(x,z,ry,lx,ly,lz)=>new THREE.Vector3(x+lx*Math.cos(ry)+lz*Math.sin(ry),ly,z-lx*Math.sin(ry)+lz*Math.cos(ry));
+
+  // --- tribunas largas: grada de muelle; el portón al centro del lado z<0 ---
+  for(const side of [-1,1]){const ry=side<0?0:Math.PI,cz=side*(ZS+GD/2),gap=side<0?11:0,mW=(2*X0-gap)/4;
+    for(let i=0;i<4;i++){const x=i<2?-X0+mW*(i+.5):X0-mW*(4-i-.5);
+      place('playa_grada',{x,z:cz,ry,w:mW,d:GD,h:GHH});seatsStraight('playa_grada',x,cz,ry,mW,GD,GHH,SP);}
+    for(let i=0;i<=4;i++){const x=-X0+i*X0/2;if(side<0&&Math.abs(x)<6)continue;place('playa_farol',{x,z:side*(ZS-.4),h:6.5});}}
+  place('playa_porton',{x:0,z:-(ZS+2.2),w:11});
+  // --- detrás de TU portería: grada ---
+  for(let i=0;i<2;i++){const cz=-Z0E+Z0E*(i+.5),cx=-(XS+GD/2),ry=Math.PI/2;place('playa_grada',{x:cx,z:cz,ry,w:Z0E,d:GD,h:GHH});seatsStraight('playa_grada',cx,cz,ry,Z0E,GD,GHH,SP);}
+
+  // --- los acantilados cierran la caleta por los cuatro lados ---
+  {const P=prep('playa_acantilado');if(P){const W=X0,k=W/P.size.x,dp=P.size.z*k;
+    for(const side of [-1,1])for(const x of [-X0/2,X0/2])place('playa_acantilado',{x,z:side*(ZS+GD+dp/2+.8),ry:side<0?0:Math.PI,s:k});
+    place('playa_acantilado',{x:-(XS+GD+dp/2+.8),z:0,ry:Math.PI/2,w:2*Z0E+2,d:dp,h:P.size.y*k});}}
+  // esquinas: el acantilado curvo con su cascada, la curva mirando a la cancha
+  for(const sx of [-1,1])for(const sz of [-1,1]){const S=27;const o=place('playa_acantilado_curvo',{x:sx*(X0+1.2+S/2),z:sz*(Z0E+S/2),ry:Math.atan2(-sx,-sz)+Math.PI/4,w:S,d:S});
+    if(o){const top=worldPt(o,'playa_acantilado_curvo',.25,.58,.28),base=worldPt(o,'playa_acantilado_curvo',.25,0,.28);
+      const face=new THREE.Vector3(sx*X0,0,sz*Z0E).sub(base).setY(0).normalize();waterfall(top,base,face,new THREE.Vector3(sx*X0,.12,sz*(HW+1.75+ZS-.15)/2));}}
+
+  // --- lado rival: el palco elevado, la pantalla detrás y el arco de roca con el galeón ---
+  const PX=L+7.5;place('playa_palco',{x:PX,z:0,ry:-Math.PI/2,w:13,d:9,h:11});
+  place('playa_pantalla',{x:PX+6,z:0,y:5,ry:-Math.PI/2,w:14});
+  for(const s of [-1,1])for(const z of [8.5,13.5])place('playa_empalizada',{x:L+6,z:s*z,ry:-Math.PI/2,w:5.2});
+  place('playa_arco_roca',{x:XS+20,z:0,ry:-Math.PI/2,w:32});
+  // el galeón quedó varado en tierra, detrás del acantilado de la izquierda, un poco ladeado
+  {const g=place('playa_galeon',{x:10,z:-52,y:-1.2,ry:.12,h:26});if(g)g.rotation.z=.12;}
+  // vigías sobre pilotes en las esquinas rivales; tabernas en las esquinas de tu lado
+  for(const s of [-1,1]){place('playa_vigia',{x:L+3,z:s*(HW+7),h:14,ry:Math.atan2(-(L+3),-s*(HW+7))});
+    place('playa_taberna',{x:-(L+3),z:s*(HW+7),h:9,ry:Math.atan2(L+3,-s*(HW+7))});
+    place('playa_palmera',{x:L+9,z:s*(HW+2),h:11,ry:Math.random()*6});place('playa_palmera',{x:-(L+8),z:s*(HW+2.5),h:10,ry:Math.random()*6});
+  }
+
+  // --- porterías de bambú: el hueco del tamaño de la portería del juego ---
+  {const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=3.2;
+   for(const s of [-1,1])place('playa_porteria',{x:s*(L+.33*D),z:0,ry:s>0?-Math.PI/2:Math.PI/2,w:2*C.GW/.622,d:D,h:C.GH/.741});}
+  if(typeof NETS==='undefined'||!NETS.length)drawNets();
+
   for(let i=0;i<8;i++)gull();
   for(let i=0;i<50;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:PUFF,transparent:true,depthWrite:false,opacity:0}));scene.add(sp);puffs.push({sp,life:0});}
-  REAL.background=new THREE.Color('#9fd8f2');REAL.fog.color.set('#a8dcf2');
-  
 }
 // v34: murallas con más detalle (almenas, contrafuertes, estandartes, salvavidas, redes, musgo, pasarela, atalaya, conchas)
 function wallDetails(WS){const top=4.4*WS,FACE=B+.06,stone=['#9a9488','#8f897d','#a59f93'];
@@ -356,6 +496,11 @@ function update(dt){dt=Math.min(.05,dt);U.uTime.value+=dt;t0+=dt;const T=U.uTime
   if(waterTex)waterTex.offset.y-=dt*.25;
   for(const c of critters)c.upd(c,dt,T,gk);
   if(seaTex){seaTex.offset.x+=dt*.012;seaTex.offset.y+=dt*.008;}
+  if(canalT)canalT.offset.y-=dt*(.25+gk*.4);
+  for(const t of falls)t.offset.y+=dt*.55;for(const t of lagoons)t.offset.y-=dt*.12;   // movimiento sutil de la cascada
+  for(const p of fmist){p.life-=dt;if(p.life<=0){p.life=1.4+Math.random()*.8;p.sp.position.set(p.x+(Math.random()-.5)*.8,.4,p.z+(Math.random()-.5)*.8);}
+    p.sp.position.y+=dt*.35;const k=p.life/2;p.sp.material.opacity=Math.sin(Math.min(1,k)*Math.PI)*.35;p.sp.scale.setScalar(1+(1-k)*1.6);}
+  for(const t of torches)for(const p of t.parts){const k=(T*1.6+p.k)%1;p.sp.position.set(Math.sin(T*7+p.ph)*.08*t.s,k*1.1*t.s,0);p.sp.scale.setScalar((1-k*.7)*(.9+gk*.6)*t.s);p.sp.material.opacity=1-k;}
   for(const f of foams)f.m.material.opacity=.35+.3*Math.abs(Math.sin(T*.9+f.ph));
   for(const s of ships){s.o.rotation.z=Math.sin(T*.8+s.ph)*.05*(1+gk*2);s.o.rotation.x=Math.sin(T*.6+s.ph)*.03;s.o.position.y=s.y+Math.sin(T*1.1+s.ph)*.15;}
   for(const g of gulls){const u=g.userData,a=T*u.sp+u.ph;g.position.set(u.cx+Math.cos(a)*u.r,u.h+Math.sin(a*2)*.6+gk*3,u.cz+Math.sin(a)*u.r);g.rotation.y=-a;for(const w of g.children)w.rotation.z=w.userData.s*(.25+Math.sin(T*7+u.ph)*.35*(1+gk*2));}
@@ -370,5 +515,6 @@ function update(dt){dt=Math.min(.05,dt);U.uTime.value+=dt;t0+=dt;const T=U.uTime
     u.life-=dt;l.position.y-=dt*.7;l.position.x+=Math.sin(T*2+u.ph)*dt*.9+dt*.4;l.position.z+=Math.cos(T*1.7+u.ph)*dt*.6;l.rotation.set(T*2+u.ph,T*1.3,T+u.ph);if(l.position.y<.05||u.life<=0){u.life=0;l.visible=false;}}
   }
 build();
-return {update,onGoal:()=>{goalT=2.8;}};
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
+return {update,setGrass,onGoal:()=>{goalT=2.8;}};
 };
