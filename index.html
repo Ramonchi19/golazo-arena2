@@ -1650,7 +1650,7 @@ function updateStandFX(dt){if(!scene)return;initStandFX();
 // ================== v43: ARENAS NUEVAS (módulos en assets/arenas) ==================
 const ARENA_MOD_MAP=[15,16,3,5,10,11,12,14,13];/* v203: la Mansión entra como arena 7 (antepenúltima). v202: el Bosque ahora es arena16.js (arena2.js queda de respaldo). v201: la primera arena ahora es el campo de terrazas (arena15.js; arena1.js queda de respaldo). v200: el Volcán ahora es el castillo de lava (arena14.js; arena9.js queda de respaldo). v195: el Desierto ahora es el estadio de ruinas (arena10.js; arena6.js queda de respaldo). v192: el Volcán ahora es el estadio cerrado (arena9.js); arena4.js queda de respaldo */let ARENA_MOD=null,ARENA_ROOT=null;const _arenaJS={};
 function loadArenaJS(n){if(window.GZ_ARENAS&&window.GZ_ARENAS[n])return Promise.resolve();if(_arenaJS[n])return _arenaJS[n];
-  _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=207';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
+  _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=208';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
 function hideOldStadium(){if(fieldMesh)fieldMesh.visible=false;if(outerMesh)outerMesh.visible=false;if(fenceGroup)fenceGroup.visible=false;
   if(arenaGroup){scene.remove(arenaGroup);arenaGroup=new THREE.Group();scene.add(arenaGroup);}seatList=[];boards=[];try{rebuildCrowd();}catch(e){}
   if(hemiL)hemiL.visible=false;if(sun)sun.visible=false;}
@@ -3053,14 +3053,14 @@ function animLib(m,p,dt){
   const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);}
   m.mixer.update((p.frozen>0)?0:(p.rooted>0)?dt*.25:(m._slT!=null||(p.act==='slide'&&SLIDE_PROC)||m._bT!=null||m._r||m._k||m._gd)?dt*.15:dt);   // v173: en la barrida la animación casi se detiene (la pose la pone slidePose). v95: congelado = quieto; atrapado = forcejea lento
   // altura de cadera adaptada a cada personaje
-  if(Bz&&Bz.hips&&ANIMMETA._hips&&m.curA&&m.L&&m.L[m.curA]){const h=Bz.hips.b,r=Bz.hips.p0,c=ANIMMETA._hips;h.position.set(r.x,h.position.y*(r.y/c[1]),r.z);}
-  Bz&&Bz.feet.forEach(f=>f.scale.setScalar(m.foot));
-  if(Bz)toonRun(m,p,dt);
+  if(Bz&&Bz.hips&&ANIMMETA._hips&&m.curA&&m.L&&m.L[m.curA]){const h=Bz.hips.b,r=Bz.hips.p0,c=ANIMMETA._hips,k=r.y/c[1],side=NEWANIM&&/^gk_(dive|block)/.test(m.curA);h.position.set(side?r.x+h.position.x*k:r.x,h.position.y*k,side?r.z+h.position.z*k:r.z);}   // v208: en la estirada el cuerpo sí se va de lado (como en la animación)
+  Bz&&Bz.feet.forEach(f=>f.scale.setScalar(NEWANIM?1:m.foot));
+  if(Bz&&!NEWANIM)toonRun(m,p,dt);
   if(Bz&&SLIDE_PROC)slidePose(m,p,dt);
-  if(Bz)hitPose(m,p,dt);if(Bz&&m._bT==null&&!m._r&&m._slT==null)kickPose(m,p,dt);else if(m._k||m._kTilt){m._k=null;m._kTilt=null;}if(Bz)reactPose(m,p,dt);if(Bz&&p.gk){gkDivePose(m,p,dt);gkFrontPose(m,p,dt);gkStance(m,p,dt);gkMoments(m,p,dt);gkHoldThrow(m,p,dt);}   // v174: meter cuerpo / manotazo del portero, uno distinto por personaje   // v173: barrida hecha a mano
+  if(Bz&&!NEWANIM){hitPose(m,p,dt);if(Bz&&m._bT==null&&!m._r&&m._slT==null)kickPose(m,p,dt);else if(m._k||m._kTilt){m._k=null;m._kTilt=null;}if(Bz)reactPose(m,p,dt);if(Bz&&p.gk){gkDivePose(m,p,dt);gkFrontPose(m,p,dt);gkStance(m,p,dt);gkMoments(m,p,dt);gkHoldThrow(m,p,dt);}}   /* v208: con las animaciones nuevas no se dobla nada encima */   // v174: meter cuerpo / manotazo del portero, uno distinto por personaje   // v173: barrida hecha a mano
   // v170: carrera caricaturesca (exagera la animación según el personaje)
   // brazos un poco separados del cuerpo (personajes anchos)
-  if(Bz&&Bz.la&&Bz.ra&&Bz.armOut&&m._slT==null&&m._bT==null&&!m._r&&!m._kTilt){/* v173: no en la barrida */if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
+  if(Bz&&!NEWANIM&&Bz.la&&Bz.ra&&Bz.armOut&&m._slT==null&&m._bT==null&&!m._r&&!m._kTilt){/* v173: no en la barrida */if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}_gq2.setFromAxisAngle(Bz.la.az,Bz.lsx*Bz.armOut);Bz.la.b.quaternion.premultiply(_gq2);_gq2.setFromAxisAngle(Bz.ra.az,Bz.rsx*Bz.armOut);Bz.ra.b.quaternion.premultiply(_gq2);}
   // v67: despeje con el puño y tapada con la pierna (no hay animación de Mixamo: se dobla el hueso encima de la animación)
   if(Bz&&p.gk&&p.saveT>0&&!(p.dive>0)&&!NEWANIM){const kd=p.saveKind,hi=(p.saveY||0)>1.45,leg=kd==='pie',punch=!leg&&hi&&(kd==='travesano'||kd==='desvio'||kd==='punta');
     if(leg||punch){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}const u=clamp((.7-p.saveT)/.45,0,1),e=Math.sin(u*Math.PI)*(u<.5?1:1),r=sideOf(p,p.saveZ||1)==='r';
@@ -3074,7 +3074,7 @@ function animLib(m,p,dt){
   if(FLOORFIX&&m.id&&m.curA&&m.L&&m.L[m.curA]&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const cv=FLOORFIX[m.id]&&FLOORFIX[m.id][m.curA];
     if(cv){const a=m.L[m.curA],d=a.getClip().duration||1,tt=a.loop===THREE.LoopOnce?Math.min(a.time,d):a.time%d,u=Math.min(.9999,Math.max(0,tt/d))*(cv.length-1),i=Math.floor(u),f=u-i,j=Math.min(i+1,cv.length-1);
       const low=(cv[i]+(cv[j]-cv[i])*f)*.01*CHAR_SCALE+(m.footAdj||0)+(p.flyY||0);if(low<0)m.footAdj=(m.footAdj||0)-low;}}
-  if(!m.lockUntil||T>=m.lockUntil){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
+  if(!NEWANIM&&(!m.lockUntil||T>=m.lockUntil)){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
 }
 function crossTo(m,name,t){t=t||.22;const a=m.A[name];if(!a||m.cur===name)return;
   for(const k in m.A){const o=m.A[k];if(k!==name&&o.isRunning())o.fadeOut(t);}
@@ -3091,7 +3091,7 @@ function animGLB(m,p,dt){
     if(A.run)A.run.timeScale=clamp(sp/5.6,.6,1.7);
     if(p.gk)gkGLBActions(p,m);
     const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);if(Bz.sp2)Bz.sp2.b.quaternion.copy(Bz.sp2.q0);}
-    m.mixer.update(dt);m.bones.feet.forEach(f=>f.scale.setScalar(m.foot));if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);return; // v17: sin pose procedural del portero (rebote tipo resorte)
+    m.mixer.update(dt);m.bones.feet.forEach(f=>f.scale.setScalar(NEWANIM?1:m.foot));if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}if(!NEWANIM)glbLife(p,m,dt);return; // v17: sin pose procedural del portero (rebote tipo resorte)
   }
   // respaldo: solo patada + movimiento por código
   if(p.kickT>0&&!p._k&&m.kick){m.kick.reset();m.kick.timeScale=1+(1-(p.kickPow||1))*.9;m.kick.play();}p._k=p.kickT>0;
@@ -3481,7 +3481,7 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
     if(p._ikw>.01){I.ax.subVectors(palmW(m,'l',I.PL),palmW(m,'r',I.PR));if(I.ax.lengthSq()<.0025)I.ax.set(Math.cos(gkFace(p)),0,-Math.sin(gkFace(p)));I.ax.normalize();
       const sc=m.bones.lh.matrixWorld.getMaxScaleOnAxis(),R=BR+m.bones._palm.lth*sc*.8;
       I.tL.set(ball.x,ball.y,ball.z).addScaledVector(I.ax,R);I.tR.set(ball.x,ball.y,ball.z).addScaledVector(I.ax,-R);
-      ikArm(m,'l',I.tL,p._ikw);ikArm(m,'r',I.tR,p._ikw);}
+      if(!NEWANIM){ikArm(m,'l',I.tL,p._ikw);ikArm(m,'r',I.tR,p._ikw);}}
     // con el balón: las palmas lo sujetan por los lados. Si las manos de la animación quedan separadas (levantándose) lo abraza contra el pecho
     let cw=0,hw=0;p._grip=p._grip||new THREE.Vector3();gripOf(p,m,p._grip);
     if(held&&!p.distrib){hw=1;if(I.PL.distanceTo(I.PR)>2*(BR+.1)*1.15||(/^gk_dive/.test(ca)&&!(p.dive>0)&&p._gu)||(m._gd&&m._gd.ph!=='dive')||m._hug)cw=1;}
@@ -3491,7 +3491,7 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
       if(p._clw>.01&&m.bones.sp2){m.bones.sp2.b.getWorldPosition(I.a);I.a.x+=Math.sin(gkFace(p))*(R+.08);I.a.z+=Math.cos(gkFace(p))*(R+.08);I.a.y-=.05;p._grip.lerp(I.a,p._clw);
         I.b.set(Math.cos(gkFace(p)),0,-Math.sin(gkFace(p)));if(I.b.dot(I.ax)<0)I.b.negate();I.ax.lerp(I.b,p._clw).normalize();}
       if(p._grip.y<BR+.03)p._grip.y=BR+.03;   // v185: tirado en el piso, el balón no se mete en el pasto
-      I.tL.copy(p._grip).addScaledVector(I.ax,R);I.tR.copy(p._grip).addScaledVector(I.ax,-R);ikArm(m,'l',I.tL,p._hw);ikArm(m,'r',I.tR,p._hw);}
+      I.tL.copy(p._grip).addScaledVector(I.ax,R);I.tR.copy(p._grip).addScaledVector(I.ax,-R);if(!NEWANIM){ikArm(m,'l',I.tL,p._hw);ikArm(m,'r',I.tR,p._hw);}}
     p._gripR=p._gripR||new THREE.Vector3();{const B=m.bones;palmW(m,'r',p._gripR);(B.ra?B.ra.b:B.rh).getWorldPosition(I.a);I.b.subVectors(p._gripR,I.a).normalize();p._gripR.addScaledVector(I.b,BR*.8);}
     p._gripT=T;
     if(held&&!(p.distrib&&p.distrib.type!=='mano'&&p.distrib.t>.45))grip=p.distrib&&p.distrib.type==='mano'?p._gripR:p._grip;}

@@ -12,7 +12,7 @@ const L=32,HW=16;
 const renderer=G.renderer,scene=G.root,REAL=G.scene,camera=G.camera;
 REAL.background=new THREE.Color('#f0a86a');REAL.fog=new THREE.Fog('#d9946a',110,260);
 const hemi=new THREE.HemisphereLight(0xffe2c0,0x4a5a30,.6);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffc890,.78);sun.position.set(30,30,18);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);}
+const sun=new THREE.DirectionalLight(0xffc890,.78);sun.position.set(30,30,18);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);sun.shadow.bias=-.0004;sun.shadow.normalBias=.045; /* v208: sin rayitas de sombra en el pasto */}
 Object.assign(sun.shadow.camera,{left:-60,right:60,top:46,bottom:-46,near:8,far:140});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;scene.add(sun);
 const pickC=v=>Array.isArray(v)?v[Math.floor(Math.random()*v.length)]:v;
 const matCache={};

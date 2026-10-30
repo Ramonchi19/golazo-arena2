@@ -16,7 +16,7 @@ const renderer=G.renderer;
 const scene=G.root,REAL=G.scene;REAL.background=new THREE.Color('#e9906a');REAL.fog=new THREE.Fog('#e39a78',90,210);   // v193: atardecer
 const camera=G.camera;
 const hemi=new THREE.HemisphereLight(0xffc8a8,0x5a4058,.5);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffa868,.66);sun.position.set(-34,24,26);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);}   // v203: sombras según la calidad
+const sun=new THREE.DirectionalLight(0xffa868,.66);sun.position.set(-34,24,26);sun.castShadow=true;{const hq=window.save&&save.settings&&save.settings.quality==='alta';sun.shadow.mapSize.set(hq?2048:1024,hq?2048:1024);sun.shadow.bias=-.0004;sun.shadow.normalBias=.045; /* v208: sin rayitas de sombra en el pasto */}   // v203: sombras según la calidad
 Object.assign(sun.shadow.camera,{left:-50,right:50,top:36,bottom:-36,near:8,far:120});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;scene.add(sun);
 const U={uTime:{value:0},uWind:{value:1}};
 
