@@ -41,8 +41,10 @@ class B:
         acc={'bufferView':len(s.js['bufferViews'])-1,'componentType':ct,'count':len(a),'type':typ}
         if mm:acc['min']=[float(x) for x in np.atleast_1d(a.min(0))];acc['max']=[float(x) for x in np.atleast_1d(a.max(0))]
         s.js['accessors'].append(acc);return len(s.js['accessors'])-1
-def canon_model(src,dst,texsize=1024,name='char'):
-    r=Rig(src);M=np.stack([r.G[j]@r.ibm[k] for k,j in enumerate(r.joints)])
+def canon_model(src,dst,texsize=1024,name='char',fix=None):
+    r=Rig(src)
+    if fix:fix(r)
+    M=np.stack([r.G[j]@r.ibm[k] for k,j in enumerate(r.joints)])
     P=r.skin()
     # normales: del archivo, giradas con la piel en reposo
     pr=r.js['meshes'][r.nodes[next(i for i,n in enumerate(r.nodes) if 'mesh' in n)]['mesh']]['primitives'][0]
