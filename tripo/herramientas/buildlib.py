@@ -2,7 +2,7 @@ import sys,json,glob;sys.path.insert(0,'tools')
 from clips import *
 from canon import B,glb_bytes,gname
 FPS=30
-REF=Rig('nuevo/canon/zurdito.glb')   # esqueleto canónico de referencia (jerarquía y nombres)
+REF=Rig('nuevo/canon2/zurdito.glb')   # esqueleto canónico de referencia (jerarquía y nombres)
 names=[REF.nodes[j]['name'] for j in REF.joints if not REF.nodes[j]['name'].endswith(('_End','_end','4'))]
 par={}
 for j in REF.joints:
@@ -19,7 +19,7 @@ class OldSrc(Src):
             sm=a['samplers'][c['sampler']];t=L.acc(sm['input']).ravel();v=L.acc(sm['output']);nm=L.js['nodes'][c['target']['node']].get('name','')
             if c['target']['path']=='translation' and nm=='Hips':s.hipT=(t,v);continue
             if c['target']['path']=='rotation' and nm in s.r.name:s.ch.append((s.r.name[nm],'rotation',t,v,'LINEAR'))
-        s.dur=max(c[2][-1] for c in s.ch);s.rest={k:s.r.wrot(i) for k,i in s.m.items()}
+        s.dur=max(c[2][-1] for c in s.ch);s.rest=norm_rest(s.r,s.m)
         h=81.379 if 'base_anims' in lib else 96.956;s.hipH=h;s.hip0=np.array([0,h,0.])
         if s.hipT is None:s.hipT=(np.array([0.,s.dur]),np.array([s.hip0,s.hip0]))
     def frame(s,t):

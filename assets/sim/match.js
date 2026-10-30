@@ -254,9 +254,9 @@ function updateKeeper(k,dt){
         const need=pred.k.z-k.z,an=Math.abs(need);
         if(!k.plan||k.plan==='atras'){
           if(an<=G_.arm*.75){k.plan='paso';}
-          else{k.plan='estirada';k.dive=.6;k.diveDir=Math.sign(need)||1;k.diveH=pred.k.y;k.diveGoal=Math.min(G_.diveMax,Math.max(0,an-G_.arm*.55));k.diveDone=0;}}
+          else{k.plan='estirada';k.dive=.6;k.diveArrive=pred.k.t;k.diveDir=Math.sign(need)||1;k.diveH=pred.k.y;k.diveGoal=Math.min(G_.diveMax,Math.max(0,an-G_.arm*.55));k.diveDone=0;}}
         if(k.plan==='paso'){const st=Math.min(an,G_.shuffle*dt);k.z+=Math.sign(need)*st;
-          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;}}   // para el dibujo: las manos llegan justo cuando llega el balón
+          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;k.prepSlap=Math.hypot(ball.vx,ball.vy,ball.vz)>=G_.catchV;}}   // para el dibujo: las manos llegan justo cuando llega el balón
         else if(k.plan==='estirada'&&k.diveDone<k.diveGoal){const st=Math.min(k.diveGoal-k.diveDone,G_.diveV*dt);k.z+=k.diveDir*st;k.diveDone+=st;}
         k.z=clamp(k.z,-GW-1.4,GW+1.4);
       }

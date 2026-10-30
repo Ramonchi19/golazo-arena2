@@ -20,11 +20,17 @@ def setpose(r,ch,t):
         elif p=='translation':r.T[n]=x
         else:r.S[n]=x
     r.update()
+_REF=None
+def norm_rest(r,m):
+    global _REF
+    from pose import refdirs,to_ref
+    if _REF is None:_REF=refdirs(Rig('nuevo/pj/Simún.glb'))
+    to_ref(r,_REF);out={k:r.wrot(i) for k,i in m.items()};r.reset();return out
 class Src:
     """animación de un GLB (cualquier esqueleto) -> deltas de giro en el mundo por hueso del juego"""
     def __init__(s,path):
         s.r=Rig(path);s.ch,s.dur=read_anim(s.r);s.m=jmap(s.r)
-        s.rest={k:s.r.wrot(i) for k,i in s.m.items()};s.hip0=s.r.G[s.m['Hips']][:3,3].copy()
+        s.rest=norm_rest(s.r,s.m);s.hip0=s.r.G[s.m['Hips']][:3,3].copy()
         s.hipH=s.hip0[1]-min(s.r.G[s.m[f]][:3,3][1] for f in ('LeftToeBase','RightToeBase') if f in s.m)
     def frame(s,t):
         setpose(s.r,s.ch,t);D={k:qnorm(qmul(s.r.wrot(i),qinv(s.rest[k]))) for k,i in s.m.items()}

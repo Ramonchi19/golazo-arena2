@@ -59,7 +59,7 @@ function fieldTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas
   line(.36,'rgba(120,95,70,.35)');line(.22,'rgba(255,255,255,.97)');
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
 const field=new THREE.Mesh(new THREE.PlaneGeometry(72,48),new THREE.MeshLambertMaterial({map:fieldTex()}));
-field.rotation.x=-Math.PI/2;field.receiveShadow=true;scene.add(field);
+field.rotation.x=-Math.PI/2;field.position.y=.01;field.receiveShadow=true;scene.add(field);   // v207: un poquito arriba del piso del juego para que no parpadeen
 // opción: césped como el de la arena 1 en lugar de las losas
 const TILES=field.material.map;let GRASS=null;
 function grassTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
@@ -86,7 +86,7 @@ function grassTex(){const PX=24,W=72*PX,H=48*PX,c=document.createElement('canvas
   g.beginPath();g.arc(X(0),Z(0),5*PX,0,7);g.stroke();for(const s of [-1,1]){g.strokeRect(X(s>0?L-9:-L),Z(-8.6),9*PX,17.2*PX);g.strokeRect(X(s>0?L-3.5:-L),Z(-5.5),3.5*PX,11*PX);}
   t.anisotropy=renderer.capabilities.getMaxAnisotropy();t.needsUpdate=true;return t;}
 function setGrass(on){if(on&&!GRASS)GRASS=grassTex();field.material.map=on?GRASS:TILES;field.material.needsUpdate=true;}
-if(window.GZ_PLAYA_GRASS)setGrass(true);
+setGrass(true);   // v207: siempre césped (las losas de piedra se encimaban con la cancha)
 (function(){const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');g.fillStyle='#55772f';g.fillRect(0,0,S,S);
   for(let i=0;i<300;i++){g.fillStyle=pickC(['rgba(90,120,50,.4)','rgba(60,90,35,.4)','rgba(170,110,50,.35)']);g.beginPath();g.arc(Math.random()*S,Math.random()*S,4+Math.random()*20,0,7);g.fill();}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(14,14);
