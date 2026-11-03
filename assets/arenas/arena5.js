@@ -516,5 +516,5 @@ function update(dt){dt=Math.min(.05,dt);U.uTime.value+=dt;t0+=dt;const T=U.uTime
   }
 build();
 try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
-return {update,setGrass,onGoal:()=>{goalT=2.8;}};
+return {seats:SEATS,update,setGrass,onGoal:()=>{goalT=2.8;}};
 };
