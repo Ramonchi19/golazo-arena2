@@ -1353,7 +1353,7 @@ function init3D(){
   renderer.setPixelRatio(qualityPR());
   renderer.shadowMap.enabled=save.settings.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   scene=new THREE.Scene();scene.background=new THREE.Color(ARENA.sky);scene.fog=new THREE.Fog(ARENA.sky,260,520);
-  camera=new THREE.PerspectiveCamera(38,1,.5,300);
+  camera=new THREE.PerspectiveCamera(38,1,1.5,300);   // v212c: plano cercano más lejos = más precisión de profundidad (en celulares el pasto y el piso de afuera se peleaban en renglones)
   hemiL=new THREE.HemisphereLight(0xd6e4ff,0x24451f,.8);scene.add(hemiL);
   sun=new THREE.DirectionalLight(0xffffff,.95);sun.position.set(-16,42,22);sun.castShadow=true;
   const smq=save.settings.quality==='alta'?2048:1536;sun.shadow.mapSize.set(smq,smq);const sc=sun.shadow.camera;sc.left=-40;sc.right=40;sc.top=26;sc.bottom=-26;sc.near=8;sc.far=95;sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;
@@ -1651,6 +1651,9 @@ function updateStandFX(dt){if(!scene)return;initStandFX();
 let HONGOS=null;const ARENA_MOD_MAP=[15,16,3,5,10,11,12,14,13];/* v203: la Mansión entra como arena 7 (antepenúltima). v202: el Bosque ahora es arena16.js (arena2.js queda de respaldo). v201: la primera arena ahora es el campo de terrazas (arena15.js; arena1.js queda de respaldo). v200: el Volcán ahora es el castillo de lava (arena14.js; arena9.js queda de respaldo). v195: el Desierto ahora es el estadio de ruinas (arena10.js; arena6.js queda de respaldo). v192: el Volcán ahora es el estadio cerrado (arena9.js); arena4.js queda de respaldo */let ARENA_MOD=null,ARENA_ROOT=null;const _arenaJS={};
 function loadArenaJS(n){if(window.GZ_ARENAS&&window.GZ_ARENAS[n])return Promise.resolve();if(_arenaJS[n])return _arenaJS[n];
   _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=208';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
+function fixFloors(){const bx=new THREE.Box3();scene.updateMatrixWorld(true);
+  scene.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||o.userData._gzFloor||!o.geometry||!o.parent)return;bx.setFromObject(o);
+    if(bx.max.y-bx.min.y<.08&&Math.abs(bx.max.y)<.06&&bx.max.x-bx.min.x>140&&bx.max.z-bx.min.z>140){o.userData._gzFloor=1;const s=o.parent.getWorldScale(new THREE.Vector3()).y||1;o.position.y-=.1/s;}});}
 function hideOldStadium(){if(fieldMesh)fieldMesh.visible=false;if(outerMesh)outerMesh.visible=false;if(fenceGroup)fenceGroup.visible=false;
   if(arenaGroup){scene.remove(arenaGroup);arenaGroup=new THREE.Group();scene.add(arenaGroup);}seatList=[];boards=[];try{rebuildCrowd();}catch(e){}
   if(hemiL)hemiL.visible=false;if(sun)sun.visible=false;}
@@ -1713,8 +1716,12 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   try{const mod=window.GZ_ARENAS[n]({scene,renderer,camera,root});mod._n=n;ARENA_ROOT=root;ARENA_MOD=mod;hideOldStadium();arenaOptimize(root,mod);}
   catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}
   // v211: público de hongos en las gradas (más lleno conforme subes de arena)
-  HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&mod.seats.length&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_HONGOS({scene,root,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('hongos',e);}};
-    if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=212';sc.onload=mk;document.head.appendChild(sc);}}}catch(e){console.warn('hongos',e);}}
+  HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_HONGOS({scene,root,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('hongos',e);}};
+    // v212c: las gradas se arman cuando terminan de cargar sus modelos (unos segundos después): se espera a que la lista de lugares deje de crecer
+    const go=()=>{if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=212c';sc.onload=mk;document.head.appendChild(sc);}};
+    let last=-1,tries=0;const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(k>0&&k===last){go();return;}last=k;if(++tries<80)setTimeout(wait,400);else if(k>0)go();};wait();}}catch(e){console.warn('hongos',e);}
+  // v212c: el piso de afuera (enorme y plano) se baja un poco para que nunca se pelee con el pasto
+  for(const dl of [600,3000,8000])setTimeout(()=>{if(ARENA_ROOT===root)try{fixFloors();}catch(e){}},dl);}
 function applyArena(i){
   ARENA=ARENAS[Math.max(0,Math.min(ARENAS.length-1,i))];
   if(typeof BOT_ARC!=='undefined')BOT_ARC=.25+ARENAS.indexOf(ARENA)*.06;   // v167: los bots aciertan el verde más seguido en arenas altas

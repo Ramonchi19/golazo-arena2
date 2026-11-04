@@ -14,7 +14,7 @@ const C={update(){},ready:false,count:0};
 const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
 const par=o.root||o.scene,lvl=o.level||0,SC=o.size||1.4;
 const fill=Math.min(1,.35+lvl*.085)*(((window.save&&save.settings&&save.settings.quality)==='baja')?.6:1);
-const V='?v=212';
+const V='?v=212c';
 Promise.all([fetch('assets/arenas/hongos/hongos.json'+V).then(r=>r.json()),fetch('assets/arenas/hongos/hongos.bin'+V).then(r=>r.arrayBuffer())])
  .then(([m,b])=>{try{build(m,b);console.log('hongos:',C.count,'en las gradas');}catch(e){fail(e);}}).catch(fail);
 function fail(e){console.warn('hongos: no cargó',e);C.error=String(e&&e.message||e);try{if(window.toast)toast('Público: '+C.error);}catch(_){}}
