@@ -140,13 +140,15 @@ function pass(p,m,mult){
   const ea=rand(-1,1)*p.passErr,ca=Math.cos(ea),sa=Math.sin(ea);ball.vx=(dx*ca-dz*sa)/l*sp;ball.vz=(dx*sa+dz*ca)/l*sp;ball.vy=1.2;ball.passTo=m;ball.cross=false;ball.super=false;faceTo(p,dx,dz);p.kickPow=.55;sfx('pass');lastKickPow=.5;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,4,3);
   setCtrl(p.team,m);
 }
+// v212: altura a la que llega un centro: cabeza (la mayoría), chilena (alto) o volea (bajo)
+function crossY(){const r=Math.random();return r<.55?1.85:r<.8?2.35:1.0;}
 function centro(p,m){
   if(cine&&cine.p===p)return;
   if(qKick(p,'centro',[p,m]))return;
   release(p);const d=dirOf(p.team);let lx=m.x+m.vx*.7+d*1.5,lz=m.z+m.vz*.7;
   lx=clamp(lx,-L+2,L-2);lz=clamp(lz,-HW+2,HW-2);
   const dx=lx-ball.x,dz=lz-ball.z,l=Math.hypot(dx,dz),t=clamp(l/18,.7,1.3);
-  ball.vx=dx/t;ball.vz=dz/t;ball.vy=(1.3-ball.y)/t+.5*GRAV*t;ball.passTo=m;ball.cross=true;ball.super=false;m.crossSpot={x:lx,z:lz};
+  const Y=crossY();ball.vx=dx/t;ball.vz=dz/t;ball.vy=(Y-ball.y)/t+.5*GRAV*t;ball.passTo=m;ball.cross=true;ball.super=false;m.crossSpot={x:lx,z:lz};
   faceTo(p,dx,dz);sfx('cross');sfx('kick');lastKickPow=.6;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,6,4);popText('¡Centro!',p.x,2.4,p.z,'#bff');
   setCtrl(p.team,m);
 }
@@ -244,7 +246,7 @@ function crossAim(p,pw,dir){
   if(qKick(p,'crossAim',[p,pw,dir]))return;
   const dist=8+(pw==null?.55:pw)*24;let lx=clamp(p.x+dir.x*dist,-L+2,L-2),lz=clamp(p.z+dir.z*dist,-HW+2,HW-2);
   release(p);const dx=lx-ball.x,dz=lz-ball.z,l=Math.hypot(dx,dz),t=clamp(l/15,.8,1.6);
-  ball.vx=dx/t;ball.vz=dz/t;ball.vy=(1.3-ball.y)/t+.5*GRAV*t;ball.cross=true;ball.super=false;faceTo(p,dx,dz);p.kickPow=.7;sfx('cross');
+  const Y=crossY();ball.vx=dx/t;ball.vz=dz/t;ball.vy=(Y-ball.y)/t+.5*GRAV*t;ball.cross=true;ball.super=false;faceTo(p,dx,dz);p.kickPow=.7;sfx('cross');
   const r=nearestMateTo(p,lx,lz,7);ball.passTo=r;if(r){r.crossSpot={x:lx,z:lz};setCtrl(p.team,r);}
   popText('¡Centro!',p.x,2.4,p.z,'#bff');
 }
@@ -338,9 +340,9 @@ function updateKeeper(k,dt){
         const need=pred.k.z-k.z,an=Math.abs(need);
         if(!k.plan||k.plan==='atras'){
           if(an<=G_.arm*.75){k.plan='paso';}
-          else{k.plan='estirada';k.dive=.6;k.diveDir=Math.sign(need)||1;k.diveH=pred.k.y;k.diveGoal=Math.min(G_.diveMax,Math.max(0,an-G_.arm*.55));k.diveDone=0;}}
+          else{k.plan='estirada';k.dive=.6;k.diveArrive=pred.k.t;k.diveDir=Math.sign(need)||1;k.diveH=pred.k.y;k.diveGoal=Math.min(G_.diveMax,Math.max(0,an-G_.arm*.55));k.diveDone=0;}}
         if(k.plan==='paso'){const st=Math.min(an,G_.shuffle*dt);k.z+=Math.sign(need)*st;
-          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;}}   // para el dibujo: las manos llegan justo cuando llega el balón
+          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;k.prepSlap=Math.hypot(ball.vx,ball.vy,ball.vz)>=G_.catchV;}}   // para el dibujo: las manos llegan justo cuando llega el balón
         else if(k.plan==='estirada'&&k.diveDone<k.diveGoal){const st=Math.min(k.diveGoal-k.diveDone,G_.diveV*dt);k.z+=k.diveDir*st;k.diveDone+=st;}
         k.z=clamp(k.z,-GW-1.4,GW+1.4);
       }
@@ -615,6 +617,8 @@ function aiCarrier(p,dt){
   }
   return{tx,tz,spd:RUN*.88};
 }
+// v212b: el joystick tiene tres zonas como en las pruebas: poquito = trote, medio = correr, al tope = a toda velocidad (con margen para que no titubee)
+function stickZone(p,m){const z=p._zn||0;let n=m<(z===0?.55:.48)?0:m<(z===2?.9:.97)?1:2;p._zn=n;return n===0?.525:n===1?.815:1;}
 function tryVolley(p){
   if(ball.owner||ball.gk||p.stun>0||p.frozen>0||p.rooted>0||p.act)return false;
   if(effects.some(e=>e.type==='magnet'&&!e.done&&e.team!==p.team))return false;
@@ -642,7 +646,7 @@ function updatePlayer(p,dt){
       if(cv<1.6||dot<-.25){p.burst=.22;p.burstCd=.7;dust(p.x,p.z);}}
     if(p.burst>0)sp*=1.32;
     if((p.team===0?pressT:pressT1)>0&&m<.2&&ball.owner&&ball.owner.team!==p.team){const dx=ball.x-p.x,dz=ball.z-p.z,l=Math.hypot(dx,dz)||1;dvx=dx/l*sp;dvz=dz/l*sp;}
-    else if(m>.12){const k=Math.min(1,m);dvx=jx/m*k*sp;dvz=jz/m*k*sp;}
+    else if(m>.12){const k=stickZone(p,m);dvx=jx/m*k*sp;dvz=jz/m*k*sp;}
     if(p.charging)p.charge=Math.min(1,p.charge+dt*1.1*p.chargeMul);
     if(ball.owner===p)p.hold+=dt;
     if(p.volleyQ>0)tryVolley(p);
@@ -657,7 +661,7 @@ function updatePlayer(p,dt){
   p.wantFace=null;
   if(ball.owner===p){
     let I=null,want=RUN;
-    if(isCtrl(p)){const J=joyFor(p.team),mj=Math.hypot(J.x,J.y);if(mj>.15&&!p.aim){I={x:-J.y/mj,z:J.x/mj};want=RUN*Math.min(1,mj);}}
+    if(isCtrl(p)){const J=joyFor(p.team),mj=Math.hypot(J.x,J.y);if(mj>.15&&!p.aim){I={x:-J.y/mj,z:J.x/mj};want=RUN*stickZone(p,mj);}}
     else{const r=p._r;if(r&&r.spd>0){const ix=r.tx-ball.x,iz=r.tz-ball.z,il=Math.hypot(ix,iz);if(il>.6){I={x:ix/il,z:iz/il};want=r.spd;}}}
     p.intent=I;p.intentSp=want;
     const fd=I||(p.aim?p.aim.dir:{x:Math.sin(p.face),z:Math.cos(p.face)});

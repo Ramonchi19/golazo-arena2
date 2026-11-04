@@ -14,15 +14,33 @@ const C={update(){},ready:false,count:0};
 const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
 const par=o.root||o.scene,lvl=o.level||0,SC=o.size||1.4;
 const fill=Math.min(1,.35+lvl*.085)*(((window.save&&save.settings&&save.settings.quality)==='baja')?.6:1);
-const V='?v=211';
+const V='?v=212';
 Promise.all([fetch('assets/arenas/hongos/hongos.json'+V).then(r=>r.json()),fetch('assets/arenas/hongos/hongos.bin'+V).then(r=>r.arrayBuffer())])
- .then(([m,b])=>{try{build(m,b);}catch(e){console.warn('hongos',e);}}).catch(e=>console.warn('hongos: no cargó',e));
+ .then(([m,b])=>{try{build(m,b);console.log('hongos:',C.count,'en las gradas');}catch(e){fail(e);}}).catch(fail);
+function fail(e){console.warn('hongos: no cargó',e);C.error=String(e&&e.message||e);try{if(window.toast)toast('Público: '+C.error);}catch(_){}}
+// v212: pies exactos en el escalón. Para cada lugar se lanza una línea hacia abajo sobre las gradas y se busca piso plano
+// (el pie y alrededor a la misma altura). Si cae en la orilla se recorre al centro del escalón; si no hay piso plano, ese lugar no se usa.
+function floorCast(list){
+  const sc=o.scene||par;sc.updateMatrixWorld(true);const objs=[];
+  sc.traverse(x=>{if(!x.isMesh||x.isInstancedMesh||x.isSkinnedMesh||!x.geometry||x.userData.gzDyn||(x.material&&x.material.visible===false))return;for(let q=x;q;q=q.parent)if(q.visible===false)return;objs.push(x);});
+  const rc=new THREE.Raycaster(),dn=new THREE.Vector3(0,-1,0),org=new THREE.Vector3(),nm=new THREE.Matrix3(),nv=new THREE.Vector3();
+  const top=(x,z,y0)=>{org.set(x,y0+1.1,z);rc.set(org,dn);rc.far=2.6;const hs=rc.intersectObjects(objs,false);
+    for(const h of hs){if(!h.face)continue;nm.getNormalMatrix(h.object.matrixWorld);nv.copy(h.face.normal).applyMatrix3(nm).normalize();if(Math.abs(nv.y)>.7)return h.point.y;return null;}return null;};
+  const out=[];
+  for(const s of list){const fx=Math.sin(s.ry),fz=Math.cos(s.ry),lx=fz,lz=-fx,j=(Math.random()-.5)*.24;   // al frente / a lo ancho
+    const bx=s.x+lx*j,bz=s.z+lz*j;let best=null;
+    for(const d of [0,.06,-.06,.12,-.12,.18,-.18,.25,-.25,.32,-.32]){const x=bx+fx*d,z=bz+fz*d,y=top(x,z,s.y);if(y==null)continue;
+      let ok=true,ym=y;for(const [a,b] of [[.24,0],[-.24,0],[0,.14],[0,-.14]]){const y2=top(x+fx*a+lx*b,z+fz*a+lz*b,s.y);if(y2==null||Math.abs(y2-y)>.04){ok=false;break;}ym=Math.max(ym,y2);}
+      if(ok){best={x,y:ym,z,ry:s.ry};break;}}
+    if(best)out.push(best);}
+  return out;}
 function build(m,b){
   const nv=m.nv,nt=m.nt,nf=m.nf,off=m.off;
   const Q=new Int16Array(b,off[0],nf*nv*3),NQ=new Int8Array(b,off[1],nf*nv*3),COL=new Uint8Array(b,off[2],nv*3),IDX=new Uint16Array(b,off[3],nt*3),PART=new Uint8Array(b,off[4],nv),HAND=new Float32Array(b,off[5],nf*12);
   const mn=m.min,sc=m.scale,col=new THREE.BufferAttribute(new Uint8Array(COL),3,true),part=new THREE.BufferAttribute(new Float32Array(PART),1),index=new THREE.BufferAttribute(new Uint16Array(IDX),1);
   // ---- quiénes y dónde
-  const list=seats.filter(()=>Math.random()<fill);const N=list.length;if(!N)return;C.count=N;
+  let list=seats.filter(()=>Math.random()<fill);try{const c=floorCast(list);C.dropped=list.length-c.length;list=c;C.cast=true;}catch(e){console.warn('hongos: piso',e);}
+  const N=list.length;if(!N){fail('sin lugares en las gradas');return;}C.count=N;
   const K=o.kits||[{j:0x2f7bff,sh:0x173f99,so:0xffffff},{j:0xff3b4e,sh:0x99202e,so:0xffffff}];
   const kc=(k,a,b)=>new THREE.Color(k[a]!=null?k[a]:(k[b]!=null?k[b]:k.j));
   const SHOES=[0xffffff,0xffffff,0xffffff,0xff3b3b,0x2f7bff,0xffd23a,0x2ecc71],CAPS=[0xd8261e,0xd8261e,0x2f7bff,0x2ecc71,0xffc21a,0x9b4dff,0xff7a1a];
@@ -74,7 +92,7 @@ function build(m,b){
     const beh=r<.4?'normal':r<.6?'sigue':r<.85?'brinco':'aplauso';
     let prop=0;const pr=R();if(beh==='brinco'){prop=pr<.3?1:pr<.5?2:(pr<.6&&nFl<24)?3:0;}else if(beh==='normal'||beh==='sigue'){prop=pr<.22?2:0;}
     if(prop===3)nFl++;
-    const h={x:s.x+(R()-.5)*.25,y:s.y,z:s.z+(R()-.5)*.12,ry:s.ry,team:team(s),beh,prop,rate:.85+R()*.3,ph:R()*10,shoe:Math.floor(R()*7),cap:Math.floor(R()*7),yaw:s.ry,sw:6+R()*14,s:SC*(.9+R()*.18)};
+    const h={x:C.cast?s.x:s.x+(R()-.5)*.25,y:s.y,z:C.cast?s.z:s.z+(R()-.5)*.12,ry:s.ry,team:team(s),beh,prop,rate:.85+R()*.3,ph:R()*10,shoe:Math.floor(R()*7),cap:Math.floor(R()*7),yaw:s.ry,sw:6+R()*14,s:SC*(.9+R()*.18)};
     if(prop===3){const g=new THREE.Sprite(glowM);g.scale.setScalar(.9);par.add(g);h.glow=g;h.fl=glows.length;glows.push(h);}
     H.push(h);}
   const flagCol=[kc(K[0],'j'),kc(K[1],'j')];

@@ -1182,9 +1182,9 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="assets/sim/ball.js?v=163"></script>
+<script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
-<script src="assets/sim/match.js?v=207"></script>
+<script src="assets/sim/match.js?v=212"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
 <script src="assets/icons.js?v=157"></script>
@@ -1714,7 +1714,7 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}
   // v211: público de hongos en las gradas (más lleno conforme subes de arena)
   HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&mod.seats.length&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_HONGOS({scene,root,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('hongos',e);}};
-    if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=211';sc.onload=mk;document.head.appendChild(sc);}}}catch(e){console.warn('hongos',e);}}
+    if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=212';sc.onload=mk;document.head.appendChild(sc);}}}catch(e){console.warn('hongos',e);}}
 function applyArena(i){
   ARENA=ARENAS[Math.max(0,Math.min(ARENAS.length-1,i))];
   if(typeof BOT_ARC!=='undefined')BOT_ARC=.25+ARENAS.indexOf(ARENA)*.06;   // v167: los bots aciertan el verde más seguido en arenas altas
@@ -2167,7 +2167,7 @@ function makeGLBChar(team,id){
   const bubble=M(new THREE.SphereGeometry(1.2,16,12),new THREE.MeshBasicMaterial({color:0x7fe8ff,transparent:true,opacity:.22,depthWrite:false}));bubble.position.y=1;bubble.visible=false;root.add(bubble);
   const em={setHSL:(a,b,c)=>mats.forEach(m=>m.emissive&&m.emissive.setHSL(a,b,c)),setRGB:(a,b,c)=>mats.forEach(m=>m.emissive&&m.emissive.setRGB(a,b,c))};
   scene.add(root);
-  const out={peq:PEQ.has(id),toonOff:NEWANIM,kitMats:mats.filter(m=>m.userData&&m.userData.U),root,tilt,legs:[new THREE.Group(),new THREE.Group()],arms:[new THREE.Group(),new THREE.Group()],jersey:{emissive:em},stars,bubble,mixer,kick,A,cur:null,bones,id,foot:M0.foot,kickStart:M0.kickStart,glb:true};
+  const out={peq:GRP_OF[id]||false,toonOff:NEWANIM,kitMats:mats.filter(m=>m.userData&&m.userData.U),root,tilt,legs:[new THREE.Group(),new THREE.Group()],arms:[new THREE.Group(),new THREE.Group()],jersey:{emissive:em},stars,bubble,mixer,kick,A,cur:null,bones,id,foot:M0.foot,kickStart:M0.kickStart,glb:true};
   if(A.idle){A.idle.play();out.cur='idle';}
   return out;
 }
@@ -2176,8 +2176,13 @@ const _q1=typeof THREE!=='undefined'?new THREE.Quaternion():null,_q2=typeof THRE
 // ================== ANIMACIONES DE CAPTURA (MIXAMO) ==================
 let ANIMLIB=null,ANIMMETA={},_fv=null,BASECLIPS=null,FLOORFIX=null;
 // v209: animaciones propias de los pequeños (carrera elástica, posicionarse, tiros, centro, super tiro, barrida y golpes de caricatura)
-let ANIMLIB_P=null,ANIMMETA_P={};const PEQ=new Set(['vikingo','goblin','duende','hongo','monje','momia']);
-function MT(m,n){return (m&&m.peq&&ANIMLIB_P&&ANIMLIB_P[n]&&ANIMMETA_P[n])||ANIMMETA[n]||{};}
+// v212: cada grupo de cuerpo tiene su propia librería de animaciones (mismo esqueleto común)
+const GRPS={peq:['vikingo','goblin','duende','hongo','monje','momia'],
+  med:['campeon','turbo','zurdito','expreso','ciclon','malabares','valkiria','vampira','princesa','reina','nebula','zombi'],
+  gra:['toro','muralla','sangre','yeti','cazador','remiendo'],atl:['leon','ruleta','rey','perro']};
+const GRP_OF={};for(const g in GRPS)for(const id of GRPS[g])GRP_OF[id]=g;
+const GLIB={},GMETA={};const LIBOF=m=>(m&&m.peq&&GLIB[m.peq])||null;
+function MT(m,n){const G=LIBOF(m);return (G&&G[n]&&GMETA[m.peq][n])||ANIMMETA[n]||{};}
 // v205: personajes nuevos con esqueleto común y animaciones de Tripo: se apagan los movimientos hechos a mano (tiros, barridas, estiradas, golpes y carrera exagerada)
 const NEWANIM=true;
 async function loadBaseClips(){if(BASECLIPS||typeof THREE==='undefined'||!THREE.GLTFLoader)return;try{const buf=await fetch('assets/base_anims.glb').then(r=>{if(!r.ok)throw new Error('base_anims');return r.arrayBuffer();});
@@ -2188,10 +2193,10 @@ async function loadAnimLib(){
   fetch('assets/floorfix.json?v=207').then(r=>r.ok?r.json():null).then(j=>{FLOORFIX=j;}).catch(()=>{});
   try{const [buf,meta]=await Promise.all([fetch(ANIMURL).then(r=>r.arrayBuffer()),fetch(ANIMMETAURL).then(r=>r.json())]);ANIMMETA=meta;
     await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{ANIMLIB={};for(const c of gl.animations)ANIMLIB[c.name]=c;res();},rej));}catch(e){console.warn('animaciones',e);ANIMLIB=null;}
-  try{const [buf,meta]=await Promise.all([fetch('assets/anims_peq.glb?v=209').then(r=>r.arrayBuffer()),fetch('assets/anims_peq.json?v=209').then(r=>r.json())]);ANIMMETA_P=meta;
-    await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{ANIMLIB_P={};for(const c of gl.animations)ANIMLIB_P[c.name]=c;res();},rej));}catch(e){console.warn('animaciones pequeños',e);ANIMLIB_P=null;}
+  await Promise.all(Object.keys(GRPS).map(async g=>{try{const [buf,meta]=await Promise.all([fetch('assets/anims_'+g+'.glb?v=212').then(r=>r.arrayBuffer()),fetch('assets/anims_'+g+'.json?v=212').then(r=>r.json())]);
+    await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{const L={};for(const c of gl.animations)L[c.name]=c;GMETA[g]=meta;GLIB[g]=L;res();},rej));}catch(e){console.warn('animaciones '+g,e);}}));
 }
-function act(m,n){if(m.peq&&ANIMLIB_P&&ANIMLIB_P[n]){m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(ANIMLIB_P[n]);if(!(ANIMMETA_P[n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}   // v209
+function act(m,n){const GL=LIBOF(m);if(GL&&GL[n]){m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(GL[n]);if(!(GMETA[m.peq][n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}   // v209
   if(ANIMLIB&&!ANIMLIB[n]&&m.A&&m.A[n]){m.L=m.L||{};if(!m.L[n])m.L[n]=m.A[n];return m.L[n];}if(!ANIMLIB||!ANIMLIB[n])return null;m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(ANIMLIB[n]);if(!(ANIMMETA[n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}
 function goA(m,n,o){o=o||{};const a=act(m,n);if(!a)return false;if(m.curA===n&&!o.restart)return true;
   const prev=m.curA?(m.L[m.curA]||(m.A&&m.A[m.curA])):null;a.reset();a.time=o.from||0;a.setEffectiveTimeScale(o.ts||1);a.setEffectiveWeight(1);a.play();
@@ -3018,13 +3023,14 @@ function libEvents(p,m){
     if(!ball.owner&&!ball.gk&&Math.hypot(ball.x-p.x,ball.z-p.z)<3)p._rcvY=ball.y;
     if(p.kickT>0&&!p._kE&&KICK_PROC&&m.bones&&ball.y<=1.4){p._kE=1;m._kReq=p.kickPow||1;}   // v182: patada hecha a mano (cabezazos y chilenas siguen con su animación)
     if(p.kickT>0&&!p._kE){p._kE=1;const high=ball.y>1.4,pw=p.kickPow||1;let n,ts=1.5,lock=.45;
-      if(high)n=pw>=1&&ball.y>1.8&&Math.random()<.35?'bicycle':'header';
+      if(high)n=(ball.y>2.15||(pw>=1&&ball.y>1.8&&Math.random()<.35))?'bicycle':'header';   // v212: muy alto = chilena
       else if(pw>1.1&&act(m,'penalty')){n='penalty';ts=1.6;}
-      else if(pw<.6&&act(m,'pass_r')){const lat=-Math.cos(p.face)*ball.vx+Math.sin(p.face)*ball.vz;n=lat>0?'pass_l':'pass_r';ts=1.25;lock=.3;}
+      else if(pw<.6&&act(m,'pass_r')){const lat=-Math.cos(p.face)*ball.vx+Math.sin(p.face)*ball.vz;n=lat>0?'pass_l':'pass_r';ts=1.45;lock=.3;}
       else if(pw<1&&act(m,'flick')&&players.some(o=>o.team!==p.team&&!o.gk&&Math.hypot(o.x-p.x,o.z-p.z)<3.2&&((o.x-p.x)*Math.sin(p.face)+(o.z-p.z)*Math.cos(p.face))>1))n='flick';   // v71: la levanta si tiene un rival enfrente
       else if(pw>1.02&&m.peq&&act(m,'shoot_power')){n='shoot_power';ts=1.3;}   // v209: tiro potente (cargado sin llegar al súper)
       else n=pw>=1?'shoot_run':pw>.6?'chip':'shoot_run';
-      const k=M(n).key||.5;ev(n,{from:Math.max(0,k-(n==='header'||n==='bicycle'?.1:.035)*ts),ts,lock:n==='bicycle'?1.1:lock,fade:.04});return;}   // v71: la pierna llega cuando sale el balón
+      const k=M(n).key||.5;ev(n,{from:Math.max(0,k-(n==='header'||n==='bicycle'?.1:.035)*ts),ts,lock:n==='bicycle'?1.1:lock,fade:.04});
+      if(high)m._jmp={n,T0:T,tk:T+.1,y:ball.y};else if(ball.y>.45)m._jmp={n:'volley',T0:T,tk:T+.035,y:ball.y,nojump:1};return;}   // v212: el brinco se ajusta a la altura del balón   // v71: la pierna llega cuando sale el balón
     if(!(p.kickT>0))p._kE=0;
     const spd=Math.hypot(p.vx,p.vz);if(spd>3.2)p._fastT=T;
     if(ball.owner===p&&!p._ownE){p._ownE=1;const hs=((MODELS[p.card&&p.card.id]||{}).height||2.4)/2.4,y=(p._rcvY||0)/hs;p._rcvY=0;   // v71: alturas según el tamaño del personaje
@@ -3044,17 +3050,45 @@ function libLoco(p,m,sp){
   else if(sp<.7)n=ball.owner===p?'idle_ball':(Math.hypot(ball.x-p.x,ball.z-p.z)<22&&act(m,'ready')?'ready':'idle');
   else if(ball.owner===p&&act(m,'dribble'))n='dribble';
   else if(p._look){const vf=p._vface,f=p.vx*Math.sin(vf)+p.vz*Math.cos(vf),lat=-Math.cos(vf)*p.vx+Math.sin(vf)*p.vz;   // v70: marcando, mirando al balón
-    n=f<-.5*sp?(Math.abs(lat)<.5*sp?'jog_back':(lat>0?'back_diag_r':'back_diag_l')):Math.abs(lat)>Math.abs(f)?(lat>0?'strafe_jr':'strafe_jl'):(sp<4.6?'jog':'sprint');if(!act(m,n))n=sp<4.6?'jog':'sprint';}
-  else if(sp<4.6)n='jog';else n=(m.peq&&p.star>0&&act(m,'turbo_run'))?'turbo_run':'sprint';
+    n=f<-.5*sp?(Math.abs(lat)<.5*sp?'jog_back':(lat>0?'back_diag_r':'back_diag_l')):Math.abs(lat)>Math.abs(f)?(lat>0?'strafe_jr':'strafe_jl'):runGait(p,m,sp);if(!act(m,n))n=sp<4.6?'jog':'sprint';}
+  else n=runGait(p,m,sp);
   const nat=k=>{const mt=MT(m,k);if(!mt||!mt.dur||!m.bones||!ANIMMETA._hips)return k==='jog'?3.4:7.6;const r=(m.bones.hipsWorldH||.9)/(ANIMMETA._hips[1]*.01);return Math.max(.5,Math.hypot(mt.root[0],mt.root[1])/mt.dur*r);};
-  if(n==='jog')ts=clamp(sp/nat('jog'),.6,1.6);if(n==='sprint')ts=clamp(sp/nat('sprint'),.7,1.75);if(n==='turbo_run')ts=clamp(sp/nat('turbo_run'),.7,1.6);
+  if(n==='trot')ts=clamp(sp/nat('trot'),.6,1.7);if(n==='jog')ts=clamp(sp/nat('jog'),.6,1.75);if(n==='sprint')ts=clamp(sp/nat('sprint'),.7,1.8);if(n==='turbo_run')ts=clamp(sp/nat('turbo_run'),.7,1.6);
   if(['jog_back','back_diag_r','back_diag_l','strafe_jr','strafe_jl'].includes(n))ts=clamp(sp/nat(n),.6,1.7);
   if(n==='dribble')ts=clamp(sp/nat(n),.7,2.3);
   if(n==='idle'&&!m.peq){if(m.curA!=='idle'&&m.A&&m.A.idle){const prev=m.curA&&m.L&&m.L[m.curA];m.A.idle.reset().play();if(prev)m.A.idle.crossFadeFrom(prev,.25,false);m.curA='idle';}return;}
-  goA(m,n,{fade:.14});const a=m.L&&m.L[n];if(a)a.setEffectiveTimeScale(ts);
+  // v212: al pasar de trote a correr o a correr inclinado, la pierna sigue en el mismo paso (sin brinco)
+  let from=0,fade=.14;if(LOCO_RE.test(n)&&LOCO_RE.test(m.curA||'')&&m.curA!==n&&m.L&&m.L[m.curA]&&act(m,n)){const pa=m.L[m.curA],pd=pa.getClip().duration||1;from=(pa.time%pd)/pd*act(m,n).getClip().duration;fade=.22;}
+  goA(m,n,{fade,from});const a=m.L&&m.L[n];if(a)a.setEffectiveTimeScale(ts);
 }
+// v212: trote con el joystick poquito, correr a media palanca, inclinado al tope (con margen para que no titubee)
+const LOCO_RE=/^(trot|jog|sprint|turbo_run)$/;
+function runGait(p,m,sp){const r=sp/(RUN*(p.spdMul||1));if(!m.peq)return r<.67?'jog':'sprint';
+  const g=m._gait||'jog',tr=g==='trot'?.72:.67,sv=g==='sprint'?.87:.9;let n=r<tr&&act(m,'trot')?'trot':r<sv?'jog':'sprint';   // v212b: por proporción de su velocidad máxima
+  if(n==='sprint'&&p.star>0&&act(m,'turbo_run'))n='turbo_run';m._gait=n==='turbo_run'?'sprint':n;return n;}
+// v212: estela al correr a tope: una sola línea que sale de la espalda y se adelgaza hasta desaparecer
+const TRAILN=22,TRAILS=[];let _trT=-1;const _tv=new THREE.Vector3(),_td=new THREE.Vector3(),_tc=new THREE.Vector3(),_tq=new THREE.Vector3();
+function pTrail(p,m,sp,dt){
+  if(_trT!==T){_trT=T;for(let i=TRAILS.length-1;i>=0;i--){const t=TRAILS[i];if(!t.m.root||!t.m.root.parent){if(t.mesh.parent)t.mesh.parent.remove(t.mesh);t.g.dispose();TRAILS.splice(i,1);t.m._trail=null;}}}
+  const on=(m.curA==='sprint'||m.curA==='turbo_run')&&sp>4.5&&state==='play';let t=m._trail;
+  if(!t){if(!on||!m.root)return;let bone=null;m.root.traverse(o=>{if(!bone&&o.isBone&&/Spine0?2$/.test(o.name))bone=o;});if(!bone)m.root.traverse(o=>{if(!bone&&o.isBone&&/Spine0?1$/.test(o.name))bone=o;});if(!bone)return;
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TRAILN*6),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(TRAILN*6),3));
+    const ix=[];for(let i=0;i<TRAILN-1;i++){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2);}g.setIndex(ix);
+    const mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));mesh.frustumCulled=false;mesh.renderOrder=5;scene.add(mesh);
+    t=m._trail={m,mesh,g,bone,pts:[],k:0,H:((MODELS[p.card&&p.card.id]||{}).height||2.4)};TRAILS.push(t);}
+  t.k+=((on?1:0)-t.k)*Math.min(1,dt*6);
+  t.bone.getWorldPosition(_tv);_tv.x-=Math.sin(p.face||0)*t.H*.1;_tv.z-=Math.cos(p.face||0)*t.H*.1;
+  if(t.pts.length&&t.pts[0].p.distanceTo(_tv)>t.H*3)t.pts.length=0;
+  t.pts.unshift({p:_tv.clone(),a:0});for(const q of t.pts)q.a+=dt;while(t.pts.length>TRAILN||(t.pts.length&&t.pts[t.pts.length-1].a>.28))t.pts.pop();
+  const P=t.g.attributes.position.array,C=t.g.attributes.color.array,L=t.pts.length;camera.getWorldDirection(_tc);
+  for(let i=0;i<TRAILN;i++){const q=t.pts[Math.min(i,L-1)],q2=t.pts[Math.min(i+1,L-1)],q0=t.pts[Math.max(i-1,0)];_td.subVectors(q0.p,q2.p);_tq.crossVectors(_td,_tc);if(_tq.lengthSq()<1e-10)_tq.set(0,1,0);_tq.normalize();
+    const f=i>=L-1?0:1-i/(L-1),w=t.H*.1*f,e=t.k*(.25+.75*f)*(i>=L-1?0:1);
+    P[i*6]=q.p.x+_tq.x*w;P[i*6+1]=q.p.y+_tq.y*w;P[i*6+2]=q.p.z+_tq.z*w;P[i*6+3]=q.p.x-_tq.x*w;P[i*6+4]=q.p.y-_tq.y*w;P[i*6+5]=q.p.z-_tq.z*w;
+    C[i*6]=C[i*6+3]=.85*e;C[i*6+1]=C[i*6+4]=.95*e;C[i*6+2]=C[i*6+5]=e;}
+  t.g.attributes.position.needsUpdate=true;t.g.attributes.color.needsUpdate=true;t.mesh.visible=t.k>.01&&L>2;}
 function animLib(m,p,dt){
   const sp=window.ONLINE?Math.max(Math.hypot(p.vx,p.vz),p._mv||0):Math.hypot(p.vx,p.vz);   // v96: en línea también cuenta lo que lo mueve el servidor (ya no se desliza sin correr)
+  try{pTrail(p,m,sp,dt);}catch(e){}   // v212: estela al correr a tope
   libEvents(p,m);   // v171: esta llamada estaba pegada al comentario desde v96 y no corría (patadas, barridas, controles, levantarse...)
   // v77: después de tirarse se levanta con la misma animación (sin saltar de acostado a parado)
   if(p.gk&&/^gk_dive/.test(m.curA||'')&&!(p.dive>0)&&m.L){const a=m.L[m.curA],mt=ANIMMETA[m.curA]||{},d=a?a.getClip().duration:0,land=mt.land||1.3;
@@ -3083,7 +3117,7 @@ function animLib(m,p,dt){
   if(Bz&&Bz.toes.length&&Bz.restFootY!=null&&!AIRCLIPS.has(m.curA)&&!(p.flyY>0)&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const v=_fv||(_fv=new THREE.Vector3());let mn=1e9;for(const b of Bz.toes){b.getWorldPosition(v);Bz.model.worldToLocal(v);mn=Math.min(mn,v.y);}
     const want=(Bz.restFootY-mn)*Bz.model.scale.y;p._fadj=(p._fadj||0)+(clamp(want,-.5,.5)-(p._fadj||0))*Math.min(1,dt*12);m.footAdj=p._fadj;}else p._fadj=(p._fadj||0)*.9;
   // v44: nada debajo del piso. Tabla precalculada por personaje y animación: punto más bajo del cuerpo (cm) a lo largo del clip
-  if(FLOORFIX&&m.id&&m.curA&&m.L&&m.L[m.curA]&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const cv=!(m.peq&&ANIMLIB_P&&ANIMLIB_P[m.curA])&&FLOORFIX[m.id]&&FLOORFIX[m.id][m.curA];
+  if(FLOORFIX&&m.id&&m.curA&&m.L&&m.L[m.curA]&&!m._r&&!m._k&&!m._gd&&!m._gf&&!m._gsTilt&&!m._gmTilt&&!m._ghTilt){const cv=!(LIBOF(m)&&LIBOF(m)[m.curA])&&FLOORFIX[m.id]&&FLOORFIX[m.id][m.curA];
     if(cv){const a=m.L[m.curA],d=a.getClip().duration||1,tt=a.loop===THREE.LoopOnce?Math.min(a.time,d):a.time%d,u=Math.min(.9999,Math.max(0,tt/d))*(cv.length-1),i=Math.floor(u),f=u-i,j=Math.min(i+1,cv.length-1);
       const low=(cv[i]+(cv[j]-cv[i])*f)*.01*CHAR_SCALE+(m.footAdj||0)+(p.flyY||0);if(low<0)m.footAdj=(m.footAdj||0)-low;}}
   if(!NEWANIM&&(!m.lockUntil||T>=m.lockUntil)){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
@@ -3507,8 +3541,14 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
     p._gripR=p._gripR||new THREE.Vector3();{const B=m.bones;palmW(m,'r',p._gripR);(B.ra?B.ra.b:B.rh).getWorldPosition(I.a);I.b.subVectors(p._gripR,I.a).normalize();p._gripR.addScaledVector(I.b,BR*.8);}
     p._gripT=T;
     if(held&&!(p.distrib&&p.distrib.type!=='mano'&&p.distrib.t>.45))grip=p.distrib&&p.distrib.type==='mano'?p._gripR:p._grip;}
+  // v212: imán de remates. Mientras la cabeza (o el pie) llega al balón, el balón se ve pegado a ella; justo antes, se va jalando hacia ella.
+  let pull=null,pw=0;
+  if(!grip&&!ball.owner&&!ball.gk){for(const p of players){if(p.gk)continue;const m=p.mesh;if(!m||!m.glb||!m.bones)continue;const J=m._jmp;
+      if(J&&T<=J.tk+.02&&T-J.T0<.4){m.root.updateMatrixWorld(true);if(contactPos(m,J.n==='volley'?'foot':J.n,I.W)){p._hold=p._hold||new THREE.Vector3();p._hold.copy(I.W);grip=p._hold;break;}}
+      if(ball.cross&&ball.y>.45){const d=Math.hypot(ball.x-p.x,ball.z-p.z);if(d<1.6&&(ball.vx*(p.x-ball.x)+ball.vz*(p.z-ball.z))>0){const w=.5*clamp((1.6-d)/1.1,0,1);
+        if(w>pw){m.root.updateMatrixWorld(true);if(contactPos(m,ball.y>1.4?'header':'foot',I.W)){pw=w;pull=pull||new THREE.Vector3();pull.copy(I.W);}}}}}}
   // posición que se dibuja: el agarre si lo tiene un portero; al cambiar de estado, transición corta sin saltos
-  const key=grip?'g':'f';I.disp.copy(grip||I.disp.set(ball.x,ball.y,ball.z));
+  const key=grip?'g':'f';I.disp.copy(grip||I.disp.set(ball.x,ball.y,ball.z));if(!grip&&pull)I.disp.lerp(pull,pw);
   if(I.has&&key!==I.key)I.off.subVectors(I.last,I.disp);I.key=key;
   I.off.multiplyScalar(Math.exp(-dt*(key==='g'?14:22)));I.disp.add(I.off);I.disp.y=Math.max(BR*.9,I.disp.y);I.last.copy(I.disp);I.has=true;}
 /* v63: movido a assets/sim/match.js */
@@ -3931,6 +3971,19 @@ function vxBomb(x,z,r,d,sx){const m=bombMesh();targetFx(x,z,r,0xff3b3b,.92);tone
       else{const k=(t-.65)/.27;m.position.set(x+rand(-.05,.05)*k,.6,z+rand(-.05,.05)*k);m.scale.setScalar(1+.25*k+.08*Math.sin(t*60));U.body.material.emissive.setHex(Math.sin(t*(30+60*k))>0?0x881100:0);if(!e.f){e.f=1;tone(2200,.3,'square',.02,3000);}}
       if(t>=.92)return false;return true;},m);}
 /* v64: meteorImpact() movido a assets/sim/match.js */
+// v212: remates altos. (1) El brinco sube o baja lo que haga falta para que la cabeza (o el pie en la chilena) llegue a la altura del balón.
+// La altura natural de cada animación se mide la primera vez en cada personaje y se guarda. (2) El imán vive en gkHands (dibujo del balón).
+const JNAT={};
+function contactPos(m,n,o){const B=m.bones;if(!B)return null;if(n==='header'){if(!B.hd)return null;B.hd.b.getWorldPosition(o);return o;}
+  let best=null;const v=new THREE.Vector3();for(const f of B.feet||[]){f.getWorldPosition(v);if(!best||v.y>best.y)best=v.clone();}if(best)o.copy(best);return best?o:null;}
+const _jv=new THREE.Vector3();
+function jumpFx(p,m){const J=m._jmp;let jy=0;
+  if(J){const u=T-J.T0,dk=Math.max(.02,J.tk-J.T0),Hm=((MODELS[p.card&&p.card.id]||{}).height||2.4);
+    if(u>dk+.55||p.stun>0){m._jmp=null;}
+    else if(!J.nojump){const key=(p.card&&p.card.id)+':'+J.n,nat=JNAT[key]||(J.n==='header'?.93:.8)*Hm,off=clamp(J.y-nat,-.25*Hm,.55*Hm);
+      const w=u<dk?ease(u/dk):u<dk+.1?1:Math.max(0,1-(u-dk-.1)/.45);jy=off*w;
+      if(u>=dk&&!J.meas){J.meas=1;m.root.updateMatrixWorld(true);if(contactPos(m,J.n,_jv)){const v=_jv.y-(p.flyY||0);if(v>.2)JNAT[key]=JNAT[key]?JNAT[key]*.7+v*.3:v;}}}}
+  if(jy)m.root.position.y=Math.max(0,m.root.position.y+jy);}   // la posición del jugador se vuelve a poner cada cuadro, así que solo se suma
 function fxPose(p,m,dt){
   if(ANIMLIB&&m.glb){if(p.flyVy||(p.flyY||0)>0){if(!p.spinT){p.flyVy-=24*dt;p.flyY=Math.max(0,(p.flyY||0)+p.flyVy*dt);}if(p.flyY<=0&&p.flyVy<=0){p.flyVy=0;dust(p.x,p.z);}m.root.position.y=Math.max(m.root.position.y,p.flyY);}
     if(p.spinT>0){p.spinT-=dt;m.root.rotation.y+=dt*20;}if(p.elecT>0){p.elecT-=dt;const on=Math.sin(T*55+p.idx)>0;m.jersey.emissive.setRGB(on?.55:.05,on?.95:.25,on?1.1:.35);if(Math.random()<.07)fb('chispas',p.x,1.2,p.z,1.6,.3);if(p.elecT<=0)m.jersey.emissive.setRGB(0,0,0);}return;}
@@ -4149,7 +4202,7 @@ function syncPlayer(p,dt){
   if(false){m.arms[0].rotation.z=-2.4*k;m.arms[1].rotation.z=2.4*k;}
   else if(p.gk){m.arms[0].rotation.z=-.15;m.arms[1].rotation.z=.15;if(!(ANIMLIB&&m.glb))gkPose(p,m,sp);}
   if(p.stun>0&&p.slip<=0&&!m.glb){m.tilt.rotation.z=Math.sin(T*18)*.3;} // v58: los personajes 3D ya no se bambolean (usan su animación de golpe)
-  lifePose(p,m,sp,dt);fxPose(p,m,dt);if(m.footAdj)m.tilt.position.y+=m.footAdj;
+  lifePose(p,m,sp,dt);fxPose(p,m,dt);if(m.footAdj)m.tilt.position.y+=m.footAdj;try{jumpFx(p,m);}catch(e){m._jmp=null;}
   if(m.glb){m.tilt.rotation.x*=.25;let df=p.face-(p._pf===undefined?p.face:p._pf);while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p._pf=p.face;
     const tgt=clamp(-df/Math.max(dt,.001)*.05,-.28,.28)*Math.min(1,sp/5);p._lean=(p._lean||0)+(tgt-(p._lean||0))*Math.min(1,dt*7);
     if(!p.act&&p.stun<=0&&!(p.gk&&p.dive>0))m.tilt.rotation.z=p._lean;}
@@ -4190,8 +4243,8 @@ function render(dt){
     if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
   // cámara que sigue al balón (donde está la jugada)
   if(LAND){if(!camFit||!camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitLandCam();
-    const bx=ball?ball.x+clamp(ball.vx||0,-14,14)*.22:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.1:0,xLim=Math.max(0,L+3-camFit.span/2),zLim=Math.max(0,HW+1.5-camFit.zVis);
-    camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*3.2);camZ+=(clamp(bz*.6,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
+    const bvx=ball?clamp(ball.vx||0,-30,30):0,bx=ball?ball.x+bvx*.3:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.1:0,xLim=Math.max(0,L+3-camFit.span/2),zLim=Math.max(0,HW+1.5-camFit.zVis),cRate=3.2+Math.min(6,Math.abs(bvx)*.25);   // v212
+    camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*cRate);camZ+=(clamp(bz*.6,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
     if(goalCam>0&&ball)camX+=(clamp(ball.x,-xLim,xLim)-camX)*Math.min(1,dt*5);
     ARC.sz+=((ARC.p?1:0)-ARC.sz)*Math.min(1,dt*(ARC.p?7:5));if(ARC.p){ARC.x=ARC.p.x;ARC.z=ARC.p.z;ARC.tx=ARC.p.gkArc&&ball?ARC.x*.8+ball.x*.2:ARC.x;}if(ARC.sz>.01){camX+=(clamp(ARC.tx==null?ARC.x:ARC.tx,-xLim,xLim)-camX)*Math.min(1,dt*9)*ARC.sz;camZ+=(clamp(ARC.z*.6,-zLim,zLim)-camZ)*Math.min(1,dt*4)*ARC.sz;}
     const zoom=(goalCam>0?.78:1)*(1-.32*ARC.sz),sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom,tz=camZ-camFit.cOffZ*zoom;
@@ -4202,9 +4255,10 @@ function render(dt){
   }else{
   if(!camFit||camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitWidthCam();
   // sigue al balón con un poco de anticipación; nunca deja de ver la portería cuando el balón se acerca
-  const bx=ball?ball.x+clamp(ball.vx||0,-14,14)*.18:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.12:0;
+  // v212: se adelanta a donde va el balón (en un tiro ya se ve la portería) y lo alcanza más rápido mientras más rápido va
+  const bvx=ball?clamp(ball.vx||0,-30,30):0,bx=ball?ball.x+bvx*.3:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.12:0,cRate=3.2+Math.min(6,Math.abs(bvx)*.25);
   const xLim=Math.max(0,L+4-camFit.span/2),zLim=Math.max(0,HW+2.5-camFit.hwVis);
-  camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*3.2);camZ+=(clamp(bz*.75,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
+  camX+=(clamp(bx,-xLim,xLim)-camX)*Math.min(1,dt*cRate);camZ+=(clamp(bz*.75,-zLim,zLim)-camZ)*Math.min(1,dt*2.6);
   if(goalCam>0&&ball){camX+=(clamp(ball.x,-xLim,xLim)-camX)*Math.min(1,dt*5);}
   ARC.sz+=((ARC.p?1:0)-ARC.sz)*Math.min(1,dt*(ARC.p?7:5));if(ARC.p){ARC.x=ARC.p.x;ARC.z=ARC.p.z;ARC.tx=ARC.p.gkArc&&ball?ARC.x*.8+ball.x*.2:ARC.x;}if(ARC.sz>.01){camX+=(clamp(ARC.tx==null?ARC.x:ARC.tx,-xLim,xLim)-camX)*Math.min(1,dt*9)*ARC.sz;camZ+=(clamp(ARC.z*.75,-zLim,zLim)-camZ)*Math.min(1,dt*4)*ARC.sz;}
   const zoom=(goalCam>0?.76:1)*(1-.32*ARC.sz),sx=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,sy=shakeAmt?rand(-shakeAmt,shakeAmt)*.6:0,dd=camFit.dist*zoom,tx=camX-camFit.cOff*zoom;
@@ -4237,7 +4291,7 @@ function fitCamera(){
 }
 
 // ancho fijo: las bandas de la cancha quedan a un margen constante de los bordes de la pantalla
-const CAM_EL2=1.0;
+const CAM_EL2=.92;   // v212: un poco más inclinada (antes 1.0)
 function fitWidthCam(){
   // v17: cámara cercana. Se ve ~3/4 del largo de la cancha y sigue al balón.
   const w=cvs.clientWidth||360,h=cvs.clientHeight||640,asp=w/Math.max(1,h);
@@ -4253,7 +4307,7 @@ function fitWidthCam(){
 }
 
 // v83: cámara de lado (partido acostado): la cancha va de izquierda a derecha, como en la tele
-const CAM_ELL=.95;
+const CAM_ELL=.88;   // v212: un poco más inclinada (antes .95)
 function fitLandCam(){
   const w=cvs.clientWidth||780,h=cvs.clientHeight||360,asp=w/Math.max(1,h);
   const cam=new THREE.PerspectiveCamera(camera.fov,asp,.5,600),yMin=-1+Math.min(.3,64/h*2),yTop=.84;
