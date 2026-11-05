@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Titan Crashers: fútbol arcade de titanes 5 contra 5 para celular. Un juego de Castle Studios.">
+<title>Titan Crashers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Asap+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Concepto: sitio de juego arcade a todo color — franjas inclinadas que se enciman, fondo de íconos del juego, letras gruesas con sombra dura */
+:root{
+  --noche:#2a0f55;      /* barra y textos sobre claro */
+  --uva:#7b3cf0;        /* morado principal */
+  --chicle:#e83fae;     /* rosa */
+  --cielo:#1fb6f2;      /* azul turquesa */
+  --sol:#ffd23f;        /* amarillo de títulos */
+  --crema:#fff6fb;      /* texto sobre color */
+  --tinta:#1b0a3a;      /* sombra dura */
+  --placa:#e8333d;      /* placa roja del logo */
+  --f-tit:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --f-txt:"Asap Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  color-scheme:dark;
+}
+html{scroll-behavior:smooth}
+body{background:var(--uva);color:var(--crema);font:600 18px/1.45 var(--f-txt);overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--noche)}
+a{color:inherit}
+img{max-width:100%;display:block}
+.in{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,.tit{font-family:var(--f-tit);font-weight:400;text-transform:uppercase;letter-spacing:.01em;line-height:.95;text-wrap:balance;margin:0}
+.som{text-shadow:0 .06em 0 var(--tinta),0 .1em 0 rgba(27,10,58,.35)}
+/* ---- barra ---- */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--noche);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.nav .in{display:flex;align-items:center;gap:22px;min-height:68px}
+.logo{display:flex;align-items:center;gap:6px;text-decoration:none;flex:0 0 auto}
+.logo b{font:400 24px var(--f-tit);color:var(--cielo);text-shadow:0 2px 0 var(--tinta)}
+.logo i{font:400 17px var(--f-tit);font-style:normal;background:var(--placa);color:#fff;padding:3px 8px 2px;border-radius:6px;transform:rotate(-4deg);box-shadow:0 3px 0 var(--tinta)}
+.links{display:flex;gap:22px;flex:1;min-width:0}
+.links a{text-decoration:none;font-weight:600;font-size:17px;letter-spacing:.02em;opacity:.92}
+.links a:hover,.links a:focus-visible{opacity:1;color:var(--sol)}
+.btn{display:inline-block;font:400 18px var(--f-tit);text-transform:uppercase;text-decoration:none;color:var(--tinta);background:var(--cielo);padding:11px 20px 9px;border-radius:12px;border:0;box-shadow:0 4px 0 #0b6f99;cursor:pointer;transition:transform .12s}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #0b6f99}
+.btn:focus-visible,.pill:focus-visible,.links a:focus-visible{outline:3px solid var(--sol);outline-offset:3px}
+.menu{display:none;background:none;border:0;color:var(--crema);font:400 28px var(--f-tit);cursor:pointer}
+@media (max-width:860px){.links{display:none}.links.open{display:flex;position:absolute;left:0;right:0;top:68px;flex-direction:column;gap:0;background:var(--noche);padding:8px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}.links.open a{padding:12px 0;font-size:20px}.menu{display:block;margin-left:auto}.nav .btn{display:none}}
+/* ---- franja de descarga ---- */
+.ya{background:var(--uva);background-image:linear-gradient(90deg,#8a45ff,#b34cf0)}
+.ya .in{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;padding-block:16px}
+.ya .tit{font-size:30px}
+.pill{display:inline-flex;align-items:center;gap:10px;background:var(--crema);color:var(--noche);border-radius:12px;padding:8px 14px;font:700 15px var(--f-txt);text-decoration:none;box-shadow:0 4px 0 rgba(27,10,58,.45)}
+.pill svg{width:22px;height:22px}
+.pill small{display:block;font-size:11px;font-weight:600;opacity:.7;line-height:1}
+/* ---- portada ---- */
+.hero{position:relative;background:var(--chicle);overflow:hidden;isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0;z-index:-2;background:radial-gradient(circle,rgba(255,255,255,.28) 18%,transparent 19%) 0 0/34px 34px}
+.hero .rayo{position:absolute;z-index:-1;inset:-10% -5% auto auto;width:62%;height:130%;background:var(--sol);clip-path:polygon(30% 0,100% 0,100% 100%,0 100%)}
+.hero .rayo2{position:absolute;z-index:-1;inset:auto auto -20% -8%;width:46%;height:70%;background:var(--cielo);clip-path:polygon(0 30%,100% 0,80% 100%,0 100%)}
+.hero .in{display:grid;grid-template-columns:1.05fr 1fr;align-items:center;gap:24px;padding-block:44px 64px}
+.hero h1{font-size:clamp(46px,8.5vw,112px)}
+.hero h1 span{display:block;color:var(--sol)}
+.hero h1 span.r{color:var(--crema);background:var(--placa);display:inline-block;padding:.08em .22em 0;border-radius:.12em;transform:rotate(-3deg);margin-top:.08em;box-shadow:0 .07em 0 var(--tinta)}
+.hero p{max-width:30ch;font-size:21px;margin:18px 0 22px}
+.acc{display:flex;gap:12px;flex-wrap:wrap}
+.btn.am{background:var(--sol);box-shadow:0 4px 0 #b88c00}
+.btn.bl{background:var(--crema);box-shadow:0 4px 0 rgba(27,10,58,.45)}
+.arte{position:relative;aspect-ratio:1/1;max-width:100%}
+.slot{position:relative;width:100%;height:100%;border-radius:22px;overflow:hidden;background:var(--uva)}
+.slot img{width:100%;height:100%;object-fit:cover}
+.slot .ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;font:600 14px var(--f-txt);color:rgba(255,246,251,.85);background:repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 14px,transparent 14px 28px)}
+.slot.ok .ph{display:none}
+.arte .slot{border:6px solid var(--crema);box-shadow:0 10px 0 var(--tinta);transform:rotate(2.5deg)}
+.balon{position:absolute;width:24%;aspect-ratio:1;left:-7%;bottom:6%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 30%,#e9e4f3 31% 100%);box-shadow:0 8px 0 var(--tinta);animation:bote 2.4s ease-in-out infinite}
+.balon::after{content:"";position:absolute;inset:30%;background:var(--noche);clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+@keyframes bote{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-16px) rotate(25deg)}}
+@media (prefers-reduced-motion:reduce){.balon{animation:none}html{scroll-behavior:auto}}
+@media (max-width:760px){.hero .in{grid-template-columns:1fr}.arte{max-width:440px;margin:0 auto;width:100%}.hero .rayo{width:100%;height:55%;inset:auto -5% -8% auto}}
+/* ---- franjas inclinadas ---- */
+.banda{position:relative;margin-top:-34px;padding-block:72px 76px;clip-path:polygon(0 34px,100% 0,100% calc(100% - 34px),0 100%)}
+.pat{background-color:var(--cielo);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='4' stroke-linejoin='round' stroke-linecap='round'%3E%3Ccircle cx='28' cy='28' r='14'/%3E%3Cpath d='M28 18l8 6-3 9h-10l-3-9z'/%3E%3Cpath d='M78 14l6 12 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z'/%3E%3Cpath d='M22 76l12 0-6 14 14-18h-12l6-12z'/%3E%3Cpath d='M74 72l10 8 10-8 4 22h-28z'/%3E%3C/g%3E%3C/svg%3E")}
+.uva{background:var(--uva)}
+.rosa{background:var(--chicle)}
+.cab{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.cab h2{font-size:clamp(34px,5vw,56px)}
+.cab p{max-width:46ch;margin:0}
+.eti{font:400 20px var(--f-tit);color:var(--sol);text-transform:uppercase;letter-spacing:.03em;display:block;margin-bottom:6px}
+/* noticias */
+.notas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.nota{display:flex;flex-direction:column;gap:10px;min-width:0}
+.nota .slot{aspect-ratio:16/10;height:auto;border:5px solid var(--crema);box-shadow:0 6px 0 var(--tinta);background:var(--noche)}
+.nota h3{font-size:24px;color:var(--sol)}
+.nota p{margin:0;font-size:17px;opacity:.95}
+.nota small{font-size:14px;opacity:.75}
+@media (max-width:860px){.notas{grid-template-columns:1fr}}
+/* arenas */
+.arenas{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 18px;scrollbar-width:thin}
+.arena{flex:0 0 min(300px,78vw);scroll-snap-align:start;background:var(--crema);color:var(--noche);border-radius:18px;padding:10px 10px 14px;box-shadow:0 6px 0 var(--tinta)}
+.arena:nth-child(odd){transform:rotate(-1.2deg)}.arena:nth-child(even){transform:rotate(1.2deg)}
+.arena .slot{aspect-ratio:16/10;height:auto;border-radius:12px}
+.arena .tit{font-size:22px;margin:10px 4px 2px}
+.arena p{margin:0 4px;font-size:15px;color:#4a2d7a}
+.copa{display:inline-block;margin:8px 4px 0;font:700 13px var(--f-txt);background:var(--sol);color:var(--tinta);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.ctr{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.ctr button{width:48px;height:48px;border-radius:50%;border:4px solid var(--crema);background:var(--noche);color:var(--crema);font:400 22px var(--f-tit);cursor:pointer}
+/* personajes */
+.grupos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.grupo{background:rgba(27,10,58,.28);border-radius:18px;padding:16px;min-width:0}
+.grupo .slot{aspect-ratio:3/4;height:auto;border-radius:12px;margin-bottom:12px;background:rgba(27,10,58,.45)}
+.grupo h3{font-size:26px;color:var(--sol)}
+.grupo p{margin:6px 0 0;font-size:16px}
+.grupo ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.grupo li{background:var(--crema);color:var(--noche);border-radius:999px;padding:2px 10px;font-size:14px;font-weight:700}
+@media (max-width:960px){.grupos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.grupos{grid-template-columns:1fr}}
+/* cómo se juega */
+.pasos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.paso{background:var(--crema);color:var(--noche);border-radius:18px;padding:20px;box-shadow:0 6px 0 var(--tinta);min-width:0}
+.paso .tit{font-size:26px;color:var(--chicle);margin-bottom:8px}
+.paso p{margin:0;font-size:17px}
+.tecla{display:inline-block;background:var(--noche);color:var(--crema);border-radius:8px;padding:0 8px;font-weight:700;font-size:15px}
+@media (max-width:860px){.pasos{grid-template-columns:1fr}}
+/* pie */
+.pie{background:var(--noche);margin-top:-34px;padding-block:70px 34px;clip-path:polygon(0 34px,100% 0,100% 100%,0 100%)}
+.pie .in{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:28px}
+.pie h4{font:400 20px var(--f-tit);text-transform:uppercase;color:var(--sol);margin:0 0 10px}
+.pie a{display:block;text-decoration:none;opacity:.9;padding:3px 0}.pie a:hover{color:var(--cielo)}
+.correo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.correo code{font:700 16px var(--f-txt);background:rgba(255,255,255,.1);padding:4px 10px;border-radius:8px;user-select:all}
+.correo button{background:var(--cielo);border:0;border-radius:8px;padding:5px 10px;font:700 14px var(--f-txt);color:var(--tinta);cursor:pointer}
+.legal{grid-column:1/-1;border-top:2px solid rgba(255,255,255,.12);padding-top:16px;font-size:14px;opacity:.7}
+@media (max-width:760px){.pie .in{grid-template-columns:1fr}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<header class="nav"><div class="in">
+  <a class="logo" href="#inicio" aria-label="Titan Crashers, inicio"><b>TITAN</b><i>CRASHERS</i></a>
+  <nav class="links" id="links">
+    <a href="#noticias">Noticias</a><a href="#arenas">Arenas</a><a href="#personajes">Personajes</a><a href="#como">Cómo se juega</a><a href="#soporte">Soporte</a>
+  </nav>
+  <button class="menu" id="menu" aria-label="Abrir menú" aria-expanded="false">☰</button>
+  <a class="btn" href="#descargar">Descargar</a>
+</div></header>
+
+<section class="ya" id="descargar"><div class="in">
+  <span class="tit som">¡Muy pronto en tu celular!</span>
+  <span class="pill" aria-label="Próximamente en Google Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1fb6f2" d="M4 3l11 9-11 9z"/><path fill="#ffd23f" d="M15 12l3-2.6 3 1.8c.8.5.8 1.1 0 1.6l-3 1.8z"/><path fill="#e83fae" d="M4 21l11-9 3 2.6z"/><path fill="#7b3cf0" d="M4 3l14 6.4-3 2.6z"/></svg><span><small>Próximamente en</small>Google Play</span></span>
+</div></section>
+
+<section class="hero" id="inicio">
+  <div class="rayo"></div><div class="rayo2"></div>
+  <div class="in">
+    <div>
+      <h1 class="som">Fútbol de titanes <span>5 contra 5</span> <span class="r">sin reglas</span></h1>
+      <p>Arma tu plantilla de héroes y criaturas, lanza cartas de poder y mete el súper tiro en estadios de lava, hielo y fantasmas.</p>
+      <div class="acc"><a class="btn am" href="#arenas">Ver las arenas</a><a class="btn bl" href="#personajes">Conoce a los titanes</a></div>
+    </div>
+    <div class="arte">
+      <div class="slot" data-img="img/portada.jpg"><div class="ph">Imagen de portada<br>img/portada.jpg</div></div>
+      <div class="balon" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<section class="banda uva" id="noticias"><div class="in">
+  <div class="cab"><div><span class="eti">Lo nuevo</span><h2 class="som">Noticias de Titan Crashers</h2></div><p>Lo que va llegando al juego mientras lo terminamos de pulir.</p></div>
+  <div class="notas">
+    <article class="nota"><div class="slot" data-img="img/nota-luz.jpg"><div class="ph">img/nota-luz.jpg</div></div><h3>Luz nueva en las 9 arenas</h3><p>Cada estadio con su hora del día, antorchas y braseros que alumbran de verdad y cielos nuevos.</p><small>Equipo de Titan Crashers · 5 de noviembre de 2026</small></article>
+    <article class="nota"><div class="slot" data-img="img/nota-publico.jpg"><div class="ph">img/nota-publico.jpg</div></div><h3>Llega el público a las gradas</h3><p>Hongos, niños y el señor del bigote festejan tus goles y se agarran la cabeza cuando fallas.</p><small>Equipo de Titan Crashers · 5 de noviembre de 2026</small></article>
+    <article class="nota"><div class="slot" data-img="img/nota-playa.jpg"><div class="ph">img/nota-playa.jpg</div></div><h3>La Playa Pirata al atardecer</h3><p>Antorchas tiki alrededor de la cancha y un sol enorme detrás del galeón encallado.</p><small>Equipo de Titan Crashers · 5 de noviembre de 2026</small></article>
+  </div>
+</div></section>
+
+<section class="banda pat" id="arenas"><div class="in">
+  <div class="cab"><div><span class="eti">9 estadios</span><h2 class="som">Arenas</h2></div><p>Sube de copas y desbloquea estadios cada vez más grandes. Cada uno con su clima, su gente y su grabado en el césped.</p></div>
+  <div class="arenas" id="lista">
+    <div class="arena"><div class="slot" data-img="img/arena-1.jpg"><div class="ph">img/arena-1.jpg</div></div><div class="tit">Campo de Entrenamiento</div><p>Atardecer suave y faroles del pueblo.</p><span class="copa">Arena 1</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-2.jpg"><div class="ph">img/arena-2.jpg</div></div><div class="tit">Bosque Encantado</div><p>Árboles gigantes y hongos que brillan.</p><span class="copa">Arena 2</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-3.jpg"><div class="ph">img/arena-3.jpg</div></div><div class="tit">Pueblo</div><p>Tejas rojas, campanarios y tarde dorada.</p><span class="copa">Arena 3</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-4.jpg"><div class="ph">img/arena-4.jpg</div></div><div class="tit">Playa Pirata</div><p>Galeón encallado y antorchas tiki.</p><span class="copa">Arena 4</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-5.jpg"><div class="ph">img/arena-5.jpg</div></div><div class="tit">Templo del Desierto</div><p>Noche morada y gradas de dos pisos.</p><span class="copa">Arena 5</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-6.jpg"><div class="ph">img/arena-6.jpg</div></div><div class="tit">Tundra de Hielo</div><p>Aurora, nieve y fogatas.</p><span class="copa">Arena 6</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-7.jpg"><div class="ph">img/arena-7.jpg</div></div><div class="tit">Mansión Embrujada</div><p>Cielo violeta y candelabros turquesa.</p><span class="copa">Arena 7</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-8.jpg"><div class="ph">img/arena-8.jpg</div></div><div class="tit">Castillo del Volcán</div><p>Lava, braseros y un castillo de picos.</p><span class="copa">Arena 8</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-9.jpg"><div class="ph">img/arena-9.jpg</div></div><div class="tit">Coliseo de Leyendas</div><p>Mármol, oro y fuegos artificiales.</p><span class="copa">Arena 9</span></div>
+  </div>
+  <div class="ctr"><button id="izq" aria-label="Arenas anteriores">‹</button><button id="der" aria-label="Más arenas">›</button></div>
+</div></section>
+
+<section class="banda rosa" id="personajes"><div class="in">
+  <div class="cab"><div><span class="eti">Más de 25 titanes</span><h2 class="som">Personajes</h2></div><p>Cada grupo se mueve distinto: los chicos son rápidos y escurridizos, los grandes tumban a quien se les pone enfrente.</p></div>
+  <div class="grupos">
+    <div class="grupo"><div class="slot" data-img="img/grupo-pequenos.jpg"><div class="ph">img/grupo-pequenos.jpg</div></div><h3>Pequeños</h3><p>Barridas veloces y regates cortos.</p><ul><li>Thorin</li><li>Goblin</li><li>Duende</li><li>Hongo</li><li>Monje</li><li>Momia</li></ul></div>
+    <div class="grupo"><div class="slot" data-img="img/grupo-medianos.jpg"><div class="ph">img/grupo-medianos.jpg</div></div><h3>Medianos</h3><p>Los más completos de la cancha.</p><ul><li>Campeón</li><li>Volt</li><li>Simún</li><li>Duelo</li><li>Kenshi</li><li>Ginga</li><li>Valkiria</li><li>Vampira</li><li>Nébula</li></ul></div>
+    <div class="grupo"><div class="slot" data-img="img/grupo-grandes.jpg"><div class="ph">img/grupo-grandes.jpg</div></div><h3>Grandes</h3><p>Zarpazo que derriba sin dejar de correr.</p><ul><li>Tauro</li><li>Azazel</li><li>Yeti</li><li>Barbanegra</li><li>Remiendo</li></ul></div>
+    <div class="grupo"><div class="slot" data-img="img/grupo-atleticos.jpg"><div class="ph">img/grupo-atleticos.jpg</div></div><h3>Atléticos</h3><p>Fuerza y velocidad al mismo tiempo.</p><ul><li>Kragor</li><li>Maximus</li><li>Anubis</li><li>Fenrir</li></ul></div>
+  </div>
+</div></section>
+
+<section class="banda uva" id="como"><div class="in">
+  <div class="cab"><div><span class="eti">Partidos de 2 minutos</span><h2 class="som">Cómo se juega</h2></div></div>
+  <div class="pasos">
+    <div class="paso"><div class="tit">Corre y dispara</div><p>Joystick para moverte y tres botones: <span class="tecla">Pase</span> <span class="tecla">Tiro</span> <span class="tecla">Centro</span>. En defensa cambian a barrida y golpe.</p></div>
+    <div class="paso"><div class="tit">Lanza tus cartas</div><p>Bombas, rayos, cáscaras y turbo. Llevas 6 cartas de poder y las pagas con energía durante el partido.</p></div>
+    <div class="paso"><div class="tit">Súper tiro</div><p>Deja presionado, la pierna se queda arriba y suelta justo en el punto verde. Si atinas, ni el Golem la para.</p></div>
+  </div>
+</div></section>
+
+<footer class="pie" id="soporte"><div class="in">
+  <div><a class="logo" href="#inicio" aria-label="Titan Crashers, inicio"><b>TITAN</b><i>CRASHERS</i></a><p style="max-width:36ch;margin:14px 0 0;opacity:.85">Un juego de Castle Studios. Hecho para jugarse en vertical, con una mano y en cualquier celular.</p></div>
+  <div><h4>Ayuda</h4><div class="correo"><code id="mail">soporte@titancrashers.com</code><button id="copiar">Copiar</button></div><a href="terminos.html">Términos de servicio</a><a href="privacidad.html">Aviso de privacidad</a></div>
+  <div><h4>El juego</h4><a href="#noticias">Noticias</a><a href="#arenas">Arenas</a><a href="#personajes">Personajes</a><a href="#como">Cómo se juega</a></div>
+  <div class="legal">© 2026 Castle Studios. Titan Crashers y sus personajes son propiedad de Castle Studios.</div>
+</div></footer>
+
+<script>
+// imágenes: si ya existe el archivo se muestra; si no, queda el recuadro con su nombre
+document.querySelectorAll('.slot[data-img]').forEach(s=>{const im=new Image();im.alt='';im.onload=()=>{s.prepend(im);s.classList.add('ok');};im.src=s.dataset.img;});
+const L=document.getElementById('links'),B=document.getElementById('menu');
+B.onclick=()=>{const o=L.classList.toggle('open');B.setAttribute('aria-expanded',o);B.textContent=o?'✕':'☰';};
+L.querySelectorAll('a').forEach(a=>a.onclick=()=>{L.classList.remove('open');B.textContent='☰';B.setAttribute('aria-expanded','false');});
+const lista=document.getElementById('lista');
+document.getElementById('izq').onclick=()=>lista.scrollBy({left:-320,behavior:'smooth'});
+document.getElementById('der').onclick=()=>lista.scrollBy({left:320,behavior:'smooth'});
+document.getElementById('copiar').onclick=async e=>{const t=document.getElementById('mail');try{await navigator.clipboard.writeText(t.textContent);e.target.textContent='Copiado';}catch(_){const r=document.createRange();r.selectNodeContents(t);const s=getSelection();s.removeAllRanges();s.addRange(r);e.target.textContent='Selecciónalo';}setTimeout(()=>e.target.textContent='Copiar',1800);};
+</script>
+
+</body>
+</html>

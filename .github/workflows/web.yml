@@ -1,0 +1,20 @@
+name: Publicar web
+
+# v216: la página web (carpeta web/) se publica sola en Cloudflare Pages, proyecto titancrashers
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'web/**', '.github/workflows/web.yml' ]
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicar en Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: b05619abe39ffbb5e8656836f50fca5e
+          command: pages deploy web --project-name=titancrashers --branch=main --commit-dirty=true
