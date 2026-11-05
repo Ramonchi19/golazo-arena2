@@ -1185,6 +1185,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
 <script src="assets/sim/match.js?v=212"></script>
+<script src="assets/arenas/luz.js?v=213b"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
 <script src="assets/icons.js?v=157"></script>
@@ -1715,10 +1716,11 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   const root=new THREE.Group();scene.add(root);
   try{const mod=window.GZ_ARENAS[n]({scene,renderer,camera,root});mod._n=n;ARENA_ROOT=root;ARENA_MOD=mod;hideOldStadium();arenaOptimize(root,mod);}
   catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}
+  try{if(window.GZ_LUZ){if(n===15&&ARENA_ROOT===root)GZ_LUZ.on({scene,renderer,camera,root,quality:(window.save&&save.settings&&save.settings.quality)||(typeof save!=='undefined'&&save.settings&&save.settings.quality)||'media'});else GZ_LUZ.off();}}catch(e){console.warn('luz',e);}   // v213
   // v211: público de hongos en las gradas (más lleno conforme subes de arena)
   HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_HONGOS({scene,root,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('hongos',e);}};
     // v212c: las gradas se arman cuando terminan de cargar sus modelos (unos segundos después): se espera a que la lista de lugares deje de crecer
-    const go=()=>{if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=212c';sc.onload=mk;document.head.appendChild(sc);}};
+    const go=()=>{if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=213';sc.onload=mk;document.head.appendChild(sc);}};
     let last=-1,tries=0;const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(k>0&&k===last){go();return;}last=k;if(++tries<80)setTimeout(wait,400);else if(k>0)go();};wait();}}catch(e){console.warn('hongos',e);}
   // v212c: el piso de afuera (enorme y plano) se baja un poco para que nunca se pelee con el pasto
   for(const dl of [600,3000,8000])setTimeout(()=>{if(ARENA_ROOT===root)try{fixFloors();}catch(e){}},dl);}
@@ -2096,14 +2098,26 @@ function applyKit(mat,info,K,num){
     sh.fragmentShader='vec3 gzSat(vec3 c){float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.25);return clamp((c-.5)*1.08+.5,0.,1.);}\nuniform sampler2D uMask;uniform sampler2D uKit;uniform vec4 uBox;uniform float uRef;uniform vec3 uSock;uniform vec3 uShort;uniform float uKnee;uniform vec3 uBoot;uniform float uBootOn;uniform float uTime;uniform float uAnim;varying vec3 vKP;varying vec3 vKN;\nvec3 kHue(vec3 c,float a){const vec3 k=vec3(.57735);float ca=cos(a);return c*ca+cross(k,c)*sin(a)+k*dot(k,c)*(1.-ca);}\n'+
       sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
       vec4 km=texture2D(uMask,vUv);float inT=step(uBox.z,vKP.y)*step(vKP.y,uBox.w+.04);float inS=step(vKP.y,uKnee)*step(uKnee*.3,vKP.y);float m=max(km.r*step(vKP.y,uBox.w+.06),km.g*max(inT,inS));
-      if(m>.5){float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));float shd=km.r>.5?clamp(lum/uRef,.5,1.3):clamp(lum/.88,.5,1.15);vec3 col;
+      if(m>.5){float lum=dot(diffuseColor.rgb,vec3(.299,.587,.114));
+#ifdef GZ_LIN
+      lum=pow(max(lum,0.),.4545);
+#endif
+      float shd=km.r>.5?clamp(lum/uRef,.5,1.3):clamp(lum/.88,.5,1.15);vec3 col;
         if(vKP.y<uBox.z){col=vKP.y>uKnee?uShort:uSock;}else{float u=clamp((vKP.x-uBox.x)/(uBox.y-uBox.x),0.,1.),v=clamp((vKP.y-uBox.z)/(uBox.w-uBox.z),0.,1.),bk=step(vKN.z,0.);
           col=texture2D(uKit,vec2(mix(u*.5,.5+(1.-u)*.5,bk),v)).rgb;
           if(uAnim>.5){float band=smoothstep(.13,0.,abs(fract(v*.8-uTime*.4+u*.35)-.5));col+=band*.5;}
           if(uAnim>1.5)col=kHue(col,uTime*1.4);}
+
+#ifdef GZ_LIN
+        col=pow(max(col,vec3(0.)),vec3(2.2));
+#endif
         diffuseColor.rgb=col*shd;}
-      if(uBootOn>.5&&vKP.y<uKnee*.36){float l2=dot(diffuseColor.rgb,vec3(.299,.587,.114));if(l2<.3&&m<.5)diffuseColor.rgb=uBoot*(.45+l2*2.2);}   // v74: zapatos del paquete
-      diffuseColor.rgb=gzSat(diffuseColor.rgb);`).replace('#include <tonemapping_fragment>','gl_FragColor.rgb+=diffuseColor.rgb*.34;\n#include <tonemapping_fragment>');};
+      if(uBootOn>.5&&vKP.y<uKnee*.36){float l2=dot(diffuseColor.rgb,vec3(.299,.587,.114));if(l2<.3&&m<.5){vec3 bt=uBoot;
+#ifdef GZ_LIN
+ bt=pow(bt,vec3(2.2));
+#endif
+ diffuseColor.rgb=bt*(.45+l2*2.2);}}   // v74: zapatos del paquete
+      diffuseColor.rgb=gzSat(diffuseColor.rgb);`).replace('#include <tonemapping_fragment>','#ifndef GZ_LIN\ngl_FragColor.rgb+=diffuseColor.rgb*.34;\n#endif\n#include <tonemapping_fragment>');};
   mat.customProgramCacheKey=()=>'kitproj2';
   return mat;
 }
@@ -2120,8 +2134,14 @@ function smoothNormals(geo){if(geo.userData.smoothDone)return;geo.userData.smoot
   for(let i=0;i<p.count;i++){const k=Math.round(p.getX(i)*1e4)+','+Math.round(p.getY(i)*1e4)+','+Math.round(p.getZ(i)*1e4);let j=map.get(k);if(j==null){j=acc.length/3;map.set(k,j);acc.push(0,0,0);}acc[j*3]+=n.getX(i);acc[j*3+1]+=n.getY(i);acc[j*3+2]+=n.getZ(i);p.__k=p.__k||[];p.__k[i]=j;}
   const out=new Float32Array(p.count*3);for(let i=0;i<p.count;i++){const j=p.__k[i];let x=acc[j*3],y=acc[j*3+1],z=acc[j*3+2];const l=Math.hypot(x,y,z)||1;out[i*3]=x/l;out[i*3+1]=y/l;out[i*3+2]=z/l;}delete p.__k;geo.setAttribute('smoothNormal',new THREE.BufferAttribute(out,3));}
 function selfLit(mat){if(!mat||mat.userData.selfLit)return mat;mat.userData.selfLit=true;const prev=mat.onBeforeCompile;
-  mat.onBeforeCompile=(sh,r)=>{if(prev&&prev!==THREE.Material.prototype.onBeforeCompile)prev(sh,r);sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2;');};
-  mat.customProgramCacheKey=()=>(mat.userData.kit?'kitproj':'std')+'-self';if('roughness' in mat)mat.roughness=.62;mat.needsUpdate=true;return mat;}
+  mat.onBeforeCompile=(sh,r)=>{if(prev&&prev!==THREE.Material.prototype.onBeforeCompile)prev(sh,r);const LU=window.GZ_LUZ_U;
+    if(!LU){sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2;');return;}
+    Object.assign(sh.uniforms,{uLzRim:LU.rim,uLzOff:LU.off,uLzSat:LU.sat,uLzRimCol:LU.rimCol,uLzKey:LU.key,uLzShade:LU.shade,uLzSpec:LU.spec});   // v213: luz nueva
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform float uLzRim,uLzOff,uLzSat,uLzShade,uLzSpec;uniform vec3 uLzRimCol,uLzKey;')
+      .replace('#include <map_fragment>','#include <map_fragment>\n{float l=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));diffuseColor.rgb=max(mix(vec3(l),diffuseColor.rgb,uLzSat),0.);}')
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2*(1.-uLzOff);')
+      .replace('#include <tonemapping_fragment>','if(uLzOff>.5){vec3 N=normalize(normal),V=normalize(vViewPosition);float w=clamp(dot(N,uLzKey)*.5+.5,0.,1.);gl_FragColor.rgb*=mix(uLzShade,1.1,smoothstep(.3,.8,w));float sp=pow(max(dot(N,normalize(uLzKey+V)),0.),90.);gl_FragColor.rgb+=vec3(1.,.97,.9)*sp*uLzSpec;float fr=1.-clamp(dot(N,V),0.,1.);gl_FragColor.rgb+=uLzRimCol*uLzRim*pow(fr,4.);}\n#include <tonemapping_fragment>');};
+  mat.customProgramCacheKey=()=>(mat.userData.kit?'kitproj':'std')+'-self'+(window.GZ_LUZ_U?'-lz':'');if('roughness' in mat)mat.roughness=.62;mat.needsUpdate=true;return mat;}
 function makeGLBChar(team,id){
   const M0=MODELS[id],root=new THREE.Group(),tilt=new THREE.Group();root.add(tilt);
   const model=THREE.SkeletonUtils?THREE.SkeletonUtils.clone(M0.scene):M0.scene.clone(true);
@@ -4247,7 +4267,7 @@ function render(dt){
   if(fenceMat&&fenceBase){const f=1,fl=fenceFlash>0?.45:0;fenceMat.color.setRGB(Math.min(1,fenceBase.r*f+fl),Math.min(1,fenceBase.g*f+fl),Math.min(1,fenceBase.b*f+fl));}
   // cámara vertical: detrás de tu portería mirando hacia el ataque
   if(gkCam&&state==='play'){const k=keeperOf(0);if(k){const d=dirOf(0);const tx=k.x+d*7.5,tz=k.z*.6+3.2;gcx+=(tx-gcx)*Math.min(1,dt*4);gcz+=(tz-gcz)*Math.min(1,dt*4);camera.position.set(gcx,3.3,gcz);camera.lookAt(k.x,1.1,k.z);
-    if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
+    if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
   // cámara que sigue al balón (donde está la jugada)
   if(LAND){if(!camFit||!camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitLandCam();
     const bvx=ball?clamp(ball.vx||0,-30,30):0,bx=ball?ball.x+bvx*.3:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.1:0,xLim=Math.max(0,L+3-camFit.span/2),zLim=Math.max(0,HW+1.5-camFit.zVis),cRate=3.2+Math.min(6,Math.abs(bvx)*.25);   // v212
@@ -4281,7 +4301,8 @@ function render(dt){
     const A=window._dirArrow;if(A.parent!==scene)scene.add(A);if(u){const dx=ghost.x-u.x,dz=ghost.z-u.z,l=Math.max(1,Math.hypot(dx,dz));A.visible=true;A.position.set(u.x,.1,u.z);A.rotation.y=-Math.atan2(dz,dx);A.userData.body.scale.x=l;A.userData.body.position.x=l/2;A.userData.hd.position.x=l+.2;}else A.visible=false;}
   if(ghost&&selCard>=0){const c=CARDS[hands[0][selCard]];ghostMesh.visible=true;ghostMesh.position.set(ghost.x,.09,ghost.z);ghostMesh.scale.setScalar((c.r||1)*(1+(spellLvl(0,hands[0][selCard])-1)*.08));}else ghostMesh.visible=false;
   try{ballFx(dt);}catch(e){}
-  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);HONGOS=null;}}drawAim(dt);offMarkers();if(useBloom())composer.render();else renderer.render(scene,camera);
+  try{if(window.GZ_LUZ)GZ_LUZ.tick(dt,camX,camZ);}catch(e){}   // v213
+  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else renderer.render(scene,camera);
 }
 
 // ================== CÁMARA: CANCHA COMPLETA ==================

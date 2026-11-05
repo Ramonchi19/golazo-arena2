@@ -14,7 +14,7 @@ const C={update(){},ready:false,count:0};
 const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
 const par=o.root||o.scene,lvl=o.level||0,SC=o.size||1.4;
 const fill=Math.min(1,.35+lvl*.085)*(((window.save&&save.settings&&save.settings.quality)==='baja')?.6:1);
-const V='?v=212c';
+const V='?v=213';
 Promise.all([fetch('assets/arenas/hongos/hongos.json'+V).then(r=>r.json()),fetch('assets/arenas/hongos/hongos.bin'+V).then(r=>r.arrayBuffer())])
  .then(([m,b])=>{try{build(m,b);console.log('hongos:',C.count,'en las gradas');}catch(e){fail(e);}}).catch(fail);
 function fail(e){console.warn('hongos: no cargó',e);C.error=String(e&&e.message||e);try{if(window.toast)toast('Público: '+C.error);}catch(_){}}
@@ -46,7 +46,7 @@ function build(m,b){
   const SHOES=[0xffffff,0xffffff,0xffffff,0xff3b3b,0x2f7bff,0xffd23a,0x2ecc71],CAPS=[0xd8261e,0xd8261e,0x2f7bff,0x2ecc71,0xffc21a,0x9b4dff,0xff7a1a];
   const uni={uJ0:{value:kc(K[0],'j')},uJ1:{value:kc(K[1],'j')},uSh0:{value:kc(K[0],'sh','d')},uSh1:{value:kc(K[1],'sh','d')},uSo0:{value:kc(K[0],'so','s')},uSo1:{value:kc(K[1],'so','s')},
     uShoe:{value:SHOES.map(h=>new THREE.Color(h))},uCap:{value:CAPS.map(h=>new THREE.Color(h))}};
-  const mat=new THREE.MeshLambertMaterial({vertexColors:true});
+  const mat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});   // v212d: por los dos lados (el modelo trae piezas abiertas)
   mat.onBeforeCompile=s=>{Object.assign(s.uniforms,uni);
     s.vertexShader=s.vertexShader.replace('#include <common>','#include <common>\nattribute float aPart;attribute vec3 aVar;uniform vec3 uJ0,uJ1,uSh0,uSh1,uSo0,uSo1;uniform vec3 uShoe[7];uniform vec3 uCap[7];')
       .replace('#include <color_vertex>',`#include <color_vertex>
@@ -54,7 +54,11 @@ function build(m,b){
        if(pt==1)tc=t1?uJ1:uJ0;else if(pt==2)tc=t1?uSh1:uSh0;else if(pt==3)tc=t1?uSo1:uSo0;
        else if(pt==4){int k=int(aVar.y+.5);for(int i=0;i<7;i++)if(i==k)tc=uShoe[i];}
        else if(pt==5){int k=int(aVar.z+.5);for(int i=0;i<7;i++)if(i==k)tc=uCap[i];}
-       if(pt>0)vColor=tc*clamp(.42+lum*1.35,.35,1.25);}`);};
+       if(pt>0){vColor=tc*clamp(.42+lum*1.35,.35,1.25);
+       #ifdef GZ_LIN
+       vColor=pow(max(vColor,vec3(0.)),vec3(2.2));
+       #endif
+       }}`);};
   // una malla por cuadro (comparten color, partes e índices)
   const meshes=[],AVAR=[];
   for(let f=0;f<nf;f++){
