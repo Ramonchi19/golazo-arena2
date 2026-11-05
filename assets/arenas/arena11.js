@@ -280,6 +280,13 @@ function sandFall(x,yTop,z,w,face){const t=sandStreamTex();t.repeat.set(1,yTop/5
   const mound=mesh(new THREE.SphereGeometry(1,18,10,0,Math.PI*2,0,Math.PI/2),'#e7bd7d');mound.scale.set(w*.9,1.1,w*.9);mound.position.set(x,0,z);scene.add(mound);
   for(let i=0;i<10;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:DUST,transparent:true,depthWrite:false,opacity:0}));scene.add(sp);dust.push({sp,x,z,w,life:Math.random()*1.4});}}
 
+// v216: tubos de atrás de la portería (postes traseros, barra de arriba, inclinadas desde el travesaño y las del piso), como en Strikers
+function goalBack(mat,r,fx0){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72,V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const tube=(a,b,rr)=>{const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,d.length(),10),mat);m.position.copy(a).addScaledVector(d,.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;m.receiveShadow=true;scene.add(m);};
+  for(const s of [-1,1]){const fx=s*(L+(fx0||.05)),bx=s*(L+D);
+    for(const z of [-C.GW,C.GW]){tube(V(bx,0,z),V(bx,HB,z),r);tube(V(fx,C.GH,z),V(bx,HB,z),r*.88);tube(V(fx,.12,z),V(bx,.12,z),r*.75);}
+    tube(V(bx,HB,-C.GW),V(bx,HB,C.GW),r);tube(V(bx,.12,-C.GW),V(bx,.12,C.GW),r*.75);}}
 // ===== portería de bloques (al tamaño de la del juego) con 3 mosaicos de triángulo =====
 function tileTex(up){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.fillStyle=up?'#1d4f7a':'#5a3a22';g.fillRect(0,0,64,64);g.strokeStyle='#3a2414';g.lineWidth=6;g.strokeRect(3,3,58,58);
   g.strokeStyle='#eaf7ff';g.lineWidth=4;g.lineCap='round';for(let k=0;k<3;k++){const a=k*Math.PI/3;g.beginPath();g.moveTo(32-Math.cos(a)*20,32-Math.sin(a)*20);g.lineTo(32+Math.cos(a)*20,32+Math.sin(a)*20);g.stroke();}
@@ -474,7 +481,7 @@ async function build(){
   // --- montañas nevadas cerrando todo ---
   canyon();
   // --- porterías de bloques ---
-  for(const s of [-1,1])goal(s);
+  for(const s of [-1,1])goal(s);goalBack(new THREE.MeshLambertMaterial({color:'#a8c4d8'}),.15,.1);
   if(typeof NETS==='undefined'||!NETS.length)drawNets();
   // --- palmeras (de la Playa) y objetos sueltos repartidos ---
   {const PB=[[.655,.815,-.005,.158],[.225,.555,.032,.565],[.859,1.001,.112,.215],[.825,.995,.375,.541],[.592,.811,.549,.748],[.385,.558,.779,1.001]];
@@ -509,6 +516,6 @@ function update(dt){dt=Math.min(.05,dt);const T=(update.t=(update.t||0)+dt);cons
   for(const f of flags){const a=f.m.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=f.base[i*3+1],k=(.85-y)/1.7;a.setZ(i,Math.sin(T*3+f.ph+y*2)*.12*k*(1+gk*2));}a.needsUpdate=true;}
 }
 build();
-try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop!=null)m.visible=false;});}catch(e){}
 return {update,setSand,setPiso,seats:SEATS,onGoal:()=>{goalT=2.8;}};
 };

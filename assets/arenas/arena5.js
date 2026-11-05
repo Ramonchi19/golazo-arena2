@@ -259,6 +259,18 @@ const FIRE=radTex('rgba(255,236,150,1)','rgba(255,110,20,0)'),torches=[];
 function torch(x,y,z,s){s=s||1;const g=new THREE.Group();g.position.set(x,y,z);scene.add(g);const parts=[];
   for(let i=0;i<4;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:FIRE,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));sp.scale.setScalar(.9*s);g.add(sp);parts.push({sp,ph:Math.random()*6,k:i/4});}
   torches.push({parts,s});}
+// v216: antorchas tiki de la tribu (de noche alumbran de verdad con la luz nueva): poste de bambú con anillos, cuenco tejido con cuerda y fuego
+const BAMB=new THREE.MeshLambertMaterial({color:'#c9a05a'}),BAMD=new THREE.MeshLambertMaterial({color:'#7a5a2e'}),WEAVE=new THREE.MeshLambertMaterial({color:'#5a3a1e'}),ROPE=new THREE.MeshLambertMaterial({color:'#d8c08a'});
+function tiki(x,z,h){h=h||3.2;const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=Math.random()*6.28;scene.add(g);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,h,8),BAMB);pole.position.y=h/2;pole.castShadow=true;g.add(pole);
+  for(let k=1;k<5;k++){const r=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.06,8),BAMD);r.position.y=k*h/5;g.add(r);}
+  for(const e of [-1,1]){const st=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.9,5),BAMD);st.position.set(0,h-.42,0);st.rotation.z=e*.5;g.add(st);}   // varitas cruzadas bajo el cuenco
+  const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.3,.14,.42,10),WEAVE);bowl.position.y=h+.16;bowl.castShadow=true;g.add(bowl);
+  const band=new THREE.Mesh(new THREE.TorusGeometry(.26,.035,5,12),ROPE);band.rotation.x=Math.PI/2;band.position.y=h+.2;g.add(band);
+  torch(x,h+.34,z,1.25);
+  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:'#ffb060',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.75}));gl.position.set(x,h+.6,z);gl.scale.setScalar(2.6);scene.add(gl);glows.push({sp:gl,base:2.6,ph:Math.random()*6});}
+function tikis(){for(const z of [-17.3,17.3])for(const x of [-22,-11,11,22])tiki(x,z);
+  for(const sx of [-1,1])for(const sz of [-1,1]){tiki(sx*30,sz*16.9);tiki(sx*(L+3.4),sz*7.6,3.6);}}
 function drawNets(){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72;
   const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.strokeStyle='#ffffff';g.lineWidth=5;g.beginPath();g.moveTo(0,32);g.lineTo(32,0);g.lineTo(64,32);g.lineTo(32,64);g.closePath();g.stroke();
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;
@@ -340,6 +352,7 @@ async function build(){
     place('playa_palmera',{x:L+9,z:s*(HW+2),h:11,ry:Math.random()*6});place('playa_palmera',{x:-(L+8),z:s*(HW+2.5),h:10,ry:Math.random()*6});
   }
 
+  tikis();   // v216: antorchas tiki alrededor de la cancha
   // --- porterías de bambú: el hueco del tamaño de la portería del juego ---
   {const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=3.2;
    for(const s of [-1,1])place('playa_porteria',{x:s*(L+.33*D),z:0,ry:s>0?-Math.PI/2:Math.PI/2,w:2*C.GW/.622,d:D,h:C.GH/.741});}

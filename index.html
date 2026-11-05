@@ -1185,7 +1185,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
 <script src="assets/sim/match.js?v=212"></script>
-<script src="assets/arenas/luz.js?v=213b"></script>
+<script src="assets/arenas/luz.js?v=216"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
 <script src="assets/icons.js?v=157"></script>
@@ -1195,7 +1195,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 
 if(typeof THREE==='undefined'){document.getElementById('err').style.display='flex';}
 // ================== CONFIG ==================
-const {L,HW,GW,GH,BR,GRAV,RUN}=SIM.C,CHAR_SCALE=1.12; // v62: medidas compartidas con el servidor (assets/sim/ball.js)
+const {L,HW,GW,GH,BR,GRAV,RUN}=SIM.C,CHAR_SCALE=1.12;const BVIS=.27;   // v215e: el balón se ve más chico (acorde a los cuerpos); la física sigue con BR // v62: medidas compartidas con el servidor (assets/sim/ball.js)
 const TEAMC=[0x2f7bff,0xff3b4e],TEAMD=[0x173f99,0x99202e],KEEPC=[0x16c79a,0xff9a1f];
 const ARENAS=[
  {n:'Campo de Entrenamiento',sky:0x9fd0ff,g1:'#9db150',g2:'#89a444',line:'rgba(240,234,214,.9)',dirt:true,outer:0x8a6b45,step:0x8a6a45,wall:0x6b4f33,seats:[0x9bbf4a,0xd9b26a,0xa0703f],fence:0x59e3ff,deco:['🌳','🎯','🧺','🌳']},
@@ -1364,14 +1364,14 @@ function init3D(){
   const bc=document.createElement('canvas');bc.width=128;bc.height=64;const bg=bc.getContext('2d');
   bg.fillStyle='#fff';bg.fillRect(0,0,128,64);bg.fillStyle='#1b1b1b';
   [[16,14],[48,10],[80,14],[112,10],[0,40],[32,46],[64,40],[96,46],[128,40],[20,62],[84,62],[52,2],[116,2]].forEach(([x,y])=>{bg.beginPath();for(let i=0;i<5;i++){const a=i*1.2566-1.57;bg.lineTo(x+Math.cos(a)*7,y+Math.sin(a)*7);}bg.fill();});
-  ballMesh=M(new THREE.SphereGeometry(BR,20,14),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(bc)}));ballMesh.castShadow=true;scene.add(ballMesh);
+  ballMesh=M(new THREE.SphereGeometry(BVIS,20,14),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(bc)}));ballMesh.castShadow=true;scene.add(ballMesh);
   {const S=128,c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d'),gr=q.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
    gr.addColorStop(0,'rgba(255,255,255,.06)');gr.addColorStop(.42,'rgba(255,255,255,.10)');gr.addColorStop(.56,'rgba(255,255,255,.55)');gr.addColorStop(.72,'rgba(225,240,255,.22)');gr.addColorStop(1,'rgba(225,240,255,0)');q.fillStyle=gr;q.fillRect(0,0,S,S);
    const tx=new THREE.CanvasTexture(c);
-   ballGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));ballGlow.scale.setScalar(BR*5);ballGlow.renderOrder=6;scene.add(ballGlow);
+   ballGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));ballGlow.scale.setScalar(BVIS*5);ballGlow.renderOrder=6;scene.add(ballGlow);
    ballXray=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,transparent:true,opacity:0,depthWrite:false}));ballXray.visible=false;(ballXray);
    ballLand=M(new THREE.RingGeometry(.55,.72,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));ballLand.rotation.x=-Math.PI/2;scene.add(ballLand);}
-  ballShadow=M(new THREE.CircleGeometry(BR*1.1,16),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.35,depthWrite:false}));ballShadow.rotation.x=-Math.PI/2;scene.add(ballShadow);
+  ballShadow=M(new THREE.CircleGeometry(BVIS*1.1,16),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.35,depthWrite:false}));ballShadow.rotation.x=-Math.PI/2;scene.add(ballShadow);
   {const S=256,c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d'),C=S/2;
    const gr=q.createRadialGradient(C,C,C*.18,C,C,C*.86);gr.addColorStop(0,'rgba(255,255,255,0)');gr.addColorStop(.55,'rgba(255,255,255,.10)');gr.addColorStop(.86,'rgba(255,255,255,.55)');gr.addColorStop(1,'rgba(255,255,255,0)');
    q.fillStyle=gr;q.beginPath();q.arc(C,C,C*.88,0,7);q.fill();
@@ -1651,7 +1651,7 @@ function updateStandFX(dt){if(!scene)return;initStandFX();
 // ================== v43: ARENAS NUEVAS (módulos en assets/arenas) ==================
 let HONGOS=null;const ARENA_MOD_MAP=[15,16,3,5,10,11,12,14,13];/* v203: la Mansión entra como arena 7 (antepenúltima). v202: el Bosque ahora es arena16.js (arena2.js queda de respaldo). v201: la primera arena ahora es el campo de terrazas (arena15.js; arena1.js queda de respaldo). v200: el Volcán ahora es el castillo de lava (arena14.js; arena9.js queda de respaldo). v195: el Desierto ahora es el estadio de ruinas (arena10.js; arena6.js queda de respaldo). v192: el Volcán ahora es el estadio cerrado (arena9.js); arena4.js queda de respaldo */let ARENA_MOD=null,ARENA_ROOT=null;const _arenaJS={};
 function loadArenaJS(n){if(window.GZ_ARENAS&&window.GZ_ARENAS[n])return Promise.resolve();if(_arenaJS[n])return _arenaJS[n];
-  _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=208';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
+  _arenaJS[n]=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='assets/arenas/arena'+n+'.js?v=216';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});return _arenaJS[n];}
 function fixFloors(){const bx=new THREE.Box3();scene.updateMatrixWorld(true);
   scene.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||o.userData._gzFloor||!o.geometry||!o.parent)return;bx.setFromObject(o);
     if(bx.max.y-bx.min.y<.08&&Math.abs(bx.max.y)<.06&&bx.max.x-bx.min.x>140&&bx.max.z-bx.min.z>140){o.userData._gzFloor=1;const s=o.parent.getWorldScale(new THREE.Vector3()).y||1;o.position.y-=.1/s;}});}
@@ -1716,11 +1716,11 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   const root=new THREE.Group();scene.add(root);
   try{const mod=window.GZ_ARENAS[n]({scene,renderer,camera,root});mod._n=n;ARENA_ROOT=root;ARENA_MOD=mod;hideOldStadium();arenaOptimize(root,mod);}
   catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}
-  try{if(window.GZ_LUZ){if(n===15&&ARENA_ROOT===root)GZ_LUZ.on({scene,renderer,camera,root,quality:(window.save&&save.settings&&save.settings.quality)||(typeof save!=='undefined'&&save.settings&&save.settings.quality)||'media'});else GZ_LUZ.off();}}catch(e){console.warn('luz',e);}   // v213
+  try{if(window.GZ_LUZ){const ok=ARENA_ROOT===root&&GZ_LUZ.on({scene,renderer,camera,root,n,mod:ARENA_MOD,quality:(window.save&&save.settings&&save.settings.quality)||(typeof save!=='undefined'&&save.settings&&save.settings.quality)||'media'});if(!ok)GZ_LUZ.off();}}catch(e){console.warn('luz',e);}   // v216: luz nueva en todas las arenas
   // v211: público de hongos en las gradas (más lleno conforme subes de arena)
   HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_HONGOS({scene,root,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('hongos',e);}};
     // v212c: las gradas se arman cuando terminan de cargar sus modelos (unos segundos después): se espera a que la lista de lugares deje de crecer
-    const go=()=>{if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=213';sc.onload=mk;document.head.appendChild(sc);}};
+    const go=()=>{if(window.GZ_HONGOS)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/hongos.js?v=214';sc.onload=mk;document.head.appendChild(sc);}};
     let last=-1,tries=0;const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(k>0&&k===last){go();return;}last=k;if(++tries<80)setTimeout(wait,400);else if(k>0)go();};wait();}}catch(e){console.warn('hongos',e);}
   // v212c: el piso de afuera (enorme y plano) se baja un poco para que nunca se pelee con el pasto
   for(const dl of [600,3000,8000])setTimeout(()=>{if(ARENA_ROOT===root)try{fixFloors();}catch(e){}},dl);}
@@ -1958,7 +1958,7 @@ function netStep(dt){dt=Math.min(dt,.033);
 function ballInNet(dt){if(!ball||ball.owner||ball.gk||Math.abs(ball.x)<L)return;
   ball.vy-=GRAV*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.z+=ball.vz*dt;
   if(ball.y<BR){ball.y=BR;ball.vy=Math.abs(ball.vy)>2?-ball.vy*.35:0;ball.vx*=Math.max(0,1-2.2*dt);ball.vz*=Math.max(0,1-2.2*dt);}
-  netCollide(dt);if(typeof ballMesh!=='undefined'&&ballMesh){ballMesh.position.set(ball.x,ball.y,ball.z);ballMesh.rotation.x+=ball.vz*dt/BR;ballMesh.rotation.z-=ball.vx*dt/BR;}}
+  netCollide(dt);if(typeof ballMesh!=='undefined'&&ballMesh){ballMesh.position.set(ball.x,ball.y-(BR-BVIS),ball.z);ballMesh.rotation.x+=ball.vz*dt/BVIS;ballMesh.rotation.z-=ball.vx*dt/BVIS;}}
 let fenceGroup=null,ledMats=[];
 function buildFence(){
   if(fenceGroup&&scene)scene.remove(fenceGroup);fenceGroup=new THREE.Group();scene.add(fenceGroup);ledMats=[];
@@ -4259,7 +4259,7 @@ function render(dt){
     ballGlow.scale.setScalar(BR*(3.9+Math.min(1.2,sp*.04)));ballGlow.material.opacity=held?.32:.45;
     ballXray.visible=false;const h=ball.y-BR;
     if(!held&&h>1.1){const t=ballLandT();ballLand.visible=true;ballLand.position.set(ball.x+ball.vx*t,.05,ball.z+ball.vz*t);ballLand.scale.setScalar(1+.12*Math.sin(T*10));ballLand.material.opacity=Math.min(.75,(h-1.1)*.6);}else ballLand.visible=false;}
-  if(ball){ballMesh.position.set(BD.x,BD.y,BD.z);ballShadow.position.set(BD.x,.03,BD.z);const h=BD.y-BR;ballShadow.scale.setScalar(1+h*.25);ballShadow.material.opacity=Math.max(.08,.35-h*.06);
+  if(ball){ballMesh.position.set(BD.x,BD.y-(BR-BVIS),BD.z);ballShadow.position.set(BD.x,.03,BD.z);const h=BD.y-BR;ballShadow.scale.setScalar(1+h*.25);ballShadow.material.opacity=Math.max(.08,.35-h*.06);
     if(ball.super){ballMesh.material.emissive.setRGB(.8,.4,0);}else ballMesh.material.emissive.setRGB(0,0,0);}
   if(user&&state==='play'){ring.visible=arrow.visible=true;ring.position.set(user.x,.06,user.z);ring.rotation.z=user.face+Math.PI;ring.scale.setScalar(1+.05*Math.sin(T*6));if(ring.userData.ticks){ring.userData.ticks.rotation.z=-T*1.4;ring.userData.ticks.material.color.copy(ring.material.color);}arrow.position.set(user.x,2.75*CHAR_SCALE+Math.sin(T*6)*.12,user.z);ring.material.color.setHex(attackMode()?0xffcc33:0xb388ff);arrow.material.color.copy(ring.material.color);}
   else{ring.visible=arrow.visible=false;}

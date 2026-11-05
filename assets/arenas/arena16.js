@@ -160,6 +160,13 @@ function stream(x0,x1){const c=document.createElement('canvas');c.width=128;c.he
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,12);waters.push(t);
   const m=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,120),new THREE.MeshLambertMaterial({map:t,emissive:0x0e3040,transparent:true,opacity:.92}));m.rotation.x=-Math.PI/2;m.position.set((x0+x1)/2,.05,0);scene.add(m);
   for(const x of [x0,x1])for(let z=-58;z<58;z+=2.2){const r=mesh(new THREE.DodecahedronGeometry(.6+Math.random()*.5,0),pickC(['#7a7f86','#8a8f96','#6a6f76']));r.position.set(x+(Math.random()-.5)*.6,.15,z);r.scale.y=.6;scene.add(r);}}
+// v216: tubos de atrás de la portería (postes traseros, barra de arriba, inclinadas desde el travesaño y las del piso), como en Strikers
+function goalBack(mat,r,fx0){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72,V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const tube=(a,b,rr)=>{const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,d.length(),10),mat);m.position.copy(a).addScaledVector(d,.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;m.receiveShadow=true;scene.add(m);};
+  for(const s of [-1,1]){const fx=s*(L+(fx0||.05)),bx=s*(L+D);
+    for(const z of [-C.GW,C.GW]){tube(V(bx,0,z),V(bx,HB,z),r);tube(V(fx,C.GH,z),V(bx,HB,z),r*.88);tube(V(fx,.12,z),V(bx,.12,z),r*.75);}
+    tube(V(bx,HB,-C.GW),V(bx,HB,C.GW),r);tube(V(bx,.12,-C.GW),V(bx,.12,C.GW),r*.75);}}
 // ===== portería de madera (al tamaño de la del juego) =====
 function goals(){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},WD=new THREE.MeshLambertMaterial({color:'#8a5a34'}),WL=new THREE.MeshLambertMaterial({color:'#b88450'});
   for(const s of [-1,1]){for(const z of [-C.GW-.25,C.GW+.25]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.26,.3,C.GH+.3,10),WD);p.position.set(s*(L+.05),(C.GH+.3)/2,z);p.castShadow=true;scene.add(p);
@@ -218,7 +225,7 @@ async function build(){
   flowers(fl);
   particles();lightRays();
   for(let i=0;i<10;i++)cloud(i/10*Math.PI*2+Math.random()*.3,180+Math.random()*60,80+Math.random()*30,6+Math.random()*4);
-  goals();
+  goals();goalBack(new THREE.MeshLambertMaterial({color:'#8a5a34'}),.15);
   if(!(typeof NETS!=='undefined'&&NETS.length))drawNets();
   // v205: público quitado por ahora (publico.js se queda guardado)
 }
@@ -240,6 +247,6 @@ function update(dt){dt=Math.min(.05,dt);const T=(update.t=(update.t||0)+dt);cons
   if(lfPts){for(let i=0;i<LF_N;i++){lfPos[i*3+1]-=dt*(.9+(i%4)*.25);lfPos[i*3]+=Math.sin(T*1.3+i)*dt*.8+dt*.4;lfPos[i*3+2]+=Math.cos(T+i)*dt*.4;if(lfPos[i*3+1]<0){lfPos[i*3+1]=18+Math.random()*4;lfPos[i*3]=(Math.random()-.5)*90;lfPos[i*3+2]=(Math.random()-.5)*60;}}lfPts.geometry.attributes.position.needsUpdate=true;}
 }
 build();
-try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop!=null)m.visible=false;});}catch(e){}
 return {update,seats:SEATS,onGoal:t=>{goalT=2.8;if(CROWD)CROWD.react('gol',t);},crowdReact:k=>{if(CROWD)CROWD.react(k);}};
 };

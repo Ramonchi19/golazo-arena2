@@ -100,6 +100,8 @@ h1,h2,h3,.tit{font-family:var(--f-tit);font-weight:400;text-transform:uppercase;
 .arena .tit{font-size:22px;margin:10px 4px 2px}
 .arena p{margin:0 4px;font-size:15px;color:#4a2d7a}
 .copa{display:inline-block;margin:8px 4px 0;font:700 13px var(--f-txt);background:var(--sol);color:var(--tinta);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.ver{display:inline-block;margin:8px 0 0 6px;font:400 14px var(--f-tit);text-transform:uppercase;text-decoration:none;background:var(--uva);color:var(--crema);border-radius:8px;padding:4px 10px 3px;box-shadow:0 3px 0 var(--tinta)}
+.ver:hover{background:var(--chicle)}.ver:focus-visible{outline:3px solid var(--sol);outline-offset:2px}
 .ctr{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
 .ctr button{width:48px;height:48px;border-radius:50%;border:4px solid var(--crema);background:var(--noche);color:var(--crema);font:400 22px var(--f-tit);cursor:pointer}
 /* personajes */
@@ -174,17 +176,17 @@ h1,h2,h3,.tit{font-family:var(--f-tit);font-weight:400;text-transform:uppercase;
 </div></section>
 
 <section class="banda pat" id="arenas"><div class="in">
-  <div class="cab"><div><span class="eti">9 estadios</span><h2 class="som">Arenas</h2></div><p>Sube de copas y desbloquea estadios cada vez más grandes. Cada uno con su clima, su gente y su grabado en el césped.</p></div>
+  <div class="cab"><div><span class="eti">9 estadios</span><h2 class="som">Arenas</h2></div><p>Sube de copas y desbloquea estadios cada vez más grandes. Toca <b>Ver en 360°</b> para darle la vuelta completa a cada uno, tal como se ve en el juego.</p></div>
   <div class="arenas" id="lista">
-    <div class="arena"><div class="slot" data-img="img/arena-1.jpg"><div class="ph">img/arena-1.jpg</div></div><div class="tit">Campo de Entrenamiento</div><p>Atardecer suave y faroles del pueblo.</p><span class="copa">Arena 1</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-2.jpg"><div class="ph">img/arena-2.jpg</div></div><div class="tit">Bosque Encantado</div><p>Árboles gigantes y hongos que brillan.</p><span class="copa">Arena 2</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-3.jpg"><div class="ph">img/arena-3.jpg</div></div><div class="tit">Pueblo</div><p>Tejas rojas, campanarios y tarde dorada.</p><span class="copa">Arena 3</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-4.jpg"><div class="ph">img/arena-4.jpg</div></div><div class="tit">Playa Pirata</div><p>Galeón encallado y antorchas tiki.</p><span class="copa">Arena 4</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-5.jpg"><div class="ph">img/arena-5.jpg</div></div><div class="tit">Templo del Desierto</div><p>Noche morada y gradas de dos pisos.</p><span class="copa">Arena 5</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-6.jpg"><div class="ph">img/arena-6.jpg</div></div><div class="tit">Tundra de Hielo</div><p>Aurora, nieve y fogatas.</p><span class="copa">Arena 6</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-7.jpg"><div class="ph">img/arena-7.jpg</div></div><div class="tit">Mansión Embrujada</div><p>Cielo violeta y candelabros turquesa.</p><span class="copa">Arena 7</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-8.jpg"><div class="ph">img/arena-8.jpg</div></div><div class="tit">Castillo del Volcán</div><p>Lava, braseros y un castillo de picos.</p><span class="copa">Arena 8</span></div>
-    <div class="arena"><div class="slot" data-img="img/arena-9.jpg"><div class="ph">img/arena-9.jpg</div></div><div class="tit">Coliseo de Leyendas</div><p>Mármol, oro y fuegos artificiales.</p><span class="copa">Arena 9</span></div>
+    <div class="arena"><div class="slot" data-img="img/arena-1.jpg"><div class="ph">img/arena-1.jpg</div></div><div class="tit">Campo de Entrenamiento</div><p>Atardecer suave y faroles del pueblo.</p><span class="copa">Arena 1</span><a class="ver" href="estadios.html?a=15">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-2.jpg"><div class="ph">img/arena-2.jpg</div></div><div class="tit">Bosque Encantado</div><p>Árboles gigantes y hongos que brillan.</p><span class="copa">Arena 2</span><a class="ver" href="estadios.html?a=16">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-3.jpg"><div class="ph">img/arena-3.jpg</div></div><div class="tit">Pueblo</div><p>Tejas rojas, campanarios y tarde dorada.</p><span class="copa">Arena 3</span><a class="ver" href="estadios.html?a=3">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-4.jpg"><div class="ph">img/arena-4.jpg</div></div><div class="tit">Playa Pirata</div><p>Galeón encallado y antorchas tiki.</p><span class="copa">Arena 4</span><a class="ver" href="estadios.html?a=5">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-5.jpg"><div class="ph">img/arena-5.jpg</div></div><div class="tit">Templo del Desierto</div><p>Noche morada y gradas de dos pisos.</p><span class="copa">Arena 5</span><a class="ver" href="estadios.html?a=10">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-6.jpg"><div class="ph">img/arena-6.jpg</div></div><div class="tit">Tundra de Hielo</div><p>Aurora, nieve y fogatas.</p><span class="copa">Arena 6</span><a class="ver" href="estadios.html?a=11">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-7.jpg"><div class="ph">img/arena-7.jpg</div></div><div class="tit">Mansión Embrujada</div><p>Cielo violeta y candelabros turquesa.</p><span class="copa">Arena 7</span><a class="ver" href="estadios.html?a=12">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-8.jpg"><div class="ph">img/arena-8.jpg</div></div><div class="tit">Castillo del Volcán</div><p>Lava, braseros y un castillo de picos.</p><span class="copa">Arena 8</span><a class="ver" href="estadios.html?a=14">Ver en 360°</a></div>
+    <div class="arena"><div class="slot" data-img="img/arena-9.jpg"><div class="ph">img/arena-9.jpg</div></div><div class="tit">Coliseo de Leyendas</div><p>Mármol, oro y fuegos artificiales.</p><span class="copa">Arena 9</span><a class="ver" href="estadios.html?a=13">Ver en 360°</a></div>
   </div>
   <div class="ctr"><button id="izq" aria-label="Arenas anteriores">‹</button><button id="der" aria-label="Más arenas">›</button></div>
 </div></section>

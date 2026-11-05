@@ -99,8 +99,8 @@ function snowGrass(){const src=GRASS.image,c=document.createElement('canvas');c.
 function setPiso(mode){mode=mode===true?1:mode===false?0:mode|0;if(mode===1&&!GRASS_NIEVE)GRASS_NIEVE=snowGrass();field.material.map=mode===1?GRASS_NIEVE:GRASS;field.material.needsUpdate=true;}
 const setSand=setPiso;
 setPiso(0);
-// estrella dorada al centro del césped (arena legendaria)
-(function(){const src=GRASS.image,c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
+// estrella dorada al centro del césped: v216j quitada (el usuario no la quiere)
+if(false)(function(){const src=GRASS.image,c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
   const PX=c.width/72,cx=36*PX,cy=24*PX,R=3.9*PX,r=R*.42;g.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?r:R;g.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);}g.closePath();
   g.fillStyle='rgba(255,212,80,.6)';g.fill();g.lineWidth=PX*.18;g.strokeStyle='rgba(255,250,230,.95)';g.stroke();
   const t=new THREE.CanvasTexture(c);t.anisotropy=renderer.capabilities.getMaxAnisotropy();field.material.map=t;field.material.needsUpdate=true;})();
@@ -276,6 +276,13 @@ function sandFall(x,yTop,z,w,face){const t=sandStreamTex();t.repeat.set(1,yTop/5
   const mound=mesh(new THREE.SphereGeometry(1,18,10,0,Math.PI*2,0,Math.PI/2),'#e7bd7d');mound.scale.set(w*.9,1.1,w*.9);mound.position.set(x,0,z);scene.add(mound);
   for(let i=0;i<10;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:DUST,transparent:true,depthWrite:false,opacity:0}));scene.add(sp);dust.push({sp,x,z,w,life:Math.random()*1.4});}}
 
+// v216: tubos de atrás de la portería (postes traseros, barra de arriba, inclinadas desde el travesaño y las del piso), como en Strikers
+function goalBack(mat,r,fx0){const C=(window.SIM&&SIM.C)||{GW:4.8,GH:3.3},D=2.2,HB=C.GH*.72,V=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const tube=(a,b,rr)=>{const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr,d.length(),10),mat);m.position.copy(a).addScaledVector(d,.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;m.receiveShadow=true;scene.add(m);};
+  for(const s of [-1,1]){const fx=s*(L+(fx0||.05)),bx=s*(L+D);
+    for(const z of [-C.GW,C.GW]){tube(V(bx,0,z),V(bx,HB,z),r);tube(V(fx,C.GH,z),V(bx,HB,z),r*.88);tube(V(fx,.12,z),V(bx,.12,z),r*.75);}
+    tube(V(bx,HB,-C.GW),V(bx,HB,C.GW),r);tube(V(bx,.12,-C.GW),V(bx,.12,C.GW),r*.75);}}
 // ===== portería de bloques (al tamaño de la del juego) con 3 mosaicos de triángulo =====
 function tileTex(up){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');g.fillStyle=up?'#1d4f7a':'#5a3a22';g.fillRect(0,0,64,64);g.strokeStyle='#3a2414';g.lineWidth=6;g.strokeRect(3,3,58,58);
   g.strokeStyle='#eaf7ff';g.lineWidth=4;g.lineCap='round';for(let k=0;k<3;k++){const a=k*Math.PI/3;g.beginPath();g.moveTo(32-Math.cos(a)*20,32-Math.sin(a)*20);g.lineTo(32+Math.cos(a)*20,32+Math.sin(a)*20);g.stroke();}
@@ -510,6 +517,7 @@ async function build(){
        const cap=new THREE.Mesh(new THREE.BoxGeometry(.85,.3,.85),GM_);cap.position.set(s*(L+.05),C.GH-.1,z);scene.add(cap);}
      const bar=new THREE.Mesh(new THREE.BoxGeometry(.5,.45,2*C.GW+.9),PM);bar.position.set(s*(L+.05),C.GH+.2,0);bar.castShadow=true;scene.add(bar);
      const gb=new THREE.Mesh(new THREE.BoxGeometry(.52,.12,2*C.GW+.9),GM_);gb.position.set(s*(L+.05),C.GH+.47,0);scene.add(gb);}}
+  goalBack(new THREE.MeshLambertMaterial({color:'#e2b33a',emissive:'#3a2a08'}),.15);
   // red dorada: en el juego se cambia la textura de la red (con física)
   if(typeof NETS!=='undefined'&&NETS.length){for(const N of NETS)for(const P of N.panels){const m=P.mesh.material;P.mesh.userData._c=m.color.getHex();P.mesh.userData._map=m.map;m.map=CHAIN;m.color.setHex(0xffffff);m.needsUpdate=true;}}
   else drawNets();
@@ -619,6 +627,6 @@ function update(dt){dt=Math.min(.05,dt);const T=(update.t=(update.t||0)+dt);cons
   for(const f of fogs){f.sp.position.x=f.x+Math.sin(T*.2+f.ph)*(f.big?8:3);f.sp.material.opacity=(f.big?.42:.22)+Math.sin(T*.4+f.ph)*.08;}
 }
 build();
-try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop!=null)m.visible=false;});}catch(e){}
 return {update,setSand,setPiso,ver,seats:SEATS,onGoal:()=>{goalT=2.8;confettiBurst();for(let k=0;k<4;k++)firework((Math.random()-.5)*80,28+Math.random()*12,(Math.random()<.5?-1:1)*(28+Math.random()*10));}};
 };

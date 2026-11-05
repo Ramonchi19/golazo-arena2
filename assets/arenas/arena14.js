@@ -106,8 +106,8 @@ function blockTex(rows,cols,seed){const c=document.createElement('canvas');c.wid
     g.fillStyle=`rgb(${44+v|0},${37+v|0},${42+v|0})`;g.fillRect(x+3,y+3,bw-6,bh-6);
     g.fillStyle='rgba(200,170,190,.1)';g.fillRect(x+3,y+3,bw-6,4);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+3,y+bh-7,bw-6,4);
     for(let s=0;s<3;s++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.2)':'rgba(120,100,110,.1)';g.beginPath();g.arc(x+Math.random()*bw,y+Math.random()*bh,4+Math.random()*10,0,7);g.fill();}}}
-  // grietas de lava por las juntas (algunas)
-  g.lineWidth=2.4;for(let i=0;i<7;i++){const r=Math.floor(Math.random()*rows),y=(r+1)*bh-1.5,x=Math.random()*200;g.strokeStyle='rgba(255,'+(100+Math.random()*60|0)+',20,.95)';g.beginPath();g.moveTo(x,y);g.lineTo(x+30+Math.random()*50,y);
+  // v215d: sin grietas de lava en los muros divisores (no brillan)
+  g.lineWidth=2.4;for(let i=0;i<0;i++){const r=Math.floor(Math.random()*rows),y=(r+1)*bh-1.5,x=Math.random()*200;g.strokeStyle='rgba(255,'+(100+Math.random()*60|0)+',20,.95)';g.beginPath();g.moveTo(x,y);g.lineTo(x+30+Math.random()*50,y);
     g.lineTo(x+40+Math.random()*50,y-bh*.6);g.stroke();}
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
 const winU={value:1};
@@ -118,7 +118,7 @@ stoneMat.onBeforeCompile=sh=>{sh.vertexShader='varying float vSnow;\n'+sh.vertex
   vec4 wpU=modelMatrix*vec4(position,1.);vec3 nW=normalize(mat3(modelMatrix)*normal);
   vec2 uvW=abs(nW.y)>.7?wpU.xz:(abs(nW.x)>abs(nW.z)?wpU.zy:wpU.xy);vUv=uvW/vec2(3.6,2.4);vSnow=smoothstep(.55,.85,nW.y);`);
   sh.fragmentShader='varying float vSnow;\n'+sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n diffuseColor.rgb*=1.+vSnow*.12;').replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
- {vec3 c=diffuseColor.rgb;totalEmissiveRadiance+=c*smoothstep(.25,.5,c.r-c.b)*1.2*uGlowS;}`);sh.uniforms.uGlowS=winU;sh.fragmentShader='uniform float uGlowS;\n'+sh.fragmentShader;};
+ `);sh.uniforms.uGlowS=winU;sh.fragmentShader='uniform float uGlowS;\n'+sh.fragmentShader;};
 stoneMat.customProgramCacheKey=()=>'volStone';
 // franja de madera tallada con nudo vikingo
 const zig=(function(){const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');g.fillStyle='#5a3a22';g.fillRect(0,0,256,64);
@@ -405,9 +405,11 @@ function lavaRiver(){const z0=HW+1.9,z1=ZS-.35,zc=(z0+z1)/2,w=z1-z0,X=X0;
     const a=new THREE.Mesh(new THREE.PlaneGeometry(2*X,w),m);a.rotation.x=-Math.PI/2;a.position.set(0,.04,side*zc);scene.add(a);
     for(const e of [-1,1]){const k=mesh(new THREE.BoxGeometry(2*X+.4,.4,.42),stoneMat);k.position.set(0,.18,side*(zc+e*(w/2+.15)));scene.add(k);}
     for(const x of [-X,X]){const k=mesh(new THREE.BoxGeometry(.42,.4,w+.7),stoneMat);k.position.set(x,.18,side*zc);scene.add(k);}
-    for(let k=0;k<5;k++)addGlow(new THREE.Vector3((k/4-.5)*2*X*.9,.6,side*zc),6,'#ff7a2a',.35);}}
+    for(let k=0;k<5;k++)addGlow(new THREE.Vector3((k/4-.5)*2*X*.9,.6,side*zc),6,'#ff7a2a',.35);
+    for(let k=0;k<4;k++)LUCES.push({x:(k/3-.5)*2*X*.8,y:1,z:side*zc,k:'lava'});}}
 // brasero de Tripo con fuego de verdad encima
-function brazier(x,y,z,h){const o=place('volcan_brasero',{x,y,z,h,fire:false});if(!o)return;fire(scene,x,y+h*.72,z,h*1.1);addGlow(new THREE.Vector3(x,y+h*.9,z),h*3.2,'#ffa040',.6);}
+const LUCES=[];   // v215: dónde hay fuego (para que la luz nueva ponga luces de verdad ahí)
+function brazier(x,y,z,h){const o=place('volcan_brasero',{x,y,z,h,fire:false});if(!o)return;fire(scene,x,y+h*.72,z,h*1.1);LUCES.push({x,y:y+h*.95,z,k:'brasero'});addGlow(new THREE.Vector3(x,y+h*.9,z),h*3.2,'#ffa040',.6);}
 // brasas que suben de la lava (puntos: muy ligero)
 const EMB_N=180,embPos=new Float32Array(EMB_N*3),embV=new Float32Array(EMB_N);let embPts=null;
 function embReset(i,first){const side=Math.random()<.5?-1:1;embPos[i*3]=(Math.random()-.5)*2*X0;embPos[i*3+1]=first?Math.random()*10:0;embPos[i*3+2]=side*(HW+1.9+Math.random()*(ZS-HW-2.3));embV[i]=1+Math.random()*2.2;}
@@ -481,7 +483,7 @@ function longSide(side,gaps){const g=new THREE.Group();scene.add(g);g.rotation.y
     for(const e of [-1,1]){const p=L2W(cu+e*(G_.w/2+.7),zl+.3);banner(p.x,LH+1.6,p.z,side<0?0:Math.PI);}}
   for(const e of [-1,1]){const S=e<0?secs[0]:secs[secs.length-1];sideWall(g,e*(X0-.45),zf,S.zb,S.hb,.9,UD+1.2);}
   for(const S of [secs[0],secs[secs.length-1]]){const cu=(S.u0+S.u1)/2,p=L2W(cu,S.zb+UD+.5),y=S.top+1.55;place('volcan_reflector',{x:p.x,z:p.z,y,ry,h:9,fire:false});
-    addGlow(new THREE.Vector3(p.x,y+8.2,p.z-side*.9),7,'#fff4dc',.7);}
+    addGlow(new THREE.Vector3(p.x,y+8.2,p.z-side*.9),7,'#fff4dc',.7);LUCES.push({x:p.x,y:y+8.2,z:p.z-side*.9,k:'reflector'});}
   return secs;}
 
 async function build(){
@@ -518,7 +520,7 @@ async function build(){
       const t=mesh(new THREE.BoxGeometry(W,Hw+.6,4.2),stoneMat);t.position.set(x,(Hw+.6)/2,z);t.rotation.y=ry;scene.add(t);
       const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=ry;scene.add(g);merlons(g,-W/2,W/2,Hw+.6,0,4.2);
       const o=place('volcan_marcador',{x,z,y:Hw+.95,ry,w:W,fire:false});screen(x,Hw+.95,z,ry,W);
-      for(const e of [-1,1]){const q=new THREE.Vector3(e*(W/2-.4),Hw*.7,2.25).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(new THREE.Vector3(x,0,z));fire(scene,q.x,q.y,q.z,.9);addGlow(q,3,'#ffa040',.6);}}}
+      for(const e of [-1,1]){const q=new THREE.Vector3(e*(W/2-.4),Hw*.7,2.25).applyAxisAngle(new THREE.Vector3(0,1,0),ry).add(new THREE.Vector3(x,0,z));fire(scene,q.x,q.y,q.z,.9);addGlow(q,3,'#ffa040',.6);LUCES.push({x:q.x,y:q.y+.4,z:q.z,k:'antorcha'});}}}
   // --- lado RIVAL: el castillo de la cúpula de picos detrás de la portería, con dos torres picudas a los lados ---
   {const W=2*Z0E-.4,P=prep('volcan_castillo'),D=P?W*P.size.z/P.size.x:W;place('volcan_castillo',{x:XS+D/2+.4,z:0,ry:-Math.PI/2,w:W});
     for(const e of [-1,1])place('volcan_torre2',{x:XS+D*.85,z:e*(W/2+4),h:22,ry:-Math.PI/2});
@@ -536,6 +538,11 @@ async function build(){
          for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4,sp=new THREE.Mesh(new THREE.ConeGeometry(.08,.45,5),IRONM);sp.rotation.z=-Math.PI/2;sp.rotation.y=-a;sp.position.set(s*(L+.05)+Math.cos(a)*.5,y,z+Math.sin(a)*.5);scene.add(sp);}}
        brazier(s*(L+.05),C.GH+.35,z,1.05);}
      const bar=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,2*C.GW+.9),PM);bar.position.set(s*(L+.05),C.GH+.15,0);bar.castShadow=true;scene.add(bar);
+     // v215d: tubos de atrás (postes traseros, barra de arriba, inclinadas desde el travesaño y las del piso), de hierro como el arco
+     {const D=2.2,HB=C.GH*.72,bx=s*(L+D),V=(x,y,z)=>new THREE.Vector3(x,y,z),tube=(a,b,r)=>{const d=new THREE.Vector3().subVectors(b,a),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),10),PM);
+        m.position.copy(a).addScaledVector(d,.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;m.receiveShadow=true;scene.add(m);};
+      for(const z of [-C.GW,C.GW]){tube(V(bx,0,z),V(bx,HB,z),.16);tube(V(s*(L+.05),C.GH,z),V(bx,HB,z),.14);tube(V(s*(L+.05),.12,z),V(bx,.12,z),.12);}
+      tube(V(bx,HB,-C.GW),V(bx,HB,C.GW),.16);tube(V(bx,.12,-C.GW),V(bx,.12,C.GW),.12);}
      for(let k=0;k<5;k++){const sp=new THREE.Mesh(new THREE.ConeGeometry(.1,.55,5),IRONM);sp.position.set(s*(L+.05),C.GH+.65,(k/4-.5)*2*C.GW*.75);scene.add(sp);}}}
   // red de hierro: en el juego se cambia la textura de la red (con física)
   if(typeof NETS!=='undefined'&&NETS.length){for(const N of NETS)for(const P of N.panels){const m=P.mesh.material;P.mesh.userData._c=m.color.getHex();P.mesh.userData._map=m.map;m.map=CHAIN;m.color.setHex(0xffffff);m.needsUpdate=true;}}
@@ -593,6 +600,6 @@ function update(dt){dt=Math.min(.05,dt);const T=(update.t=(update.t||0)+dt);cons
 
 }
 build();
-try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop>.1)m.visible=false;});}catch(e){}
-return {update,setSand,setPiso,ver,seats:SEATS,onGoal:()=>{goalT=2.8;}};
+try{if(typeof GOAL_STD!=='undefined')GOAL_STD.forEach(m=>{if(m.geometry&&m.geometry.parameters&&m.geometry.parameters.radiusTop!=null)m.visible=false;});}catch(e){}
+return {update,setSand,setPiso,ver,seats:SEATS,luces:LUCES,onGoal:()=>{goalT=2.8;}};
 };

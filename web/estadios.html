@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Estadios en 360° · Titan Crashers</title>
+<meta name="description" content="Da la vuelta completa a los 9 estadios de Titan Crashers, a la altura de la cámara del juego.">
+<!-- las piezas 3D, la luz y las arenas se cargan del juego publicado (mismas que usa el juego) -->
+<base href="https://ramonchi19.github.io/golazo-arena2/">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Asap+Condensed:wght@500;600;700&display=swap">
+<style>
+:root{--noche:#2a0f55;--uva:#7b3cf0;--chicle:#e83fae;--cielo:#1fb6f2;--sol:#ffd23f;--crema:#fff6fb;--tinta:#1b0a3a;--placa:#e8333d;
+  --f-tit:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;--f-txt:"Asap Condensed","Arial Narrow","Roboto Condensed",sans-serif;color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--noche);color:var(--crema);font:600 16px var(--f-txt);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#c{position:fixed;inset:0;display:block;width:100%;height:100%}
+.nav{position:fixed;top:0;left:0;right:0;z-index:6;background:var(--noche);box-shadow:0 3px 0 rgba(0,0,0,.25);padding-top:env(safe-area-inset-top,0px)}
+.nav .in{display:flex;align-items:center;gap:12px;min-height:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.logo{display:flex;align-items:center;gap:6px;text-decoration:none}
+.logo b{font:400 21px var(--f-tit);color:var(--cielo);text-shadow:0 2px 0 var(--tinta)}
+.logo i{font:400 15px var(--f-tit);font-style:normal;background:var(--placa);color:#fff;padding:3px 7px 2px;border-radius:6px;transform:rotate(-4deg);box-shadow:0 3px 0 var(--tinta)}
+.nav .v{margin-left:auto;color:var(--crema);font-weight:700;text-decoration:none}
+#top{position:fixed;top:calc(68px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:6px;flex-wrap:wrap;z-index:5}
+button,select{flex:1;min-width:0;padding:10px 8px;border:0;border-radius:12px;background:rgba(42,15,85,.82);color:var(--crema);font:400 15px var(--f-tit);text-transform:uppercase}
+select{flex:1 1 100%;font-size:17px;appearance:none;-webkit-appearance:none;text-align:center;background:var(--sol);color:var(--tinta);box-shadow:0 4px 0 #b88c00}
+button.on{background:var(--cielo);color:var(--tinta)}
+#bot{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:rgba(42,15,85,.82);border-radius:14px;padding:8px 12px;font-size:14px;z-index:5}
+#bot label{display:flex;align-items:center;gap:8px;margin:4px 0}
+#bot label span{flex:0 0 74px}#bot input{flex:1;min-width:0;accent-color:#ffd23f}#bot b{flex:0 0 40px;text-align:right}
+#info{position:fixed;left:16px;right:16px;top:calc(176px + env(safe-area-inset-top,0px));color:var(--crema);font:400 18px var(--f-tit);text-shadow:0 2px 0 var(--tinta);z-index:5;pointer-events:none;text-align:center}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header class="nav"><div class="in"><a class="logo" href="https://titancrashers.com/" aria-label="Titan Crashers, inicio"><b>TITAN</b><i>CRASHERS</i></a><a class="v" href="https://titancrashers.com/#arenas">← Arenas</a></div></header>
+<div id="top">
+ <select id="ar" aria-label="Estadio"></select>
+ <button id="pl" class="on">Girando</button>
+</div>
+<div id="info">Cargando…</div>
+<div id="bot">
+ <label><span>Velocidad</span><input id="sp" type="range" min="0" max="2" step=".05" value=".5"><b></b></label>
+ <label><span>Altura</span><input id="hk" type="range" min=".25" max="1.4" step=".01" value="1"><b></b></label>
+ <label><span>Distancia</span><input id="dk" type="range" min=".4" max="1.6" step=".01" value="1"><b></b></label>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>const SITE='https://titancrashers.com/';const info=document.getElementById('info');window.addEventListener('error',e=>{info.textContent='Error: '+e.message});</script>
+<script src="assets/sim/ball.js?v=216"></script>
+<script>
+// funciones del juego que usa la arena (copiadas de index.html)
+const rand=(a,b)=>a+Math.random()*(b-a);const L=32,HW=16;let FIELD_LOGO={complete:false,naturalWidth:0,addEventListener(){}};function fieldLogo(){}
+const GR={base:'#5cad3a',light:'#6dbd45',dark:'#4f9e31',deep:'#47922c'};
+function grassBlades(g,W,H,n,a){for(let k=0;k<n;k++){const x=Math.random()*W,y=Math.random()*H,l=rand(4,10),r=Math.random();
+  g.strokeStyle=r<.45?`rgba(170,230,110,${a})`:r<.8?`rgba(30,80,10,${a*1.1})`:`rgba(220,255,170,${a*.8})`;g.lineWidth=rand(1,2);g.beginPath();g.moveTo(x,y);g.lineTo(x+rand(-2,2),y-l);g.stroke();}}
+function strikersGrass(g,W,H,PX,X,Z){
+  g.fillStyle=GR.base;g.fillRect(0,0,W,H);
+  // franjas de corte a lo largo (muy suaves)
+  for(let k=0,x=0;x<W;x+=PX*4,k++){g.fillStyle=k%2?'rgba(255,255,220,.05)':'rgba(0,40,0,.05)';g.fillRect(x,0,PX*4,H);}
+  // figuras podadas, simétricas en las dos mitades
+  const R=(x0,z0,x1,z1,col,edge)=>{for(const sx of [-1,1])for(const sz of [-1,1]){const xa=X(sx*x0),xb=X(sx*x1),za=Z(sz*z0),zb=Z(sz*z1),x=Math.min(xa,xb),y=Math.min(za,zb),w=Math.abs(xb-xa),h=Math.abs(zb-za);
+    g.fillStyle=col;g.fillRect(x,y,w,h);if(edge){g.strokeStyle=edge;g.lineWidth=PX*.18;g.strokeRect(x,y,w,h);}}};
+  const LL=L,HH=HW;
+  R(0,0,LL*.34,HH*.62,'rgba(230,255,170,.15)','rgba(20,60,0,.22)');        // gran tablero central
+  R(0,0,LL*.14,HH*.3,'rgba(0,50,0,.13)','rgba(230,255,180,.16)');           // cuadro interior
+  R(LL*.4,HH*.18,LL*.6,HH*.62,'rgba(230,255,170,.13)','rgba(20,60,0,.2)'); // bloques a media cancha
+  R(LL*.4,0,LL*.6,HH*.12,'rgba(0,50,0,.12)',null);
+  R(LL*.64,HH*.7,LL*.98,HH*.98,'rgba(230,255,170,.11)',null);               // esquinas
+  R(LL*.2,HH*.72,LL*.36,HH*.92,'rgba(0,50,0,.12)','rgba(230,255,180,.14)');
+  R(LL*.04,HH*.74,LL*.16,HH*.86,'rgba(230,255,170,.15)',null);
+  // grano suave + muchas hojitas
+  for(let k=0;k<500;k++){const x=Math.random()*W,y=Math.random()*H,r=rand(20,110),gr=g.createRadialGradient(x,y,0,x,y,r),lt=Math.random()<.5;
+    gr.addColorStop(0,lt?'rgba(220,255,150,.035)':'rgba(10,50,0,.04)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);}
+  grassBlades(g,W,H,70000,.22);}
+// después de las líneas: hojitas encima (orillas como pintura sobre pasto) y el logo podado al centro
+// v203d: el logo de cada arena va podado dentro del círculo central (en lugar del logo del juego), con el mismo estilo:
+// dibujo en pasto claro y un contorno más oscuro. La arena pone window.GZ_FIELD_MOTIF antes de armar su césped.
+const GZ_MOTIFS=['balon','hoja','campana','timon','escarabajo','mamut','murcielago','volcan','corona'];
+window.GZ_MOTIF_IMG=window.GZ_MOTIF_IMG||{};
+for(const n of GZ_MOTIFS){if(window.GZ_MOTIF_IMG[n])continue;const im=new Image();im.crossOrigin='anonymous';im.src='assets/ui/motivos/'+n+'.png';window.GZ_MOTIF_IMG[n]=im;}
+function fieldIcon(g,cx,cy,PX,k){const im=window.GZ_MOTIF_IMG[k];if(!im||!im.complete||!im.naturalWidth)return false;
+  const S=Math.ceil(8*PX),c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d');
+  // contorno oscuro: el dibujo engordado un poquito, debajo
+  const o=Math.max(1,.13*PX);for(let i=0;i<12;i++){const a=i*Math.PI/6;q.drawImage(im,Math.cos(a)*o,Math.sin(a)*o,S,S);}
+  q.globalCompositeOperation='source-in';q.fillStyle='rgba(25,70,10,.31)';q.fillRect(0,0,S,S);
+  // dibujo en pasto claro encima
+  const l=document.createElement('canvas');l.width=l.height=S;const lq=l.getContext('2d');lq.drawImage(im,0,0,S,S);lq.globalCompositeOperation='source-in';lq.fillStyle='rgba(215,255,160,.45)';lq.fillRect(0,0,S,S);
+  q.globalCompositeOperation='destination-out';q.drawImage(im,0,0,S,S);q.globalCompositeOperation='source-over';q.drawImage(l,0,0);
+  g.save();g.translate(cx,cy);g.rotate(typeof FIELD_LOGO_ROT!=='undefined'?FIELD_LOGO_ROT:Math.PI/2);g.drawImage(c,-S/2,-S/2);g.restore();return true;}
+function strikersFinish(g,W,H,cx,cy,PX,tex){grassBlades(g,W,H,9000,.16);tex.needsUpdate=true;
+  const k=window.GZ_FIELD_MOTIF,ic=k&&window.GZ_MOTIF_IMG[k];
+  if(ic){const put=()=>{try{if(fieldIcon(g,cx,cy,PX,k))tex.needsUpdate=true;}catch(e){}};if(ic.complete&&ic.naturalWidth)put();else ic.addEventListener('load',put,{once:true});return;}   // v203d: logo de la arena en el círculo
+  const logo=()=>{try{fieldLogo(g,cx,cy,PX);tex.needsUpdate=true;}catch(e){}};
+  if(FIELD_LOGO.complete&&FIELD_LOGO.naturalWidth)logo();else FIELD_LOGO.addEventListener('load',logo,{once:true});}
+window.strikersGrass=strikersGrass;window.strikersFinish=strikersFinish;
+window.GZ_RR=function(g,x,y,w,h,r){if(w<0){x+=w;w=-w;}if(h<0){y+=h;h=-h;}r=Math.min(r,w/2,h/2);g.beginPath();g.moveTo(x+r,y);g.lineTo(x+w-r,y);g.arcTo(x+w,y,x+w,y+r,r);g.lineTo(x+w,y+h-r);g.arcTo(x+w,y+h,x+w-r,y+h,r);g.lineTo(x+r,y+h);g.arcTo(x,y+h,x,y+h-r,r);g.lineTo(x,y+r);g.arcTo(x,y,x+r,y,r);g.closePath();g.stroke();};
+
+</script>
+<script src="assets/arenas/luz.js?v=216"></script>
+<script>
+// ---- arenas en el orden del juego ----
+const ARS=[[15,'1 · Campo de Entrenamiento'],[16,'2 · Bosque Encantado'],[3,'3 · Pueblo'],[5,'4 · Playa Pirata'],[10,'5 · Templo del Desierto'],[11,'6 · Tundra de Hielo'],[12,'7 · Mansión Embrujada'],[14,'8 · Castillo del Volcán'],[13,'9 · Coliseo de Leyendas']];
+const qs=new URLSearchParams(location.search);let AN=+(qs.get('a')||15);if(!ARS.some(a=>a[0]===AN))AN=15;
+const sel=document.getElementById('ar');for(const [n,t] of ARS){const o=document.createElement('option');o.value=n;o.textContent=t;if(n===AN)o.selected=true;sel.appendChild(o);}
+sel.onchange=()=>{location.href=SITE+'estadios.html?a='+sel.value;};
+info.textContent='Cargando '+ARS.find(a=>a[0]===AN)[1].replace(/^\d+ · /,'')+'…';
+const cv=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+window.save={settings:{quality:'media'}};window.toast=t=>{info.textContent=t;};
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,1.5,700),root=new THREE.Group();scene.add(root);
+// ---- la arena con su luz nueva y su público ----
+let mod=null,HONG=null,AFTER=true;
+const LZ=()=>({scene,renderer,camera,root,quality:'alta',n:AN,mod});
+{const sc=document.createElement('script');sc.src='assets/arenas/arena'+AN+'.js?v=216';sc.onload=()=>{mod=window.GZ_ARENAS[AN]({scene,renderer,camera,root});GZ_LUZ.on(LZ());setTimeout(()=>{info.textContent='';},2500);};document.body.appendChild(sc);}
+function crowd_unused(){let last=-1,n=0;const w=()=>{const k=mod.seats?mod.seats.length:0;if(k>0&&k===last){HONG=window.GZ_GENTE({scene,root,seats:mod.seats,kits:[{j:0x2f7bff,sh:0x173f99,so:0xffffff},{j:0xff3b4e,sh:0x99202e,so:0xffffff}],level:3,noRed:AN===14});return;}last=k;if(++n<80)setTimeout(w,400);};w();}
+// ---- distancia y altura de la cámara del juego (la misma cuenta del juego en vertical) ----
+const CAM_EL2=.92;let FIT=null;
+function fitWidthCam(){const w=innerWidth,h=innerHeight,asp=w/Math.max(1,h);
+  const cam=new THREE.PerspectiveCamera(38,asp,.5,600),yMin=-1+Math.min(.42,170/h*2),yTop=.9;
+  const ground=(sx,sy)=>{const v=new THREE.Vector3(sx,sy,.5).unproject(cam).sub(cam.position);const t=-cam.position.y/v.y;return cam.position.clone().add(v.multiplyScalar(t));};
+  const view=d=>{cam.position.set(-Math.cos(CAM_EL2)*d,Math.sin(CAM_EL2)*d,0);cam.lookAt(0,0,0);cam.updateMatrixWorld();cam.updateProjectionMatrix();const b=ground(0,yMin),f=ground(0,yTop);return {b:b.x,f:f.x};};
+  const want=2*32*.64;let lo=8,hi=200;for(let k=0;k<26;k++){const mid=(lo+hi)/2,v=view(mid);if(v.f-v.b>want)hi=mid;else lo=mid;}
+  FIT={dist:hi};}
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();FIT=null;}addEventListener('resize',resize);resize();
+// ---- giro 360: la cámara da la vuelta al estadio a la altura del juego, siempre mirando al centro ----
+let ang=Math.PI,spin=true;const sp=document.getElementById('sp'),hk=document.getElementById('hk'),dk=document.getElementById('dk');
+for(const i of [sp,hk,dk]){const f=()=>i.nextElementSibling.textContent=(+i.value).toFixed(2);i.addEventListener('input',f);f();}
+document.getElementById('pl').onclick=e=>{spin=!spin;e.target.classList.toggle('on',spin);e.target.textContent=spin?'Girando':'En pausa';};
+// arrastrar con el dedo para girar a mano
+let drag=null;cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,a:ang};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!drag)return;ang=drag.a-(e.clientX-drag.x)*.008;});
+const up=()=>{drag=null;};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+const clk=new THREE.Clock();
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05);
+  if(spin&&!drag)ang+=dt*.18*(+sp.value);
+  if(!FIT)fitWidthCam();
+  const d=FIT.dist*(+dk.value),R=Math.cos(CAM_EL2)*d,Hc=Math.sin(CAM_EL2)*d*(+hk.value);
+  camera.position.set(Math.cos(ang)*R*1.25,Hc,Math.sin(ang)*R);camera.fov=38;camera.updateProjectionMatrix();camera.lookAt(0,0,0);camera.updateMatrixWorld();
+  if(mod){try{mod.update&&mod.update(dt);}catch(e){}}if(HONG&&HONG.ready){try{HONG.update(dt,{x:0,y:0,z:0});}catch(e){}}
+  try{GZ_LUZ.tick(dt,0,0);}catch(e){}
+  if(AFTER&&GZ_LUZ.render()){}else renderer.render(scene,camera);}
+loop();
+</script></body></html>
