@@ -1,0 +1,63 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Fotos de estadios</title>
+<style>html,body{margin:0;height:100%;background:#14161c;color:#eef0f4;font:14px system-ui,sans-serif;overflow:hidden;touch-action:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#ui{position:fixed;left:12px;right:12px;top:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:2}
+select,button{flex:1;min-width:0;padding:10px 8px;border:0;border-radius:10px;background:rgba(20,24,32,.8);color:#fff;font:700 14px system-ui}
+select{flex:1 1 100%;font-size:16px}button.on{background:#3b6cf6}
+#bot{position:fixed;left:12px;right:12px;bottom:12px;background:rgba(20,24,32,.8);border-radius:12px;padding:6px 10px;z-index:2;font-size:12px}
+#bot label{display:flex;gap:8px;align-items:center;margin:3px 0}#bot span{flex:0 0 64px}#bot input{flex:1}
+#info{position:fixed;left:12px;right:12px;top:112px;z-index:2;text-shadow:0 1px 2px #000;font-size:12px;pointer-events:none}</style></head><body>
+<canvas id="c"></canvas>
+<div id="ui"><select id="ar"></select><button id="e0">Esquina 1</button><button id="e1">Esquina 2</button><button id="e2">Esquina 3</button><button id="e3">Esquina 4</button>
+<button id="foto" class="on">📷 Foto de esta</button><button id="todas">📷 Las 9</button></div>
+<div id="info">Cargando…</div>
+<div id="bot"><label><span>Distancia</span><input id="dk" type="range" min="35" max="140" step="1" value="78"></label>
+<label><span>Altura</span><input id="hk" type="range" min="10" max="90" step="1" value="44"></label>
+<label><span>Giro</span><input id="gk" type="range" min="-60" max="60" step="1" value="0"></label>
+<label><span>Lente</span><input id="fk" type="range" min="25" max="70" step="1" value="42"></label></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="assets/sim/ball.js?v=212"></script>
+<script src="assets/arenas/gzlib_tool.js"></script>
+<script src="assets/arenas/luz.js?v=219"></script>
+<script src="assets/arenas/gente.js?v=220b"></script>
+<script>
+// Fotos de cada estadio sin jugadores, con su público, desde una esquina arriba (panorámica). Descarga arena-N.jpg en 1920×1080.
+const info=document.getElementById('info');window.addEventListener('error',e=>{info.textContent='Error: '+e.message;});
+const ARS=[[15,'1 · Campo de Entrenamiento'],[16,'2 · Bosque Encantado'],[3,'3 · Pueblo'],[5,'4 · Playa Pirata'],[10,'5 · Templo del Desierto'],[11,'6 · Tundra de Hielo'],[12,'7 · Mansión Embrujada'],[14,'8 · Castillo del Volcán'],[13,'9 · Coliseo de Leyendas']];
+const qs=new URLSearchParams(location.search);let AN=+(qs.get('a')||15);if(!ARS.some(a=>a[0]===AN))AN=15;const AUTO=qs.get('auto')==='1';
+const IDX=ARS.findIndex(a=>a[0]===AN);
+const sel=document.getElementById('ar');for(const [n,t] of ARS){const o=document.createElement('option');o.value=n;o.textContent=t;if(n===AN)o.selected=true;sel.appendChild(o);}
+sel.onchange=()=>{location.search='?a='+sel.value;};
+const cv=document.getElementById('c'),renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+window.save={settings:{quality:'alta'}};window.toast=()=>{};
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,1,900),root=new THREE.Group();scene.add(root);
+let mod=null,crowd=null,ready=false;
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+const sc=document.createElement('script');sc.src='assets/arenas/arena'+AN+'.js?v=219';sc.onload=()=>{mod=GZ_ARENAS[AN]({scene,renderer,camera,root});GZ_LUZ.on({scene,renderer,camera,root,quality:'alta',n:AN,mod});waitCrowd();};document.head.appendChild(sc);
+info.textContent='Cargando '+ARS[IDX][1]+'…';
+function waitCrowd(){let last=-1,same=0;const w=()=>{const k=mod.seats?mod.seats.length:0;if(k>0&&k===last){if(++same>=3){crowd=GZ_GENTE({scene,root,renderer,camera,arena:AN,seats:mod.seats,kits:[{j:0x2f7bff,sh:0x173f99},{j:0xff3b4e,sh:0x99202e}],level:IDX});
+      setTimeout(()=>{ready=true;info.textContent=ARS[IDX][1]+' — lista';if(AUTO)setTimeout(()=>{shot();setTimeout(()=>{const nx=ARS[IDX+1];if(nx)location.search='?a='+nx[0]+'&auto=1';else info.textContent='Listo: las 9 fotos se descargaron';},1500);},2500);},2500);return;}}else same=0;last=k;setTimeout(w,400);};w();}
+// cámara: esquina elegida, arriba, viendo al centro de la cancha
+let corner=0;const dk=document.getElementById('dk'),hk=document.getElementById('hk'),gk=document.getElementById('gk'),fk=document.getElementById('fk');
+for(let i=0;i<4;i++)document.getElementById('e'+i).onclick=()=>{corner=i;mark();};
+function mark(){for(let i=0;i<4;i++)document.getElementById('e'+i).classList.toggle('on',i===corner);}mark();
+function place(){const base=[Math.atan2(-22,-34),Math.atan2(-22,34),Math.atan2(22,34),Math.atan2(22,-34)][corner]+(+gk.value)*Math.PI/180,d=+dk.value;
+  camera.position.set(Math.cos(base)*d,+hk.value,Math.sin(base)*d*.8);camera.fov=+fk.value;camera.updateProjectionMatrix();camera.lookAt(0,0,0);}
+function draw(){place();if(!GZ_LUZ.render())renderer.render(scene,camera);}
+function shot(){const W=1920,Hh=1080,pr=renderer.getPixelRatio();renderer.setPixelRatio(1);renderer.setSize(W,Hh,false);camera.aspect=W/Hh;camera.updateProjectionMatrix();draw();
+  cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arena-'+(IDX+1)+'.jpg';document.body.appendChild(a);a.click();a.remove();
+    renderer.setPixelRatio(pr);resize();},'image/jpeg',.92);}
+document.getElementById('foto').onclick=()=>{if(!ready){info.textContent='Espera a que cargue el público…';return;}shot();};
+document.getElementById('todas').onclick=()=>{location.search='?a=15&auto=1';};
+const clk=new THREE.Clock();
+(function loop(){requestAnimationFrame(loop);const dt=Math.min(clk.getDelta(),.05);try{mod&&mod.update&&mod.update(dt);}catch(e){}try{crowd&&crowd.ready&&crowd.update(dt,{x:0,y:0,z:0});}catch(e){}try{GZ_LUZ.tick(dt,0,0);}catch(e){}draw();})();
+</script></body></html>
