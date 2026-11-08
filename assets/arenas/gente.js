@@ -9,22 +9,9 @@
 // - Playera blanca y short oscuro se pintan del equipo al que apoyan (media grada cada uno).
 // uso: const P=GZ_GENTE({scene,root,seats,camera,arena,kits:[k0,k1],level}); P.update(dt,ball); P.react('gol',equipo)|P.react('casi')
 // =====================================================================
-window.GZ_GENTE=function(o){
-const C={update(){},react(){},setKits(){},ready:false,count:0};
-const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
-const par=o.root||o.scene,cam=o.camera||null,AR=o.arena||0;
-const low=((window.save&&save.settings&&save.settings.quality)==='baja');
-const USE_IMP=false;   // v217g: todos en 3D completo, iguales en cualquier cámara (sin imágenes planas de lejos)
-const PER=low?2:3,SC=o.size||1.35,NEAR=low?16:24,NEARMAX=low?120:260;
-const V='?v=219b',DIR='assets/arenas/gente/';
-const getBin=window.GZ_GETBIN||(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u);return r.arrayBuffer();}));
-fetch(DIR+'gente.json'+V).then(r=>r.json()).then(m=>{
-  const allowed=m.species.filter(s=>s.name!=='esqueleto'||[11,12,14,13].includes(AR));   // esqueletos: después del Desierto
-  return Promise.all(allowed.map(s=>getBin(DIR+s.name+'.bin'+V))).then(bs=>{try{build(m,allowed,bs);console.log('público:',C.count);}catch(e){fail(e);}});}).catch(fail);
-function fail(e){console.warn('público: no cargó',e);C.error=String(e&&e.message||e);try{if(window.toast)toast('Público: '+C.error);}catch(_){}}
-// ---- pies en el escalón (raycast hacia abajo, piso plano alrededor) ----
-function floorCast(list){
-  const sc=o.scene||par;sc.updateMatrixWorld(true);const objs=[];
+// ---- pies en el escalón (también lo usa lugares.html para dejar los lugares ya calculados) (raycast hacia abajo, piso plano alrededor) ----
+function floorCast(sc,list){
+  sc.updateMatrixWorld(true);const objs=[];
   sc.traverse(x=>{if(!x.isMesh||x.isInstancedMesh||x.isSkinnedMesh||!x.geometry||x.userData.gzDyn||(x.material&&x.material.visible===false))return;for(let q=x;q;q=q.parent)if(q.visible===false)return;objs.push(x);});
   // v219b: índice por cuadritos de los triángulos (en vez de raycast contra todo): con la arena ya unida en piezas enormes el raycast tardaba minutos (la Mansión se trababa)
   let y0m=1e9,y1m=-1e9;for(const s of list){y0m=Math.min(y0m,s.y);y1m=Math.max(y1m,s.y);}const YA=y0m-1.6,YB=y1m+1.2;
@@ -52,6 +39,26 @@ function floorCast(list){
       if(ok){best={x,y:ym,z,ry:s.ry,lx,lz};break;}}
     if(best)out.push(best);}
   return out;}
+window.GZ_FLOORCAST=floorCast;
+// lugares ya calculados de cada arena: lugares.json (viene con el juego) o los que el celular guardó la primera vez
+const GZ_LUG={};const lugPack=fetch('assets/arenas/gente/lugares.json?v=219c').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.arenas)Object.assign(GZ_LUG,j.arenas);}).catch(()=>{});
+const lugKey=n=>'gzLug2_'+n;
+function lugToBase(a){return a.map(q=>({x:q[0],y:q[1],z:q[2],ry:q[3],lx:Math.cos(q[3]),lz:-Math.sin(q[3])}));}
+function baseToLug(b){const r=v=>Math.round(v*1000)/1000;return b.map(s=>[r(s.x),r(s.y),r(s.z),r(s.ry)]);}
+window.GZ_LUG_PACK=baseToLug;
+window.GZ_GENTE=function(o){
+const C={update(){},react(){},setKits(){},ready:false,count:0};
+const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
+const par=o.root||o.scene,cam=o.camera||null,AR=o.arena||0;
+const low=((window.save&&save.settings&&save.settings.quality)==='baja');
+const USE_IMP=false;   // v217g: todos en 3D completo, iguales en cualquier cámara (sin imágenes planas de lejos)
+const PER=low?2:3,SC=o.size||1.35,NEAR=low?16:24,NEARMAX=low?120:260;
+const V='?v=219c',DIR='assets/arenas/gente/';
+const getBin=window.GZ_GETBIN||(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u);return r.arrayBuffer();}));
+lugPack.then(()=>fetch(DIR+'gente.json'+V)).then(r=>r.json()).then(m=>{
+  const allowed=m.species.filter(s=>s.name!=='esqueleto'||[11,12,14,13].includes(AR));   // esqueletos: después del Desierto
+  return Promise.all(allowed.map(s=>getBin(DIR+s.name+'.bin'+V))).then(bs=>{try{build(m,allowed,bs);console.log('público:',C.count);}catch(e){fail(e);}});}).catch(fail);
+function fail(e){console.warn('público: no cargó',e);C.error=String(e&&e.message||e);try{if(window.toast)toast('Público: '+C.error);}catch(_){}}
 // ---- código común de la tarjeta de video: leer la pose del cuadro, pintar del equipo, sombreado de juguete ----
 const VAT=`uniform sampler2D tA,tB;uniform float uW,uH,uT,uFps;uniform vec3 uMin,uSc;
 vec3 gzPos(vec4 a,vec4 b){return vec3(a.r*65280.+a.g*255.,a.b*65280.+a.a*255.,b.r*65280.+b.g*255.)*uSc+uMin;}
@@ -66,7 +73,10 @@ const LDIR='vec3 gzL=normalize(vec3(.35,.85,.55));';
 function build(m,SPC,bins){
   const nf=m.nf,fps=m.fps,clip={};m.clips.forEach(c=>clip[c.name]=c);
   // ---- lugares: un raycast por asiento y hasta 3 aficionados a lo ancho ----
-  let base=seats;try{base=floorCast(seats);}catch(e){console.warn('público: piso',e);base=seats.map(s=>({x:s.x,y:s.y,z:s.z,ry:s.ry,lx:Math.cos(s.ry),lz:-Math.sin(s.ry)}));}
+  let base=null;
+  if(GZ_LUG[AR]&&GZ_LUG[AR].length)base=lugToBase(GZ_LUG[AR]);   // 1) los que vienen con el juego: no se calcula nada
+  if(!base){try{const t=localStorage.getItem(lugKey(AR));if(t){const a=JSON.parse(t);if(a&&a.length)base=lugToBase(a);}}catch(e){}}   // 2) los que este celular ya calculó antes
+  if(!base){try{base=floorCast(o.scene||par,seats);try{localStorage.setItem(lugKey(AR),JSON.stringify(baseToLug(base)));}catch(e){}}catch(e){console.warn('público: piso',e);base=seats.map(s=>({x:s.x,y:s.y,z:s.z,ry:s.ry,lx:Math.cos(s.ry),lz:-Math.sin(s.ry)}));}}   // 3) se calcula una vez y se guarda
   const OFF=PER===3?[-.53,0,.53]:[-.34,.34],pos=[];const R=Math.random;
   for(const s of base)for(const d of OFF){if(R()<.22)continue;const j=(R()-.5)*.06;   /* un poco más separados: 1 de cada 5 lugares queda libre */pos.push({x:s.x+s.lx*(d+j),y:s.y,z:s.z+s.lz*(d+j),ry:s.ry+(R()-.5)*.25});}
   const N=pos.length;if(!N){fail('sin lugares en las gradas');return;}C.count=N;
@@ -202,3 +212,4 @@ diffuseColor.rgb=tc;}`).replace('#include <emissivemap_fragment>','#include <emi
       if(sp.man)sp.man.needsUpdate=true;if(sp.ian)sp.ian.needsUpdate=true;sp.mesh.instanceMatrix.needsUpdate=true;if(sp.imp)sp.imp.instanceMatrix.needsUpdate=true;}};
   C.ready=true;}
 return C;};
+window.GZ_GENTE.hasSpots=n=>lugPack.then(()=>!!(GZ_LUG[n]&&GZ_LUG[n].length)||(()=>{try{return !!localStorage.getItem(lugKey(n));}catch(e){return false;}})());

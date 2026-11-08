@@ -1,0 +1,36 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lugares del público</title>
+<style>body{margin:0;background:#14161c;color:#eef0f4;font:15px system-ui,sans-serif;padding:16px}h1{font-size:20px}#log{white-space:pre-wrap;font:13px monospace;background:#0b0c10;padding:10px;border-radius:10px;min-height:200px}
+button{font:700 16px system-ui;padding:14px 18px;border:0;border-radius:12px;background:#3b6cf6;color:#fff;margin:10px 0;width:100%}button:disabled{background:#444}</style></head><body>
+<h1>Lugares del público (una sola vez)</h1>
+<p>Arma las 9 arenas una por una, calcula dónde va parado cada aficionado y te descarga <b>lugares.json</b>. No cierres la página hasta que termine.</p>
+<button id="go">Empezar</button><button id="dl" disabled>Descargar lugares.json</button>
+<div id="log"></div>
+<canvas id="c" width="64" height="64" style="display:none"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="assets/sim/ball.js?v=212"></script>
+<script src="assets/sim/data.js?v=129"></script>
+<script src="assets/arenas/gzlib_tool.js"></script>
+<script src="assets/arenas/gente.js?v=219c"></script>
+<script>
+const log=t=>{document.getElementById('log').textContent+=t+'\n';};
+window.save={settings:{quality:'media'}};window.toast=()=>{};
+const ARS=[[15,'Entrenamiento'],[16,'Bosque'],[3,'Pueblo'],[5,'Playa'],[10,'Desierto'],[11,'Tundra'],[12,'Mansión'],[14,'Volcán'],[13,'Leyendas']];
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c')});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const loadJS=n=>new Promise((res,rej)=>{if(window.GZ_ARENAS&&GZ_ARENAS[n])return res();const s=document.createElement('script');s.src='assets/arenas/arena'+n+'.js?v=219';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+const OUT={v:1,arenas:{}};
+document.getElementById('go').onclick=async e=>{e.target.disabled=true;
+  for(const [n,name] of ARS){const t0=performance.now();log('· '+name+'…');
+    try{await loadJS(n);const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,1,700),root=new THREE.Group();scene.add(root);
+      const mod=GZ_ARENAS[n]({scene,renderer,camera,root});
+      // esperar a que terminen de cargar las gradas (la lista de lugares deja de crecer)
+      let last=-1,same=0;for(let k=0;k<150;k++){await sleep(400);const c=mod.seats?mod.seats.length:0;if(c>0&&c===last){if(++same>=3)break;}else same=0;last=c;}
+      const base=GZ_FLOORCAST(scene,mod.seats||[]);OUT.arenas[n]=GZ_LUG_PACK(base);
+      log('  '+(mod.seats||[]).length+' asientos → '+base.length+' lugares ('+((performance.now()-t0)/1000).toFixed(1)+' s)');
+      scene.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+    catch(err){log('  ERROR: '+(err&&err.message||err));}}
+  log('Listo. Presiona Descargar.');document.getElementById('dl').disabled=false;};
+document.getElementById('dl').onclick=()=>{const b=new Blob([JSON.stringify(OUT)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='lugares.json';document.body.appendChild(a);a.click();a.remove();};
+</script></body></html>

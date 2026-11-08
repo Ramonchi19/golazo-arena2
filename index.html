@@ -1184,7 +1184,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
-<script src="assets/sim/match.js?v=212"></script>
+<script src="assets/sim/match.js?v=219"></script>
 <script src="assets/arenas/luz.js?v=219"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
@@ -1720,8 +1720,10 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   // v219: público nuevo estilo Strikers (vikinguitos, gnomos, goblins, hongos y esqueletos de la Tundra en adelante; gente.js)
   HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_GENTE({scene,root,renderer,camera,arena:n,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('público',e);}};
     // las gradas se arman cuando terminan de cargar sus modelos (unos segundos después): se espera a que la lista de lugares deje de crecer
-    const go=()=>{if(window.GZ_GENTE)mk();else{const sc=document.createElement('script');sc.src='assets/arenas/gente.js?v=219b';sc.onload=mk;document.head.appendChild(sc);}};
-    let last=-1,tries=0;const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(k>0&&k===last){go();return;}last=k;if(++tries<80)setTimeout(wait,400);else if(k>0)go();};wait();}}catch(e){console.warn('público',e);}
+    const lib=new Promise(r=>{if(window.GZ_GENTE)r();else{const sc=document.createElement('script');sc.src='assets/arenas/gente.js?v=219c';sc.onload=r;sc.onerror=r;document.head.appendChild(sc);}});
+    // v219c: si la arena ya trae sus lugares guardados, el público entra en cuanto hay gradas (sin esperar ni calcular nada)
+    let last=-1,tries=0,fast=null;lib.then(()=>window.GZ_GENTE&&GZ_GENTE.hasSpots?GZ_GENTE.hasSpots(n):false).then(v=>{fast=!!v;});
+    const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(fast!==null&&k>0&&(fast||k===last)){mk();return;}last=k;if(++tries<100)setTimeout(wait,fast?150:400);else if(k>0)lib.then(mk);};wait();}}catch(e){console.warn('público',e);}
   // v212c: el piso de afuera (enorme y plano) se baja un poco para que nunca se pelee con el pasto
   for(const dl of [600,3000,8000])setTimeout(()=>{if(ARENA_ROOT===root)try{fixFloors();}catch(e){}},dl);}
 function applyArena(i){
