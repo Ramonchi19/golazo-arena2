@@ -31,7 +31,7 @@ jobs:
           npx cap add android
           npx cap sync android
           # pantalla siempre vertical y a pantalla completa
-          sed -i 's#<activity#<activity android:screenOrientation="portrait"#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' android/app/src/main/AndroidManifest.xml
           # v137: arranque en negro (sin la imagen de inicio por defecto) para que entre directo el logo de Castle Studios
           sed -i 's#@drawable/splash#@android:color/black#g' android/app/src/main/res/values/styles.xml || true
           # v143: la pantalla nativa de Android 12+ también en negro y sin ícono (nada de pantallazo de color)
@@ -41,6 +41,34 @@ jobs:
           if grep -q "const PRUEBA = true" assets/ads.js; then ADMOB_APP="ca-app-pub-3940256099942544~3347511713"; else ADMOB_APP="ca-app-pub-3351017803207592~9109168365"; fi
           echo "AdMob app: $ADMOB_APP"
           sed -i "s#</application>#<meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"$ADMOB_APP\"/></application>#" android/app/src/main/AndroidManifest.xml
+          # v227: pantalla completa inmersiva — se esconden la barra de notificaciones y los botones de Android (aparecen solo si deslizas desde la orilla)
+          # y el juego también usa la zona de la cámara (notch)
+          MA=$(find android/app/src/main/java -name MainActivity.java | head -1)
+          PKG=$(grep -m1 '^package' "$MA")
+          cat > "$MA" <<'JAVA'
+          __PKG__
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import androidx.core.view.WindowCompat;
+          import androidx.core.view.WindowInsetsCompat;
+          import androidx.core.view.WindowInsetsControllerCompat;
+          import com.getcapacitor.BridgeActivity;
+          public class MainActivity extends BridgeActivity {
+            @Override public void onCreate(Bundle b) { super.onCreate(b); hideBars(); }
+            @Override public void onResume() { super.onResume(); hideBars(); }
+            @Override public void onWindowFocusChanged(boolean f) { super.onWindowFocusChanged(f); if (f) hideBars(); }
+            private void hideBars() {
+              if (Build.VERSION.SDK_INT >= 28) { WindowManager.LayoutParams lp = getWindow().getAttributes(); lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES; getWindow().setAttributes(lp); }
+              WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+              WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+              c.hide(WindowInsetsCompat.Type.systemBars());
+              c.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+          }
+          JAVA
+          sed -i "s#^ *__PKG__#$PKG#; s#^          ##" "$MA"
+          cat "$MA"
           # misma firma siempre, para actualizar sin desinstalar
           mkdir -p ~/.android && cp apk/golazo-debug.keystore ~/.android/debug.keystore
 
