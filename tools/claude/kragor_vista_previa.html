@@ -1,0 +1,72 @@
+<title>Kragor Ficha 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap">
+<style>
+/* Una sola vista de juego: el fondo azul de la ficha, Kragor al centro, controles arriba como en el menú */
+:root{--bg1:#56b6ff;--bg2:#1a5ae4;--bg3:#103eb0;--pn1:#4b5170;--pn2:#2f3449;--ol:#0b0e19;--y:#ffd21f;--fg:#ffffff;--muted:#cfe0ff;
+  --disp:'Lilita One',"Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(80% 80% at 50% 45%,var(--bg1) 0%,#2c86ff 36%,var(--bg2) 70%,var(--bg3) 100%);color:var(--fg);font-family:var(--disp);overflow:hidden;user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#c:active{cursor:grabbing}
+.bar{position:fixed;left:0;right:0;top:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.bar>*{pointer-events:auto}
+h1{margin:0;font-weight:400;font-size:clamp(24px,5vw,34px);letter-spacing:.5px;text-transform:uppercase;-webkit-text-stroke:5px var(--ol);paint-order:stroke fill;text-shadow:0 3px 0 var(--ol)}
+.seg{display:flex;margin-left:auto;border:3px solid var(--ol);border-radius:8px;overflow:hidden;box-shadow:0 4px 0 var(--ol)}
+.seg button{font:inherit;font-size:16px;color:#fff;background:linear-gradient(var(--pn1),var(--pn2));border:0;padding:7px 14px;cursor:pointer;-webkit-text-stroke:3px var(--ol);paint-order:stroke fill;text-transform:uppercase}
+.seg button+button{border-left:3px solid var(--ol)}
+.seg button[aria-pressed="true"]{background:linear-gradient(#fff07a,var(--y))}
+.seg button:focus-visible{outline:3px solid #fff;outline-offset:-5px}
+.foot{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none;font-size:13px;color:var(--muted)}
+.foot b{color:#fff;-webkit-text-stroke:3px var(--ol);paint-order:stroke fill;font-weight:400;font-size:15px}
+#st{font-variant-numeric:tabular-nums}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;-webkit-text-stroke:4px var(--ol);paint-order:stroke fill;pointer-events:none}
+</style>
+
+<canvas id="c" aria-label="Kragor en 3D, arrastra para girarlo"></canvas>
+<div class="bar">
+  <h1>Kragor</h1>
+  <div class="seg" role="group" aria-label="Calidad de textura">
+    <button id="q4" aria-pressed="true">4K · S22</button><button id="q2" aria-pressed="false">2K · Chuwi</button>
+  </div>
+</div>
+<div id="load">Cargando Kragor…</div>
+<div class="foot"><span><b>Arrastra</b> para girarlo · <b>pellizca o rueda</b> para acercar</span><span id="st"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+const cv=document.getElementById('c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.outputEncoding=THREE.sRGBEncoding;
+const S=new THREE.Scene(),cam=new THREE.PerspectiveCamera(28,1,.01,50);
+S.add(new THREE.HemisphereLight(0xffffff,0x4466aa,1.05));
+const key=new THREE.DirectionalLight(0xffffff,.95);key.position.set(1.5,3,3);S.add(key);
+const rim=new THREE.DirectionalLight(0x9fe8ff,.7);rim.position.set(-2.5,2,-3);S.add(rim);
+const sh=new THREE.Mesh(new THREE.CircleGeometry(.32,48),new THREE.MeshBasicMaterial({color:0x0a2a7a,transparent:true,opacity:.35}));sh.rotation.x=-Math.PI/2;sh.position.y=.002;S.add(sh);
+let root=null,mix=null,yaw=-.35,vy=0,dist=2.2,cur=null,loadT=0;const clk=new THREE.Clock(),ld=new THREE.GLTFLoader();
+async function load(q){if(cur===q)return;cur=q;document.getElementById('load').hidden=false;
+  document.getElementById('q4').setAttribute('aria-pressed',q==='4k');document.getElementById('q2').setAttribute('aria-pressed',q==='2k');
+  const t0=performance.now();const txt=await (await fetch('kragor_'+q+'.glb.txt')).text();
+  const bin=Uint8Array.from(atob(txt),c=>c.charCodeAt(0)).buffer;
+  ld.parse(bin,'',g=>{if(root)S.remove(root);root=g.scene;S.add(root);
+    root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;const m=o.material;if(m.map){m.map.anisotropy=R.capabilities.getMaxAnisotropy();m.map.needsUpdate=true;}m.side=THREE.FrontSide;}});
+    mix=new THREE.AnimationMixer(root);if(g.animations[0])mix.clipAction(g.animations[0]).play();
+    const tex=root.getObjectByProperty('isMesh',true).material.map,img=tex&&tex.image;
+    document.getElementById('st').textContent=(img?img.width+'×'+img.height+' px · ':'')+'42 mil triángulos · '+Math.round(bin.byteLength/1024/1024*10)/10+' MB';
+    document.getElementById('load').hidden=true;},e=>{document.getElementById('load').textContent='No se pudo cargar el modelo';});}
+document.getElementById('q4').onclick=()=>load('4k');document.getElementById('q2').onclick=()=>load('2k');
+// girar con el dedo (con inercia) y acercar
+let drag=null;const pts=new Map();
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);drag={x:e.clientX,t:performance.now()};});
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const p=pts.get(e.pointerId);
+  if(pts.size===2){const [a,b]=[...pts.values()];const d0=Math.hypot(a[0]-b[0],a[1]-b[1]);pts.set(e.pointerId,[e.clientX,e.clientY]);const [c,d]=[...pts.values()];const d1=Math.hypot(c[0]-d[0],c[1]-d[1]);dist=Math.min(3.2,Math.max(.7,dist*d0/d1));return;}
+  const dx=e.clientX-p[0];pts.set(e.pointerId,[e.clientX,e.clientY]);yaw+=dx*.01;vy=dx*.01;});
+const up=e=>{pts.delete(e.pointerId);};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.min(3.2,Math.max(.7,dist*(1+e.deltaY*.001)));},{passive:false});
+function size(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}addEventListener('resize',size);size();
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tick(){requestAnimationFrame(tick);const dt=Math.min(.05,clk.getDelta());if(mix)mix.update(dt);
+  if(!pts.size){yaw+=vy;vy*=.93;}if(root)root.rotation.y=yaw;
+  const ty=dist<1.2?.78:.5,cy=dist<1.2?.82:.55;cam.position.set(0,cy,dist);cam.lookAt(0,ty,0);R.render(S,cam);}
+tick();load('4k');
+</script>
