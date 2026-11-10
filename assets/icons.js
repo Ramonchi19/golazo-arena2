@@ -173,11 +173,23 @@
         ext('M4 38h54c4 0 4 8 0 8H4c-2-2-2-6 0-8z', MT.white[4]) + f('M4 38h54c4 0 4 8 0 8H4c-2-2-2-6 0-8z', MT.white[1]) + f('M4 42h56v4H4z', MT.white[2]) + blk('M22 22h20v10H22z', 'white', 'M22 22h20v3H22z', null) + shine(14, 18, 5, 3); })(),
   });
   // emoji del avatar → ícono
-  window.AV_ICON = { '⚽': 'ball', '😎': 'av_cool', '🦁': 'av_lion', '🐯': 'av_tiger', '🦅': 'av_eagle', '🐺': 'av_wolf', '🔥': 'av_fire', '⭐': 'star', '👑': 'av_crown', '🤖': 'av_robot', '👽': 'av_alien', '🐸': 'av_frog', '🦈': 'av_shark', '🐉': 'av_dragon', '🥷': 'av_ninja', '🧢': 'av_cap' };
+  window.AV_ICON = { '⚽': 'av_ball', '😎': 'av_cool', '🦁': 'av_lion', '🐯': 'av_tiger', '🦅': 'av_eagle', '🐺': 'av_wolf', '🔥': 'av_fire', '⭐': 'star', '👑': 'av_crown', '🤖': 'av_robot', '👽': 'av_alien', '🐸': 'av_frog', '🦈': 'av_shark', '🐉': 'av_dragon', '🥷': 'av_ninja', '🧢': 'av_cap' };
   const cache = {};
   function svgOf(n) { return cache[n] || (cache[n] = B[n] || ''); }
+  // v225: íconos dibujados (assets/ui/iconos). Si un nombre tiene imagen, se usa la imagen; si no, el dibujo de código
+  const IMG = { coin: 'moneda', gem: 'gema', trophy: 'trofeo', xp: 'experiencia', star: 'estrella', info: 'info', help: 'ayuda', lock: 'candado',
+    clock: 'reloj', gift: 'regalo', friends: 'amigos', close: 'cerrar', plus: 'mas', back: 'atras', news: 'noticias', cards: 'cartas', cards2: 'cartas',
+    ball: 'balon', cart: 'tienda', shop: 'tienda', tv: 'video', gear: 'ajustes', chart: 'ranking', medal: 'ranking', flag: 'aviso',
+    av_cool: 'avatar-lentes', av_lion: 'avatar-leon', av_eagle: 'avatar-aguila', av_wolf: 'avatar-lobo', av_dragon: 'avatar-dragon', av_ball: 'avatar-balon', av_tiger: 'avatar-leon', av_fire: 'avatar-balon', av_crown: 'avatar-balon', av_robot: 'avatar-balon',
+    av_alien: 'avatar-balon', av_frog: 'avatar-balon', av_shark: 'avatar-balon', av_ninja: 'avatar-balon', av_cap: 'avatar-balon',
+    ok: 'listo', energy: 'energia', power: 'fuerza', speed: 'velocidad', defense: 'defensa', gk: 'portero', super: 'super-tiro', pad: 'controles',
+    chat: 'chat', club: 'club', members: 'miembros', invite: 'invitar', requests: 'solicitudes', up: 'subir', down: 'bajar', captain: 'capitan',
+    vice: 'subcapitan', player: 'jugador', sound: 'sonido', mute: 'silencio', music: 'sonido', edit: 'editar', collection: 'coleccion', warn: 'aviso' };
+  window.ICON_IMG = IMG;
+  window.ICON_SRC = n => 'assets/ui/iconos/' + (IMG[n] || n) + '.webp?v=225';
   window.ICON = function (n, size, cls) {
     const s = size || 28;
+    if (IMG[n]) return `<img class="ico ico-img${cls ? ' ' + cls : ''}" src="${window.ICON_SRC(n)}" width="${s}" height="${s}" alt="" draggable="false">`;
     return `<svg class="ico${cls ? ' ' + cls : ''}" viewBox="-2 -2 68 70" width="${s}" height="${s}" aria-hidden="true">${svgOf(n)}</svg>`;
   };
   window.ICON_NAMES = Object.keys(B);
