@@ -46,6 +46,10 @@ const lugKey=n=>'gzLug2_'+n;
 function lugToBase(a){return a.map(q=>({x:q[0],y:q[1],z:q[2],ry:q[3],lx:Math.cos(q[3]),lz:-Math.sin(q[3])}));}
 function baseToLug(b){const r=v=>Math.round(v*1000)/1000;return b.map(s=>[r(s.x),r(s.y),r(s.z),r(s.ry)]);}
 window.GZ_LUG_PACK=baseToLug;
+function mergeG(gs){let n=0,ni=0;for(const g of gs){n+=g.attributes.position.count;ni+=g.index?g.index.count:g.attributes.position.count;}
+  const P=new Float32Array(n*3),N=new Float32Array(n*3),I=new Uint32Array(ni);let o=0,oi=0;
+  for(const g of gs){const p=g.attributes.position,nn=g.attributes.normal;P.set(p.array,o*3);N.set(nn.array,o*3);const ix=g.index?g.index.array:[...Array(p.count).keys()];for(let i=0;i<ix.length;i++)I[oi+i]=ix[i]+o;o+=p.count;oi+=ix.length;}
+  const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.BufferAttribute(P,3));r.setAttribute('normal',new THREE.BufferAttribute(N,3));r.setIndex(new THREE.BufferAttribute(I,1));return r;}
 window.GZ_GENTE=function(o){
 const C={update(){},react(){},setKits(){},ready:false,count:0};
 const seats=o.seats||[];if(!seats.length||typeof THREE==='undefined')return C;
@@ -53,7 +57,7 @@ const par=o.root||o.scene,cam=o.camera||null,AR=o.arena||0;
 const low=((window.save&&save.settings&&save.settings.quality)==='baja');
 const USE_IMP=false;   // v217g: todos en 3D completo, iguales en cualquier cámara (sin imágenes planas de lejos)
 const PER=low?2:3,SC=o.size||1.35,NEAR=low?16:24,NEARMAX=low?120:260;
-const V='?v=219c',DIR='assets/arenas/gente/';
+const V='?v=220b',DIR='assets/arenas/gente/';
 const getBin=window.GZ_GETBIN||(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u);return r.arrayBuffer();}));
 lugPack.then(()=>fetch(DIR+'gente.json'+V)).then(r=>r.json()).then(m=>{
   const allowed=m.species.filter(s=>s.name!=='esqueleto'||[11,12,14,13].includes(AR));   // esqueletos: después del Desierto
@@ -191,15 +195,76 @@ diffuseColor.rgb=tc;}`).replace('#include <emissivemap_fragment>','#include <emi
     im.count=sp.list.length;im.userData.gzDyn=1;im.frustumCulled=false;im.castShadow=false;im.receiveShadow=true;im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     if(isImp)sp.ian=an;else sp.man=an;par.add(im);dirty=true;}
   for(const sp of SP){const im=new THREE.InstancedMesh(sp.g,sp.mat,Math.max(1,sp.list.length));sp.mesh=im;attach(sp,im,false);}
+  // ---- v220: banderas grandes (todas las arenas) y bengalas detrás de las porterías (Volcán, Mansión y Leyendas) ----
+  const FC={a0:new THREE.Color(),b0:new THREE.Color(),a1:new THREE.Color(),b1:new THREE.Color()};
+  const flagCols=()=>{for(const t of [0,1]){const a=kc(K[t],'j'),b=kc(K[t],'sh','d'),la=a.r*.3+a.g*.59+a.b*.11,lb=b.r*.3+b.g*.59+b.b*.11;
+    FC['a'+t].copy(a);FC['b'+t].copy(Math.abs(la-lb)<.18?new THREE.Color(0xffffff):b);}};flagCols();   // si los dos colores se parecen, la otra franja va blanca
+  const FU={uFa0:{value:FC.a0},uFb0:{value:FC.b0},uFa1:{value:FC.a1},uFb1:{value:FC.b1}};
+  const spread=(list,n,dmin)=>{const out=[];const L_=list.slice().sort(()=>R()-.5);for(const h of L_){if(out.length>=n)break;if(out.every(q=>Math.hypot(q.x-h.x,q.z-h.z)>=dmin))out.push(h);}return out;};
+  const hold=h=>{h.base='manos';h.keep=true;};   // el que la lleva trae los brazos arriba todo el partido
+  let flagMesh=null,flareP=null,sparkP=null;
+  {const FW=2.7,FH=1.75,PL=2.9,nPer=low?5:10;const fl=[];
+    for(const t of [0,1])fl.push(...spread(H.filter(h=>h.team===t),nPer,5.5));
+    if(fl.length){
+      // asta + tela en una sola pieza: el asta sale de las manos hacia arriba; la tela cuelga del asta hacia un lado
+      const g=new THREE.PlaneGeometry(FW,FH,12,6);g.translate(FW/2+.07,PL-FH/2,0);
+      const pg=new THREE.CylinderGeometry(.035,.035,PL,6);pg.translate(0,PL/2,0);
+      const mg=mergeG([g,pg]);const n=fl.length,im=new THREE.InstancedMesh(mg,null,n);
+      const ph=new THREE.InstancedBufferAttribute(new Float32Array(n*4),4);
+      const fM=new THREE.Matrix4(),fQ=new THREE.Quaternion(),fS=new THREE.Vector3(1,1,1),fP=new THREE.Vector3(),fUp=new THREE.Vector3(0,1,0);
+      fl.forEach((h,k)=>{hold(h);fQ.setFromAxisAngle(fUp,h.ry);fP.set(h.x,h.y+h.s*.95,h.z);fM.compose(fP,fQ,fS);im.setMatrixAt(k,fM);
+        ph.setXYZW(k,R()*6.28,.8+R()*.5,h.team,Math.floor(R()*3));});
+      mg.setAttribute('aFl',ph);
+      const fm=new THREE.MeshLambertMaterial({side:THREE.DoubleSide});
+      fm.onBeforeCompile=sh=>{Object.assign(sh.uniforms,U,FU);
+        sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nuniform float uT;attribute vec4 aFl;varying vec2 vF;varying float vTm,vPat,vPole;')
+          .replace('#include <beginnormal_vertex>',`float gzA=sin(uT*2.2*aFl.y+aFl.x)*.75;float gzc=cos(gzA),gzs=sin(gzA);
+vec3 objectNormal=normal;vPole=position.x<.06?1.:0.;
+float gzu=max(position.x-.07,0.)/${FW.toFixed(2)};
+objectNormal=normalize(vec3(-cos(gzu*6.-uT*7.*aFl.y+aFl.x)*.5*gzu,0.,1.));objectNormal.xy=mat2(gzc,gzs,-gzs,gzc)*objectNormal.xy;`)
+          .replace('#include <begin_vertex>',`vec3 transformed=position;float gzw=gzu;
+transformed.z+=sin(gzu*6.-uT*7.*aFl.y+aFl.x)*.32*gzw;transformed.y-=gzw*gzw*.35*(.6+.4*sin(uT*3.+aFl.x));   // la tela ondea y se cae un poco en la punta
+transformed.xy=mat2(gzc,gzs,-gzs,gzc)*transformed.xy;   // el aficionado la agita de lado a lado
+vF=vec2(gzu,(position.y-${(PL-FH).toFixed(2)})/${FH.toFixed(2)});vTm=aFl.z;vPat=aFl.w;`);
+        sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 uFa0,uFb0,uFa1,uFb1;varying vec2 vF;varying float vTm,vPat,vPole;')
+          .replace('#include <map_fragment>',`#include <map_fragment>
+{bool t1=vTm>.5;vec3 a=t1?uFa1:uFa0,b=t1?uFb1:uFb0;float m;
+if(vPat<.5)m=step(.5,vF.x);else if(vPat<1.5)m=step(.333,vF.y)*step(vF.y,.667);else m=step(.5,fract((vF.x+vF.y*.6)*1.5));
+vec3 c=mix(a,b,m);if(vPole>.5)c=vec3(.55,.5,.45);
+#ifdef GZ_LIN
+c=pow(c,vec3(2.2));
+#endif
+diffuseColor.rgb=c;}`);};
+      fm.customProgramCacheKey=()=>'gente-flag';im.material=fm;im.frustumCulled=false;im.receiveShadow=true;im.userData.gzDyn=1;par.add(im);flagMesh=im;}}
+  if([14,12,13].includes(AR)){const nPer=low?6:12;const bh=[];
+    for(const sd of [-1,1])bh.push(...spread(H.filter(h=>h.x*sd>33&&!h.keep),nPer,2.4));   // gradas detrás de las porterías
+    if(bh.length){const NP=7,n=bh.length;
+      const og=new Float32Array(n*NP*3),pa=new Float32Array(n*NP*2),so=new Float32Array(n*3),st=new Float32Array(n);
+      bh.forEach((h,k)=>{hold(h);const y=h.y+h.s*1.05;so.set([h.x,y,h.z],k*3);st[k]=h.team;
+        for(let j=0;j<NP;j++){og.set([h.x,y,h.z],(k*NP+j)*3);pa[(k*NP+j)*2]=j/NP+R()*.08;pa[(k*NP+j)*2+1]=h.team;}});
+      const px={uPx:{value:600}};
+      const smG=new THREE.BufferGeometry();smG.setAttribute('position',new THREE.BufferAttribute(og,3));smG.setAttribute('aP',new THREE.BufferAttribute(pa,2));
+      const smM=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:Object.assign({},U,px),
+        vertexShader:`uniform float uT,uPx;uniform vec3 uJ0,uJ1;attribute vec2 aP;varying float vA;varying vec3 vC;
+void main(){float l=fract(uT*.33+aP.x);vec3 p=position+vec3(sin(aP.x*40.+uT*.7)*.8*l,l*4.2,cos(aP.x*31.)*.8*l);vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;
+gl_PointSize=(.7+l*2.6)*uPx/max(1.,-mv.z);vA=(1.-l)*smoothstep(0.,.12,l)*.55;vC=mix(aP.y>.5?uJ1:uJ0,vec3(1.),.25);}`,
+        fragmentShader:`varying float vA;varying vec3 vC;void main(){vec2 d=gl_PointCoord-.5;float r=dot(d,d)*4.;if(r>1.)discard;gl_FragColor=vec4(vC,vA*(1.-r));}`});
+      flareP=new THREE.Points(smG,smM);flareP.frustumCulled=false;flareP.userData.gzDyn=1;flareP.renderOrder=3;par.add(flareP);
+      const spG=new THREE.BufferGeometry();spG.setAttribute('position',new THREE.BufferAttribute(so,3));spG.setAttribute('aS',new THREE.BufferAttribute(new Float32Array(st.map(()=>R()*10)),1));
+      const spM=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:Object.assign({},U,px),
+        vertexShader:`uniform float uT,uPx;attribute float aS;varying float vF;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;vF=.75+.25*sin(uT*31.+aS*7.)*sin(uT*17.+aS);gl_PointSize=.95*vF*uPx/max(1.,-mv.z);}`,
+        fragmentShader:`varying float vF;void main(){vec2 d=gl_PointCoord-.5;float r=dot(d,d)*4.;if(r>1.)discard;vec3 c=mix(vec3(1.,.97,.85),vec3(1.,.35,.08),smoothstep(.05,.8,r));gl_FragColor=vec4(c*vF,(1.-r));}`});
+      sparkP=new THREE.Points(spG,spM);sparkP.frustumCulled=false;sparkP.userData.gzDyn=1;sparkP.renderOrder=4;par.add(sparkP);
+      C._px=px;}}
   // ---- reacciones ----
   C.react=(ev,tm2)=>{for(const h of H){const r=R();
     if(ev==='gol'){h.cur=h.team===tm2?'manos':(r<.8?'cabeza':'normal');h.until=T+6+R()*2;}   // gol: todo su equipo brinca con las manos arriba
     else if(ev==='casi'){h.cur=r<.55?'cabeza':h.base;h.until=T+2.5+R()*1.5;}}dirty=true;};
-  C.setKits=k=>{if(!k||!k[0]||!k[1])return;U.uJ0.value.copy(kc(k[0],'j'));U.uJ1.value.copy(kc(k[1],'j'));U.uSh0.value.copy(kc(k[0],'sh','d'));U.uSh1.value.copy(kc(k[1],'sh','d'));};
+  C.setKits=k=>{if(!k||!k[0]||!k[1])return;K[0]=k[0];K[1]=k[1];flagCols();U.uJ0.value.copy(kc(k[0],'j'));U.uJ1.value.copy(kc(k[1],'j'));U.uSh0.value.copy(kc(k[0],'sh','d'));U.uSh1.value.copy(kc(k[1],'sh','d'));};
   const Mt=new THREE.Matrix4(),Z=new THREE.Matrix4().makeScale(0,0,0),Q4=new THREE.Quaternion(),S3=new THREE.Vector3(),P3=new THREE.Vector3(),up=new THREE.Vector3(0,1,0),cp=new THREE.Vector3(),cr=new THREE.Vector3();
-  C.update=(dt)=>{T+=dt;U.uT.value=T;
+  C.update=(dt)=>{T+=dt;U.uT.value=T;if(C._px&&cam){const r=o.renderer||window.renderer;const hh=r?r.getDrawingBufferSize(new THREE.Vector2()).y:innerHeight;C._px.uPx.value=hh*.5*cam.projectionMatrix.elements[5];}
     if(cam){cr.setFromMatrixColumn(cam.matrixWorld,0);cr.y=0;if(cr.lengthSq()>1e-6)U.uCamR.value.copy(cr.normalize());cr.setFromMatrixColumn(cam.matrixWorld,2);cr.y=0;if(cr.lengthSq()>1e-6)U.uCamF.value.copy(cr.normalize());}
-    for(const h of H){if(h.cur&&T>h.until){h.cur='';dirty=true;}h.sw-=dt;if(h.sw<0){h.sw=8+R()*16;const r=R();h.base=r<.5?'normal':r<.75?'manos':'brinquitos';dirty=true;}}
+    for(const h of H){if(h.cur&&T>h.until){h.cur='';dirty=true;}h.sw-=dt;if(h.sw<0&&!h.keep){h.sw=8+R()*16;const r=R();h.base=r<.5?'normal':r<.75?'manos':'brinquitos';dirty=true;}}
     lodT-=dt;if(lodT<=0){lodT=.25;   // quién va en 3D: los más cercanos a la cámara
       let near=[];if(cam){cam.getWorldPosition(cp);for(const h of H){h.d=Math.hypot(h.x-cp.x,h.y-cp.y,h.z-cp.z);if(h.d<NEAR)near.push(h);}near.sort((a,b)=>a.d-b.d);near=near.slice(0,NEARMAX);}
       const ns=new Set(near);for(const h of H){const v=ns.has(h)||!SP[h.sp].imp;if(v!==h.near){h.near=v;dirty=true;}}}
