@@ -10,6 +10,28 @@ let H1=false,user1=null,pressT1=0;const joy1={id:null,x:0,y:0};
 function ctrlOf(t){return t===0?user:(H1?user1:null);}
 let AI0=false; // v67: solo para el laboratorio: el equipo azul también lo juega la IA
 let NOCARDS=false; // v67: laboratorio: partidos sin cartas
+// ================= v228: AJUSTES (los números se cambian aquí) =================
+// Giro antes de patear: si el balón va a salir a más de 'min' radianes de hacia donde mira, primero gira con el balón y luego patea.
+// t90 / t120 / t180 = segundos que tarda en girar 90°, 120° (1/3 de vuelta) y 180° (media vuelta). slow = cuánto frena mientras gira (0 = nada, 1 = se para).
+const KTURN={min:Math.PI/2,t90:.08,t120:.15,t180:.22,slow:.85};
+// Preparación del golpe (v230a): segundos entre soltar el botón (o decidir el bot) y que el pie toque el balón. La animación se ajusta para que su golpe caiga
+// justo en ese instante, y el balón no sale antes. frena = cuánto frena mientras prepara (0 = nada, 1 = se para).
+const KPREP={pase:.15,centro:.24,tiro:.24,super:.32,frena:.7};
+const LEFTY={zurdito:1};   // v230a: pierna buena zurda (los demás diestros)
+// Balón suelto y jugadores en el camino (v229a):
+//  pick = a cuántos metros se agarra un balón suelto · pickH = altura máxima para agarrarlo · ctrlMax = más rápido que esto ya no se controla (rebota)
+//  dead = un pase más lento que esto ya es balón suelto para todos · shotCtrl = un tiro más lento que esto sí se puede agarrar
+//  body = radio del cuerpo para rebotes · bodyH = altura del cuerpo · rebote = cuánto rebota (0 = se queda muerto, 1 = como pared)
+// Pases (v229b): cone = ángulo máximo (radianes, 1.05 ≈ 60°) entre tu flecha y el compañero · tie = si dos están a menos de esto (0.26 ≈ 15°) de la línea, desempata la distancia
+//  min/max = distancias de pase posibles · dMin/dMax = metros que pide la fuerza al mínimo y al máximo · mid = distancia de un toque sin nadie (al vacío)
+//  zonaDespeje = desde qué tan cerca de tu portería (fracción de media cancha) el pase o centro es despeje y siempre va a un compañero · coneDespeje = ángulo para buscarlo
+const KPASS={cone:1.05,tie:.26,min:2.5,max:34,dMin:6,dMax:28,mid:14,zonaDespeje:.45,coneDespeje:2.1,
+// Pase cargado (v229c): r = distancia que pide la fuerza / distancia al compañero.
+//  r > nada → se pasa de largo al vacío · r > fuerte → llega con mal control · r ≥ limpio → limpio · r ≥ corto → un poco débil (tiene que regresar) · menos → se queda corto (suelto)
+//  malControl = velocidad con que le rebota al receptor (m/s; ~1.7 m) · cMin/cMax = metros de un centro cargado al mínimo y al máximo
+//  overCtrl = un pase que se pasó de fuerza no lo controla tu equipo hasta que va más lento que esto (m/s): se va de largo
+  nada:1.5,fuerte:1.25,limpio:.75,corto:.5,malControl:1.8,cMin:8,cMax:32,overCtrl:8};
+const KBALL={pick:1.15,pickH:1.3,ctrlMax:32,dead:4,shotCtrl:12,body:.55,bodyH:1.9,rebote:.35};
 function setCtrl(t,p){if(t===0){if(!AI0)user=p;}else if(H1)user1=p;}
 function isCtrl(p){return !!p&&(p===user||(H1&&p===user1));}
 function joyFor(t){return t===0?joy:joy1;}
@@ -41,8 +63,9 @@ function kickoff(team){
 
 
 // ================== BALÓN ==================
-function take(p,silent){p.protect=.5;p.queue=null;ball.owner=p;ball.gk=null;ball.passTo=null;ball.cross=false;ball.super=false;ball.lastTeam=p.team;p.hold=0;setCtrl(p.team,p);if(!silent)sfx('touch');}
-function release(p){ball.owner=null;ball.gk=null;ball.lastTeam=p.team;ball.tried=[false,false];p.pcd=.35;p.kickT=.28;p.charging=false;p.charge=0;}
+function take(p,silent){p.remK=null;ball.heavy=false;ball.over=null;p.protect=.5;p.queue=null;p.turnK=null;p.windK=null;p._turnFrom=null;ball.owner=p;ball.gk=null;ball.passTo=null;ball.cross=false;ball.super=false;ball.lastTeam=p.team;p.hold=0;setCtrl(p.team,p);if(!silent)sfx('touch');}
+// v228b: kickFace0 = hacia dónde miraba antes de patear (index.html escoge el pie con eso; faceTo lo voltea después)
+function release(p){p.kickFace0=p.face;ball.heavy=false;ball.over=null;ball.owner=null;ball.gk=null;ball.lastTeam=p.team;ball.tried=[false,false];p.pcd=.35;p.kickT=.28;p.charging=false;p.charge=0;}
 function faceTo(p,dx,dz){if(Math.abs(dx)+Math.abs(dz)>.01)p.face=Math.atan2(dx,dz);}
 function loseBall(p,dx,dz){
   if(ball.owner===p){ball.owner=null;ball.vx=(dx||rand(-1,1))*6+rand(-2,2);ball.vz=(dz||rand(-1,1))*6+rand(-2,2);ball.vy=3.5;ball.lastTeam=p.team;ball.passTo=null;ball.cross=false;ball.tried=[false,false];}
@@ -65,6 +88,7 @@ function centro(p,m){
   lx=clamp(lx,-L+2,L-2);lz=clamp(lz,-HW+2,HW-2);
   const dx=lx-ball.x,dz=lz-ball.z,l=Math.hypot(dx,dz),t=clamp(l/18,.7,1.3);
   const Y=crossY();ball.vx=dx/t;ball.vz=dz/t;ball.vy=(Y-ball.y)/t+.5*GRAV*t;ball.passTo=m;ball.cross=true;ball.super=false;m.crossSpot={x:lx,z:lz};
+  p.kickPow=.7;   // v229e: sin esto el centro usaba la fuerza de la patada anterior (se animaba como tiro)
   faceTo(p,dx,dz);sfx('cross');sfx('kick');lastKickPow=.6;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,6,4);popText('¡Centro!',p.x,2.4,p.z,'#bff');
   setCtrl(p.team,m);
 }
@@ -72,7 +96,7 @@ function centroSpot(p){
   if(qKick(p,'centroSpot',[p]))return;
   const d=dirOf(p.team),lx=d*(L-6),lz=rand(-4,4);
   release(p);const dx=lx-ball.x,dz=lz-ball.z,l=Math.hypot(dx,dz),t=clamp(l/15,.8,1.6);
-  ball.vx=dx/t;ball.vz=dz/t;ball.vy=(1.3-ball.y)/t+.5*GRAV*t;ball.cross=true;ball.passTo=null;faceTo(p,dx,dz);sfx('cross');
+  ball.vx=dx/t;ball.vz=dz/t;ball.vy=(1.3-ball.y)/t+.5*GRAV*t;ball.cross=true;ball.passTo=null;faceTo(p,dx,dz);p.kickPow=.7;sfx('cross');   // v229e: kickPow
 }
 function shoot(p,power,kind,aim){
   if(cine&&cine.p===p&&!p._cineGo)return;
@@ -92,7 +116,7 @@ function shoot(p,power,kind,aim){
   const kp=keeperOf(1-p.team);let az=(kp&&Math.abs(kp.z)>.3?-Math.sign(kp.z):(Math.random()<.5?1:-1))*rand(1.2,GW-.7);
   if(isCtrl(p)&&Math.hypot(joyFor(p.team).x,joyFor(p.team).y)>.3)az=clamp(joyFor(p.team).x,-1,1)*(GW-.6)+rand(-.4,.4);
   // v67: calidad del disparo: con un rival encima o pateando girado, sale menos preciso y un poco más lento
-  const _po=nearestOpp(p),press=_po&&d2(_po,p)<1.6,_sdx=d*(L+1)-ball.x,_sdz=az-ball.z,_tf=Math.abs(((Math.atan2(_sdx,_sdz)-p.face)+Math.PI*3)%(Math.PI*2)-Math.PI)>1.1;
+  const _po=nearestOpp(p),press=_po&&d2(_po,p)<1.6,_sdx=d*(L+1)-ball.x,_sdz=az-ball.z,_tf=Math.abs(((Math.atan2(_sdx,_sdz)-(p._turnFrom!=null?p._turnFrom:p.face))+Math.PI*3)%(Math.PI*2)-Math.PI)>1.1;   // v228c: si giró antes de tirar, cuenta hacia dónde miraba antes (mismo castigo que antes)
   const qErr=(press?1.5:1)*(_tf?1.35:1),qSp=(press?.94:1)*(_tf?.96:1);
   az+=rand(-1,1)*p.shotErr*(sup?.3:perfect?.2:1)*qErr;if(p._wild){p._wild=false;az+=(Math.random()<.5?-1:1)*rand(GW-1,GW+2.5);}
   if(aim){az=aim.az;const zf=perfect?.15:power<.6?.5:power<.85?1:1.6;az+=rand(-1,1)*(p.shotErr*zf*(sup?.3:1)*qErr+(power>=.85&&!sup&&!perfect?.7:0));}
@@ -120,9 +144,44 @@ function shoot(p,power,kind,aim){
     else sfx('kick');}
   lastKickPow=sup?1.2:perfect?1:(kind?.9:(+power||0));
 }
-function qKick(p,fn,args){if(ball.owner!==p||p._fromQ)return false;if(Math.hypot(ball.x-p.x,ball.z-p.z)<=1.05)return false;p.queue={fn,args};p.queueT=.55;return true;}
-function runQueue(p,dt){if(p.queue&&!({pass,centro,centroSpot,shoot,passAim,crossAim})[p.queue.fn]){p.queue=null;return;}if(!p.queue)return;if(ball.owner!==p){p.queue=null;return;}p.queueT-=dt;
-  if(Math.hypot(ball.x-p.x,ball.z-p.z)<=1.05||p.queueT<=0){const q=p.queue;p.queue=null;p._fromQ=true;({pass,centro,centroSpot,shoot,passAim,crossAim})[q.fn](...q.args);p._fromQ=false;}}
+// v228c: hacia dónde va a salir el balón (ángulo como p.face) según el tipo de patada; null = no se sabe
+function kickDir(p,fn,a){const d=dirOf(p.team);let tx,tz;
+  if(fn==='pass'||fn==='centro'){const m=a[1];if(!m)return null;tx=m.x;tz=m.z;}
+  else if(fn==='centroSpot'){tx=d*(L-6);tz=0;}
+  else if(fn==='shoot'){const ai=a[3];tx=d*L;tz=ai&&ai.az!=null?ai.az:0;}
+  else if(fn==='passAim'||fn==='crossAim'){const v=a[2];if(!v)return null;   // v229b: gira hacia el compañero que va a recibir (si hay)
+    let m=fn==='passAim'?pickMate(p,v,a[1]):pickMate(p,v,a[1],null,a[1]==null?null:crossDist(a[1]));if(!m&&a[1]==null&&inClearZone(p))m=clearMate(p,v);
+    return m?Math.atan2(m.x-p.x,m.z-p.z):Math.atan2(v.x,v.z);}
+  else return null;
+  return Math.atan2(tx-p.x,tz-p.z);}
+function angD(a,b){let d=a-b;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;}
+function turnTime(a){return a<=2.094?KTURN.t90+(a-1.571)/.524*(KTURN.t120-KTURN.t90):KTURN.t120+(a-2.094)/1.047*(KTURN.t180-KTURN.t120);}
+// v230a: patear ya no es instantáneo: [giro si hace falta] → preparación (balón pegado al pie que va a patear) → golpe.
+// El pie se escoge con hacia dónde miraba cuando EMPEZÓ a apuntar (aimFace0): pasar a su izquierda = zurda, a su derecha = derecha, al frente = su pierna buena.
+function kickKind(p,fn,a){if(fn==='pass'||fn==='passAim')return 'pase';if(fn==='shoot')return (p.star>0||superNext[p.team]||(a[3]&&a[3].zone==='g'))?'super':'tiro';return 'centro';}
+function qKick(p,fn,args){if(ball.owner!==p||p._fromQ)return false;
+  const w=kickDir(p,fn,args);p.kickF0=p.aimFace0!=null?p.aimFace0:p.face;p.aimFace0=null;
+  p.queue={fn,args};p.queueT=.55;p.windK=null;p.turnK=null;p.charging=false;
+  if(w!=null){const df=angD(w,p.face);if(Math.abs(df)>KTURN.min){const dur=turnTime(Math.abs(df));   // v228c: primero gira con el balón (ya no media vuelta en un cuadro)
+    p.turnK={a0:p.face,df,t:0,dur};p._turnFrom=p.face;p.queueT=dur+.55;dust(p.x,p.z);}}
+  return true;}
+function startWind(p){const q=p.queue,kind=kickKind(p,q.fn,q.args);let w=kickDir(p,q.fn,q.args);if(w==null)w=p.face;
+  const ux=Math.sin(w),uz=Math.cos(w),f0=p.kickF0!=null?p.kickF0:p.face,latR=-Math.cos(f0)*ux+Math.sin(f0)*uz,pref=LEFTY[p.card&&p.card.id]?'l':'r';
+  const foot=kind==='super'||p._turnFrom!=null?pref:latR<-.34?'l':latR>.34?'r':pref;   // si tuvo que girar o es súper: su pierna buena
+  p.windK={t:0,dur:KPREP[kind],kind,foot,face:w,latR};p.face=w;p.kickFoot=foot;}
+function runQueue(p,dt){const FN={pass,centro,centroSpot,shoot,passAim,crossAim};
+  const clear=()=>{p.queue=null;p.turnK=null;p.windK=null;p._turnFrom=null;};
+  if(p.queue&&!FN[p.queue.fn]){clear();return;}if(!p.queue){p.turnK=null;p.windK=null;return;}if(ball.owner!==p||p.stun>0){clear();return;}
+  if(p.turnK){const K=p.turnK;K.t+=dt;const u=Math.min(1,K.t/K.dur),e=u*u*(3-2*u);p.face=K.a0+K.df*e;   // v228c: gira y el balón gira pegado al pie
+    const fx=p.x+Math.sin(p.face)*.5,fz=p.z+Math.cos(p.face)*.5,k=Math.min(1,dt*20);ball.x+=(fx-ball.x)*k;ball.z+=(fz-ball.z)*k;ball.vx=ball.vz=0;p.touchT=Math.max(p.touchT||0,.05);
+    if(u<1)return;p.turnK=null;}
+  if(!p.windK){p.queueT-=dt;if(Math.hypot(ball.x-p.x,ball.z-p.z)>1.05&&p.queueT>0)return;startWind(p);}   // espera a tener el balón cerca y empieza a preparar
+  const K=p.windK;K.t+=dt;p.face=K.face;
+  // balón pegado al pie que va a patear, un poco a su lado (el dibujo lo pone exacto en el empeine)
+  const fx=Math.sin(K.face),fz=Math.cos(K.face),sd=K.foot==='l'?1:-1,tx=p.x+fx*.5+Math.cos(K.face)*sd*.18,tz=p.z+fz*.5-Math.sin(K.face)*sd*.18,k=Math.min(1,dt*18);
+  ball.x+=(tx-ball.x)*k;ball.z+=(tz-ball.z)*k;ball.vx=ball.vz=0;p.touchT=Math.max(p.touchT||0,.05);
+  if(K.t<K.dur)return;
+  const q=p.queue;p.queue=null;p.windK=null;p._fromQ=true;FN[q.fn](...q.args);p._fromQ=false;p._turnFrom=null;}   // golpe: el balón sale justo ahora
 function contestBall(dt){
   const c=ball.owner;if(!c||c.gk)return;
   if(c.protect>0){c.protect-=dt;return;}
@@ -149,30 +208,70 @@ function aimDefault(p,type){
 function coneMate(p,dir,maxAng){let best=null,bs=1e9;for(const m of fieldOf(p.team)){if(m===p)continue;const dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz);if(l<3||l>32)continue;const ang=Math.acos(clamp((dx*dir.x+dz*dir.z)/l,-1,1));if(ang>maxAng)continue;const s=ang*10+l*.05;if(s<bs){bs=s;best=m;}}return best;}
 function nearestMateTo(p,x,z,maxD){let best=null,bd=maxD;for(const m of fieldOf(p.team)){if(m===p)continue;const dd=Math.hypot(m.x-x,m.z-z);if(dd<bd){bd=dd;best=m;}}return best;}
 
+// v229b: a quién va un pase hacia 'dir'. Primero manda la dirección: el compañero más cercano a la línea de la flecha (dentro de KPASS.cone).
+// Si hay otros casi en la misma línea (KPASS.tie) desempata la distancia: con toque (pw null) el más cercano; cargado, el más cerca de la distancia que pide la fuerza.
+function passDist(pw){return KPASS.dMin+(KPASS.dMax-KPASS.dMin)*pw;}
+function crossDist(pw){return KPASS.cMin+(KPASS.cMax-KPASS.cMin)*pw;}
+// v229c: qué pasa con un pase cargado según la fuerza (want = metros que pide) y la distancia real al compañero (l)
+function passOutcome(l,want){const r=want/Math.max(.1,l);return r>KPASS.nada?'nada':r>KPASS.fuerte?'fuerte':r>=KPASS.limpio?'limpio':r>=KPASS.corto?'debil':'corto';}
+// v229c: el receptor no la controla (pase muy fuerte): le rebota 1 o 2 m al frente y queda suelta
+function heavyTouch(p){const hs=Math.hypot(ball.vx,ball.vz)||1,s=KPASS.malControl;ball.vx=ball.vx/hs*s;ball.vz=ball.vz/hs*s;ball.vy=Math.max(ball.vy,1.2);ball.heavy=false;ball.passTo=null;
+  p.pcd=Math.max(p.pcd,.3);burst(ball.x,ball.y,ball.z,0xffffff,5,3);sfx('touch');popText('¡Mal control!',p.x,2.4,p.z,'#ffe08a');}
+function pickMate(p,dir,pw,cone,wantD){const dl=Math.hypot(dir.x,dir.z)||1,ux=dir.x/dl,uz=dir.z/dl,C=[];
+  for(const m of fieldOf(p.team)){if(m===p||m.stun>0)continue;const dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz);if(l<KPASS.min||l>KPASS.max)continue;
+    const ang=Math.acos(clamp((dx*ux+dz*uz)/l,-1,1));if(ang<=(cone||KPASS.cone))C.push({m,ang,l});}
+  if(!C.length)return null;const a0=Math.min(...C.map(c=>c.ang)),G=C.filter(c=>c.ang<=a0+KPASS.tie),want=pw==null?null:(wantD!=null?wantD:passDist(pw));
+  G.sort((a,b)=>want==null?a.l-b.l:Math.abs(a.l-want)-Math.abs(b.l-want));return G[0].m;}
+// v229b: ¿está despejando? (pase o centro desde su zona, cerca de su portería) → siempre a un compañero
+function inClearZone(p){return p.x*dirOf(p.team)<-L*KPASS.zonaDespeje;}
+function clearMate(p,dir){const m=pickMate(p,dir,null,KPASS.coneDespeje);if(m)return m;const d=dirOf(p.team);let best=null,bx=-1e9;for(const o of fieldOf(p.team)){if(o===p||o.stun>0)continue;if(o.x*d>bx){bx=o.x*d;best=o;}}return best;}
 function passAim(p,pw,dir){
   if(qKick(p,'passAim',[p,pw,dir]))return;
-  const m=coneMate(p,dir,.6);
-  if(m){pass(p,m,pw==null?1:.65+pw*.7);return;}
-  const dist=5+(pw==null?.45:pw)*20,tx=clamp(p.x+dir.x*dist,-L+1,L-1),tz=clamp(p.z+dir.z*dist,-HW+1,HW-1);
+  let m=pickMate(p,dir,pw),nada=false;
+  if(!m&&pw==null&&inClearZone(p))m=clearMate(p,dir);   // despeje con toque: nunca a la nada
+  if(m&&pw==null){pass(p,m,1);return;}   // v229b: toque = fuerza justa, llega limpio
+  if(m){const l=d2(p,m),want=passDist(pw),res=passOutcome(l,want);   // v229c: cargado: sale con la fuerza que cargaste
+    if(res==='limpio'){pass(p,m,1);return;}
+    if(res==='fuerte'){pass(p,m,want/l);ball.heavy=true;return;}
+    if(res==='nada')nada=true;
+    else{pass(p,m,1);const hs=Math.hypot(ball.vx,ball.vz)||1,s=1.05*want;ball.vx*=s/hs;ball.vz*=s/hs;if(res==='corto')ball.passTo=null;return;}}   // débil: se para a 'want' metros (el pasto frena 1.05/s)
+  const dist=pw==null?KPASS.mid:passDist(pw),tx=clamp(p.x+dir.x*dist,-L+1,L-1),tz=clamp(p.z+dir.z*dist,-HW+1,HW-1);
   release(p);const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(l*1.25+8,11,28)*1.12;
   ball.vx=dx/l*sp;ball.vz=dz/l*sp;ball.vy=1;ball.cross=false;ball.super=false;faceTo(p,dx,dz);p.kickPow=.55;sfx('pass');lastKickPow=.5;ball.isShot=false;burst(ball.x,ball.y,ball.z,0xffffff,4,3);
-  const r=nearestMateTo(p,tx,tz,9);ball.passTo=r;if(r)setCtrl(p.team,r);
+  const r=nada?null:nearestMateTo(p,tx,tz,9);ball.passTo=r;if(r)setCtrl(p.team,r);   // te pasaste de fuerza: nadie tiene prioridad, lo agarra quien llegue
+  if(nada)ball.over=p.team;   // y a los de tu equipo se les va de largo mientras vaya rápido
 }
 function crossAim(p,pw,dir){
   if(qKick(p,'crossAim',[p,pw,dir]))return;
-  const dist=8+(pw==null?.55:pw)*24;let lx=clamp(p.x+dir.x*dist,-L+2,L-2),lz=clamp(p.z+dir.z*dist,-HW+2,HW-2);
+  if(pw==null&&inClearZone(p)){const m=clearMate(p,dir);if(m){centro(p,m);return;}}   // v229b: despeje por arriba: siempre a un compañero
+  // v229c: mismas reglas que el pase, por el aire
+  const want=pw==null?null:crossDist(pw),m=pickMate(p,dir,pw,null,want);
+  let lx,lz,recv=null,over=false;
+  if(m&&pw==null){centro(p,m);return;}
+  if(m){const l=d2(p,m),res=passOutcome(l,want);
+    if(res==='limpio'){centro(p,m);return;}
+    const ux=(m.x-p.x)/l,uz=(m.z-p.z)/l;lx=p.x+ux*want;lz=p.z+uz*want;recv=res==='debil'?m:null;if(want>l)over=true;}   // de más: cae detrás de él · de menos: cae antes
+  else{const dist=pw==null?KPASS.cMin+.55*(KPASS.cMax-KPASS.cMin):want;lx=p.x+dir.x*dist;lz=p.z+dir.z*dist;}
+  lx=clamp(lx,-L+2,L-2);lz=clamp(lz,-HW+2,HW-2);
   release(p);const dx=lx-ball.x,dz=lz-ball.z,l=Math.hypot(dx,dz),t=clamp(l/15,.8,1.6);
   const Y=crossY();ball.vx=dx/t;ball.vz=dz/t;ball.vy=(Y-ball.y)/t+.5*GRAV*t;ball.cross=true;ball.super=false;faceTo(p,dx,dz);p.kickPow=.7;sfx('cross');
-  const r=nearestMateTo(p,lx,lz,7);ball.passTo=r;if(r){r.crossSpot={x:lx,z:lz};setCtrl(p.team,r);}
+  const r=m?recv:nearestMateTo(p,lx,lz,7);ball.passTo=r;if(r){r.crossSpot={x:lx,z:lz};setCtrl(p.team,r);}
+  if(over)ball.over=p.team;
   popText('¡Centro!',p.x,2.4,p.z,'#bff');
 }
 
+// v229a: ¿hay un rival en la línea del pase? (ahora el rival que se atraviesa se queda con el balón) → 0 libre … 1 tapado
+function laneRisk(p,m){const dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz)||1,ux=dx/l,uz=dz/l;let r=0;
+  for(const o of players){if(o.team===p.team||o.stun>0||o.flyY>.05)continue;const ax=o.x-p.x,az=o.z-p.z,t=ax*ux+az*uz;if(t<.8||t>l-.6)continue;
+    const side=Math.abs(ax*uz-az*ux),reach=KBALL.pick+.35+t*.04;if(side<reach)r=Math.max(r,1-side/reach);}
+  return r;}
 function bestPassTarget(p,dv){
   const d=dirOf(p.team);let best=null,bs=-1e9;
   for(const m of fieldOf(p.team)){if(m===p||m.stun>0)continue;const dist=d2(p,m);if(dist<3||dist>28)continue;
     const dx=(m.x-p.x)/dist,dz=(m.z-p.z)/dist;let s=0;
     if(dv&&Math.hypot(dv.x,dv.z)>.2){const l=Math.hypot(dv.x,dv.z);s+=(dx*dv.x/l+dz*dv.z/l)*3;}
     const o=nearestOpp(m);s+=Math.min(6,o?d2(m,o):6)/3;s+=(m.x-p.x)*d*.04-dist*.03;
+    s-=laneRisk(p,m)*5;   // v229a: evita pasar por donde hay un rival
     if(s>bs){bs=s;best=m;}}
   return best;
 }
@@ -445,15 +544,44 @@ function updateAct(p,dt){
   if(p.actT<=0){p.recover=(p.act==='slide'?.35:.18)+.28*(p.actPw||0);p.act=null;}
 }
 function tryPick(p){
-  if(ball.owner||ball.gk||p.pcd>0||p.stun>0||p.frozen>0||p.rooted>0||p.act||p.recover>0)return;
-  if(effects.some(e=>e.type==='magnet'&&!e.done&&e.team!==p.team))return;   /* v95: con el imán del rival no se puede agarrar */
-  const d=Math.hypot(ball.x-p.x,ball.z-p.z);if(d>.95||ball.y>1.1)return;
+  if(ball.owner||ball.gk)return;
+  const d=Math.hypot(ball.x-p.x,ball.z-p.z);if(d>KBALL.pick+.8)return;
   const hs=Math.hypot(ball.vx,ball.vz);
-  if(ball.super&&ball.lastTeam!==p.team&&p.star<=0)return;
-  const intc=ball.passTo?(hs<9?.25:hs<16?.06:0):(hs<17?.5:0);
-  if(ball.passTo===p||(ball.lastTeam===p.team?hs<13:(hs<9||Math.random()<intc)))take(p);
+  // v229e: ocupado (barrida, bloqueo, recuperándose) no puede agarrar, pero el balón igual le pega en el cuerpo; el que acaba de patear y el que está en el piso no
+  if(p.pcd>0||p.stun>0||p.frozen>0||p.rooted>0)return;
+  if(p.remK)return;   // v232: va a rematar: no lo para ni le rebota
+  if(p.act||p.recover>0||d>KBALL.pick){if(!ball.super)bodyBounce(p,d,hs);return;}
+  if(effects.some(e=>e.type==='magnet'&&!e.done&&e.team!==p.team))return;   /* v95: con el imán del rival no se puede agarrar */
+  if(ball.super&&ball.lastTeam!==p.team&&p.star<=0)return;   // el súper tiro tumba (ball.js), no se agarra
+  // v229a: quién se lo queda
+  //  - el que recibe el pase: siempre
+  //  - balón suelto (sin receptor y no es tiro): cualquiera que pase por él, a cualquier velocidad
+  //  - pase a otro: el rival que se atraviesa se lo queda si lo puede controlar; un compañero que no es el receptor lo deja pasar (salvo que ya vaya muerto)
+  //  - tiro: solo si ya va lento; si va fuerte rebota en el cuerpo
+  let can;
+  if(ball.passTo===p){if(ball.heavy&&!ball.cross){heavyTouch(p);return;}can=true;}   // v229c: pase demasiado fuerte
+  else if(ball.isShot)can=hs<KBALL.shotCtrl;
+  else if(!ball.passTo)can=!(ball.over===p.team&&hs>KPASS.overCtrl);   // v229c: tu pase pasado de fuerza se te va de largo
+  else if(ball.passTo.team===p.team)can=hs<KBALL.dead;
+  else can=hs<=KBALL.ctrlMax;
+  if(can&&ball.y<=KBALL.pickH){take(p);return;}
+  bodyBounce(p,d,hs);
 }
-function updateControl(dt){swLock0-=dt||0;swLock1-=dt||0;if(AI0){user=null;}else if(!CTRL_LOCK[0])updateControlT(0);if(H1&&!CTRL_LOCK[1])updateControlT(1);}
+// v229a: el balón no atraviesa a los jugadores: si no lo pudo controlar, le pega en el cuerpo y rebota
+function bodyBounce(p,d,hs){
+  if(p.gk||p.flyY>.05||(p._rebT||0)>T||ball.y>KBALL.bodyH||hs<1)return;
+  if(ball.passTo&&ball.passTo.team===p.team&&!ball.isShot)return;   // al compañero que no es el receptor el pase le pasa de lado
+  if(ball.over===p.team&&!ball.isShot)return;
+  // v229e: se revisa todo el tramo que recorrió el balón en este cuadro (un tiro fuerte avanza ~0.7 m por cuadro y podía brincarse el cuerpo)
+  const sx=ball.vx/60,sz=ball.vz/60,ax=ball.x-sx,az=ball.z-sz,ss=sx*sx+sz*sz||1,u=clamp(((p.x-ax)*sx+(p.z-az)*sz)/ss,0,1),cx=ax+sx*u,cz=az+sz*u,dc=Math.hypot(cx-p.x,cz-p.z);
+  if(dc>KBALL.body)return;ball.x=cx;ball.z=cz;d=dc;
+  const nx=(ball.x-p.x)/(d||1),nz=(ball.z-p.z)/(d||1),vn=ball.vx*nx+ball.vz*nz;if(vn>=0)return;
+  ball.vx-=(1+KBALL.rebote)*vn*nx;ball.vz-=(1+KBALL.rebote)*vn*nz;ball.vx*=.7;ball.vz*=.7;ball.vy=Math.max(ball.vy,1.5);
+  ball.passTo=null;ball.cross=false;ball.x=p.x+nx*(KBALL.body+.02);ball.z=p.z+nz*(KBALL.body+.02);p._rebT=T+.25;
+  burst(ball.x,ball.y,ball.z,0xffffff,5,3);sfx('touch');
+}
+
+function updateControl(dt){remQ[0]=Math.max(0,remQ[0]-(dt||0));remQ[1]=Math.max(0,remQ[1]-(dt||0));swLock0-=dt||0;swLock1-=dt||0;if(AI0){user=null;}else if(!CTRL_LOCK[0])updateControlT(0);if(H1&&!CTRL_LOCK[1])updateControlT(1);}
 // v176: botón Cambiar (en defensa): pasa el control al compañero más cercano al balón que no sea el actual
 function switchMate(t){const u=ctrlOf(t),tgt=ball.cross?landing():ball;let best=null,bd=1e9;
   for(const p of fieldOf(t)){if(p===u||p.stun>0)continue;const d=d2(p,tgt);if(d<bd){bd=d;best=p;}}
@@ -480,7 +608,14 @@ function aiTarget(p,dt){
   const d=dirOf(p.team),c=ball.owner,gx=-d*L,s=p.slot||{x:-9,z:0,r:'MED'};
   const homeX=s.x*d,homeZ=s.z,bx=clamp(ball.x,-L+6,L-6);
   let tx=homeX,tz=homeZ,spd=RUN*.92;
-  if(ball.passTo===p){if(ball.cross&&p.crossSpot){tx=p.crossSpot.x;tz=p.crossSpot.z;}else{tx=ball.x+ball.vx*.25;tz=ball.z+ball.vz*.25;}return{tx,tz,spd:RUN};}
+  if(ball.passTo===p){if(ball.cross&&p.crossSpot){tx=p.crossSpot.x;tz=p.crossSpot.z;}
+    else{   // v230a: se acomoda en la línea del pase (no persigue el balón) y frena para recibirlo quieto
+      const hs=Math.hypot(ball.vx,ball.vz)||1,ux=ball.vx/hs,uz=ball.vz/hs,s=(p.x-ball.x)*ux+(p.z-ball.z)*uz;
+      const stop=ball.y<=.6?hs/1.05:1e9;   // hasta dónde llega rodando (el pasto lo frena 1.05/s)
+      if(s>stop-.4){const r=Math.max(0,stop*.85);tx=ball.x+ux*r;tz=ball.z+uz*r;return{tx,tz,spd:RUN};}   // no le va a llegar: va por él
+      if(s>.6&&hs>2){tx=ball.x+ux*s;tz=ball.z+uz*s;const d=Math.hypot(tx-p.x,tz-p.z);return{tx,tz,spd:Math.min(RUN,d*3)};}
+      tx=ball.x+ball.vx*.25;tz=ball.z+ball.vz*.25;}
+    return{tx,tz,spd:RUN};}
   const mates=fieldOf(p.team);
   if(c&&c.team===p.team){
     // ataque: cada rol hace su trabajo
@@ -541,6 +676,46 @@ function tryVolley(p){
   if(ball.y<.45||ball.y>2.7||Math.hypot(ball.x-p.x,ball.z-p.z)>(p.aereo?2.3:1.7))return false;
   shoot(p,.85,ball.y>1.5?'¡Cabezazo!':'¡Volea!');p.volleyQ=0;return true;
 }
+// v232: REMATE DE PRIMERA Y EN EL AIRE (estilo Strikers). Si aprietas tiro mientras te llega el balón (pase, centro o suelto que viene hacia ti),
+// el jugador lee la jugada: calcula dónde y a qué altura le va a llegar, corre a ese punto, se acomoda y escoge el remate según la altura y
+// de dónde viene: al piso = de primera, a media altura = volea (tijera si viene de lado), alto = cabezazo (chilena si viene de frente a la portería).
+// p.remK = {t, dur, kind, foot, face, y, sx, sz}: igual que windK, el dibujo arranca la animación para que el golpe caiga justo cuando llega el balón.
+let remQ=[0,0];   // v232: remate pedido antes de que saliera el pase (por equipo)
+const KREM={lead:.38,win:1.8,prim:.85,vol:1.7,maxY:4.6,run:1.3,ok:1.25,keep:.35};
+const REM_TXT={primera:'¡De primera!',volea:'¡Volea!',tijera:'¡Tijera!',cabezazo:'¡Cabezazo!',chilena:'¡Chilena!'};
+// dónde queda el punto de golpe respecto al jugador (metros; x + = a su izquierda, z + = al frente), medido en las animaciones
+const REMOFF={primera:[0,.6],volea:[.1,.85],tijera:[-.75,.8],cabezazo:[0,.18],chilena:[0,-.05]};
+function remPath(){const P=[];let x=ball.x,y=ball.y,z=ball.z,vx=ball.vx,vy=ball.vy,vz=ball.vz;const g=ball.super?GRAV*.15:GRAV,h=1/60;
+  for(let i=1;i<=KREM.win*60;i++){vy-=g*h;x+=vx*h;y+=vy*h;z+=vz*h;if(y<BR){y=BR;vy=vy<-2.5?-vy*.55:0;}const f=Math.max(0,1-(y<=BR+.01?1.05:.1)*h);vx*=f;vz*=f;P.push({t:i*h,x,y,z,vx,vz});}
+  return P;}
+function remShape(p,b){const d=dirOf(p.team),gx=d*(L+1)-b.x,gz=-b.z,gl=Math.hypot(gx,gz)||1,a=Math.atan2(gx/gl,gz/gl),hl=Math.hypot(b.vx,b.vz);
+  const ca=hl>1?(b.vx*gx+b.vz*gz)/(hl*gl):1,o=hl>1?Math.atan2(-b.vx,-b.vz):a+Math.PI,s=angD(o,a);   // ca<0: viene desde la portería (de frente); s<0: viene por su derecha
+  let kind;if(b.y<KREM.prim)kind='primera';else if(b.y<KREM.vol)kind=(ca<-.55&&b.y>1.25)?'chilena':(ca>-.55&&ca<.35&&b.y>1.15)?'tijera':'volea';else kind=ca<-.55?'chilena':'cabezazo';
+  const pref=LEFTY[p.card&&p.card.id]?'l':'r';let foot=Math.abs(s)>.5?(s<0?'r':'l'):pref,face=a;
+  if(kind==='tijera'){foot=s<0?'r':'l';face=a+(foot==='r'?-1.1:1.1);}else if(kind==='chilena')face=a+Math.PI;
+  const off=REMOFF[kind],ox=foot==='l'?-off[0]:off[0],fx=Math.sin(face),fz=Math.cos(face);   // izquierda del personaje = (cos, -sin)
+  return{kind,foot,face,sx:b.x-fz*ox-fx*off[1],sz:b.z+fx*ox-fz*off[1]};}
+function remPlan(p,want){if(ball.owner||ball.gk)return null;const sp=RUN*p.spdMul*KREM.run*(p.star>0?1.35:1),P=remPath(),top=KREM.maxY*(p.aereo?1.1:1);
+  let first=null;   // el primer punto al que llega; pero si hay tiempo, mejor uno que deje al menos KREM.lead para acomodarse (que no se vea apurado)
+  for(const b of P){if(Math.abs(b.x)>L+.5||Math.abs(b.z)>HW)break;if(b.y>top)continue;if(b.y<KREM.prim&&Math.hypot(b.vx,b.vz)<4)break;   // ya va muerto: eso se controla, no se remata
+    const S=remShape(p,b),dd=Math.hypot(S.sx-p.x,S.sz-p.z);if(dd<=sp*b.t+.35){const r=Object.assign(S,{t:b.t,y:b.y,bx:b.x,bz:b.z});if(b.t>=(want!=null?want-.03:KREM.lead))return r;if(!first)first=r;}}
+  return first;}
+function armRemate(p){if(ball.owner||ball.gk||p.stun>0||p.act||p.frozen>0||p.rooted>0||p.recover>0)return false;
+  if(effects.some(e=>e.type==='magnet'&&!e.done&&e.team!==p.team))return false;
+  const hs=Math.hypot(ball.vx,ball.vz);if(ball.passTo!==p&&hs<3&&ball.y<.6)return false;   // balón quieto o casi: eso se agarra, no se remata
+  const pl=remPlan(p);if(!pl)return false;
+  p.remK={t:0,dur:pl.t,kind:pl.kind,foot:pl.foot,face:pl.face,y:pl.y,sx:pl.sx,sz:pl.sz};p.kickFoot=pl.foot;p.volleyQ=0;return true;}
+function remTick(p,dt){const K=p.remK;if(!K)return;
+  if(ball.owner||ball.gk||p.stun>0||p.act||p.frozen>0){p.remK=null;return;}
+  K.t+=dt;const left=K.dur-K.t;
+  if(left>.07){const pl=remPlan(p,left);if(!pl){K.miss=(K.miss||0)+dt;if(K.miss>.2)p.remK=null;return;}K.miss=0;
+    if(left>KREM.keep||pl.kind===K.kind){K.kind=pl.kind;K.foot=pl.foot;K.face=pl.face;}   // al final ya no cambia de remate (la animación ya va)
+    K.y=pl.y;K.sx=pl.sx;K.sz=pl.sz;if(Math.abs(pl.t-left)>.04)K.dur=K.t+pl.t;return;}
+  const off=REMOFF[K.kind],ox=K.foot==='l'?-off[0]:off[0],fx=Math.sin(p.face),fz=Math.cos(p.face),cx=p.x+fz*ox+fx*off[1],cz=p.z-fx*ox+fz*off[1];
+  const dist=Math.hypot(ball.x-cx,ball.z-cz,ball.y-K.y);
+  if(left<=0&&dist<KREM.ok){const k=K.kind;p.remK=null;ball.passTo=null;ball.cross=false;ball.x+=(cx-ball.x)*.5;ball.z+=(cz-ball.z)*.5;p.kickFoot=K.foot;
+    shoot(p,k==='primera'?.92:.85,REM_TXT[k]);if(k!=='primera'&&k!=='volea'){shakeAmt=Math.max(shakeAmt||0,.25);}return;}
+  if(left<-.15)p.remK=null;}
 function updatePlayer(p,dt){
   if(cine&&cine.p===p){p.vx*=.5;p.vz*=.5;return;}
   tackleChargeTick(p,dt);p.tcd-=dt;p.pcd-=dt;p.zapcd-=dt;if(p.star>0){p.star-=dt;if(p.star<=0)psfx('turbo_fin');}if(p.kickT>0)p.kickT-=dt;if(p.touchVis>0)p.touchVis-=dt;if(p.slip>0)p.slip-=dt;if(p.volleyQ>0)p.volleyQ-=dt;
@@ -565,15 +740,23 @@ function updatePlayer(p,dt){
     else if(m>.12){const k=stickZone(p,m);dvx=jx/m*k*sp;dvz=jz/m*k*sp;}
     if(p.charging)p.charge=Math.min(1,p.charge+dt*1.1*p.chargeMul);
     if(ball.owner===p)p.hold+=dt;
-    if(p.volleyQ>0)tryVolley(p);
+    if(p.volleyQ>0&&!p.remK&&!armRemate(p))tryVolley(p);   // v232: si apretó un poco antes, sigue intentando leer el remate
+    if(remQ[p.team]>0&&ball.owner!==p&&!p.remK&&!ball.owner&&armRemate(p))remQ[p.team]=0;   // v232: pidió el remate mientras el compañero preparaba el pase
   } else {
     let r=ball.owner===p?aiCarrier(p,dt):aiTarget(p,dt);p._r=r;
     if(ball.owner!==p&&ball.passTo===p&&ball.cross&&ball.vy<0){const near=Math.hypot(ball.x-p.x,ball.z-p.z)<1.6&&ball.y<2.6&&ball.y>.5;
       if(near&&p.x*dirOf(p.team)>L-20&&Math.random()<.6*dt*20)tryVolley(p);}
+    // v232: los bots también rematan de primera o en el aire cuando les llega un centro o un pase cerca del área
+    if(!p.remK&&ball.passTo===p&&!ball.owner&&p.x*dirOf(p.team)>L-(ball.cross?20:13)&&Math.random()<(ball.cross?3:.9)*dt)armRemate(p);
     if(!r)r={tx:p.x,tz:p.z,spd:0};
     const dx=r.tx-p.x,dz=r.tz-p.z,l=Math.hypot(dx,dz),sp=r.spd*p.spdMul*(ball.owner===p?p.dribMul:1)*(p.star>0?1.35:1)*slow;
     if(l>.3){const k=Math.min(1,l/1.5);dvx=dx/l*sp*k;dvz=dz/l*sp*k;}
   }
+  // v232: pidió remate pero todavía no alcanza a leerlo (el centro va lejos): corre solo hacia donde va a bajar el balón, como en Strikers
+  if(!p.remK&&isCtrl(p)&&(p.volleyQ>0||remQ[p.team]>0)&&!ball.owner&&!ball.gk&&ball.lastTeam===p.team){const lp=ball.y>1.1||ball.vy>0?SIM.landing(ball,1.2):{x:ball.x+ball.vx*.35,z:ball.z+ball.vz*.35},dx=lp.x-p.x,dz=lp.z-p.z,l=Math.hypot(dx,dz),mx=RUN*p.spdMul*KREM.run*slow;
+    if(l>.3){dvx=dx/l*mx;dvz=dz/l*mx;}}
+  if(p.remK){remTick(p,dt);const K=p.remK;if(K){const left=Math.max(.06,K.dur-K.t),dx=K.sx-p.x,dz=K.sz-p.z,l=Math.hypot(dx,dz),mx=RUN*p.spdMul*KREM.run*(p.star>0?1.35:1)*slow,v=Math.min(mx,l/left*1.2);
+    dvx=l>.04?dx/l*v:0;dvz=l>.04?dz/l*v:0;}}   // v232: corre al punto del remate y llega justo
   p.wantFace=null;
   if(ball.owner===p){
     let I=null,want=RUN;
@@ -587,9 +770,15 @@ function updatePlayer(p,dt){
     const vl=Math.hypot(vx,vz);if(vl>cap){vx*=cap/vl;vz*=cap/vl;}
     dvx=vx;dvz=vz;if(Math.hypot(px-p.x,pz-p.z)<.8)p.wantFace=fd;
   }
+  if(p.turnK){dvx*=1-KTURN.slow;dvz*=1-KTURN.slow;}else if(p.windK){dvx*=1-KPREP.frena;dvz*=1-KPREP.frena;}   // v228c/v230a: frena mientras gira o prepara el golpe
   const acc=Math.min(1,(slow<1?2.5:(isCtrl(p)?(p.burst>0?30:20):(ball.owner===p?15:13)))*dt);   /* v96: más rápido y con más reacción */p.vx+=(dvx-p.vx)*acc;p.vz+=(dvz-p.vz)*acc;
   const sp=Math.hypot(p.vx,p.vz);
-  if(p.wantFace){const target=Math.atan2(p.wantFace.x,p.wantFace.z);let df=target-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,20*dt);}
+  if(p.remK){let df=p.remK.face-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,14*dt);}   // v232: se acomoda para el remate
+  else if(p.turnK||p.windK||p.kickT>0){}   // v230a: girando, preparando o pateando: mira fijo hacia donde manda el balón (antes se volteaba a media patada)
+  else if(p.wantFace){const target=Math.atan2(p.wantFace.x,p.wantFace.z);let df=target-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,20*dt);}
+  else if(ball.passTo===p&&!ball.owner&&!ball.gk&&Math.hypot(ball.x-p.x,ball.z-p.z)<14){   // v230a: le viene un pase: mira al balón, un poco de perfil hacia la portería rival
+    const tb=Math.atan2(ball.x-p.x,ball.z-p.z),tg=Math.atan2(dirOf(p.team),0);let dg=tg-tb;while(dg>Math.PI)dg-=Math.PI*2;while(dg<-Math.PI)dg+=Math.PI*2;
+    const target=tb+clamp(dg,-.5,.5)*.5;let df=target-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,12*dt);}
   else if(sp>.6){const target=Math.atan2(p.vx,p.vz);let df=target-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,(isCtrl(p)?22:15)*dt);}
   else if(ball.owner!==p){const lk=(p.gest&&p.gestAt)?p.gestAt:ball;const target=Math.atan2(lk.x-p.x,lk.z-p.z);let df=target-p.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;p.face+=df*Math.min(1,6*dt);}
   movePlayer(p,dt);tryPick(p);
@@ -811,7 +1000,7 @@ function arcTick(rdt){for(const t of [0,1]){const k=keeperOf(t);if(!k||!k.gkArc)
 function arcActive(){for(const p of players)if((p.aim&&p.aim.arc)||p.gkArc)return true;return false;}
 function arcZone(n,g){const c=Math.abs(n-.5);return c<=g?'g':c<=g+ARC_Y?'y':'r';}
 function arcEnd(u){if(u&&u._arc){u._arc=false;arcFx(u,0);}}
-function simStartAim(t,type,key){const u=ctrlOf(t);u.aim={type,key,power:0,t:0,dir:aimDefault(u,type)};if(type==='shot'){u.charging=true;u.charge=0;}}
+function simStartAim(t,type,key){const u=ctrlOf(t);u.aimFace0=u.face;u.aim={type,key,power:0,t:0,dir:aimDefault(u,type)};if(type==='shot'){u.charging=true;u.charge=0;}}
 function simUpdateAim(t,dt){const u=ctrlOf(t),J=joyFor(t);const a=u&&u.aim;if(!a)return;
   if(ball.owner!==u||u.stun>0){u.aim=null;u.charging=false;arcEnd(u);return;}
   if(a.arc){a.arc.t+=dt/(SIMSLOW||1);u.vx=u.vz=0;if(a.arc.t>=ARC_DUR+ARC_GRACE){simReleaseAim(t,'r');return;}}
@@ -837,7 +1026,8 @@ function simBtnDown(t,k){const J=joyFor(t);
   const u=ctrlOf(t);if(state!=='play'||pause>0||!u)return;
   if(u.stun>0||u.act||u.recover>0)return;
   const atk=attackMode(t),has=ball.owner===u;
-  if(k==='a'){if(atk){if(has){simStartAim(t,'shot','a');}else{u.volleyQ=.45;tryVolley(u);}}else if(u.tcd<=0){u.tChg=1e-4;}}
+  if(k==='a'){if(atk){if(has&&u.queue&&/pass|centro|cross/i.test(u.queue.fn)){remQ[t]=1.2;return;}   // v232: apretó tiro mientras todavía prepara el pase: el que lo recibe remata
+    if(has){simStartAim(t,'shot','a');}else if(!u.remK&&!armRemate(u)){u.volleyQ=1.1;tryVolley(u);}}else if(u.tcd<=0){u.tChg=1e-4;}}
   if(k==='b'){if(atk){if(has)simStartAim(t,'pass','b');}else{switchMate(t);}}
   if(k==='c'){if(atk){if(has)simStartAim(t,'cross','c');}else{if(t===0)pressT=2.5;else pressT1=2.5;popText('¡Presión!',u.x,2.6,u.z,'#ffb3e6');}}
 }

@@ -145,6 +145,8 @@ function applySnap(S){
     if(q[5]>0&&!(p.stun>0))p.stun=q[5];else if(q[5]<=0&&p.stun>.25)p.stun=.05;
     if(q[7]>0&&!(p.flyY>0)){p.flyY=q[7];p.flyVy=0;}
     p.star=q[8];
+    // v230a: el servidor dice cuándo va a golpear (para animar la patada a tiempo, también la del rival)
+    if(q[9]>0){const kd=['pase','centro','tiro','super','primera','volea','tijera','cabezazo','chilena'][q[11]]||'tiro';if(!p.netWind||p.netWind.kind!==kd)p.netWind={t:0,dur:q[9],foot:q[10]?'l':'r',kind:kd,y:q[12]||null,face:null};}else p.netWind=null;   // v232: + remates
   });
   // v67: el portero hace lo mismo que en el servidor (estirada, atajada, puño...) aunque aquí el azar haya salido distinto
   if(S.g)S.g.forEach((g,i)=>{const k=players[i*5];if(!k||!k.gk||!g)return;

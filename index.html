@@ -1449,7 +1449,8 @@ img.ico-img{display:inline-block;object-fit:contain;vertical-align:middle;pointe
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
-<script src="assets/sim/match.js?v=219"></script>
+<script src="assets/sim/match.js?v=232"></script>
+<script src="assets/fx/strikers.js?v=231"></script>
 <script src="assets/arenas/luz.js?v=219"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
@@ -1481,6 +1482,7 @@ let ballGlow=null,ballXray=null,ballLand=null;
 let renderer,scene,camera,sun,fenceMat,ballMesh,ballShadow,ring,arrow,ghostMesh,raycaster,groundPlane,partPool=[],partIdx=0;
 const MATCH_T=120,X2T=45,OT_T=45; // v49: partido más corto
 let players=[],user=null,ball,score=[0,0],energy=[5,5],time=MATCH_T,overtime=false,otTime=OT_T,pause=0,pauseCb=null,state='menu',D=DIFF.normal,diff='normal';
+let GZFX=null;   // v231: efectos estilo Strikers (assets/fx/strikers.js)
 let hitstop=0,shakeAmt=0,superNext=[false,false],shield=[0,0],pressT=0,T=0,aiT=2,x2said=false,fenceFlash=0,camX=0,camZ=0,goalCam=0;
 let usedCards=[[],[]],hands=[[],[]],queues=[[],[]],selCard=-1,cardPtr=null,ghost=null,effects=[],traps=[],zones=[],walls=[];
 const joy={id:null,x:0,y:0};
@@ -1973,6 +1975,8 @@ function arenaOptimize(root,mod){let last=-1,same=0,tries=0;const snap=new Map()
         if(ok&&!udKeys(o)&&!(o.parent&&o.parent!==root&&udKeys(o.parent)))o.userData._gzStatic=1;}
       try{const r=arenaMergeStatic(root);console.log('arena optimizada',r);}catch(e){console.warn('optimizar arena',e);}},1600);};
   setTimeout(tick,1500);}
+// v228a: cualquier falla del público sale en el cuadro rojo (antes varias fallas solo dejaban un aviso en la consola)
+function pubErr(m){try{if(typeof dbgErr==='function')dbgErr('Público: '+m);}catch(_){}}
 async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   if(ARENA_MOD&&ARENA_MOD._n===n){hideOldStadium();return;}
   try{await loadArenaJS(n);}catch(e){console.warn('no se pudo cargar la arena',n,e);return;}
@@ -1983,12 +1987,12 @@ async function mountArena(i){const n=ARENA_MOD_MAP[i];if(!n||!scene)return;
   catch(e){console.warn('error al armar la arena',n,e);scene.remove(root);}
   try{if(window.GZ_LUZ){const ok=ARENA_ROOT===root&&GZ_LUZ.on({scene,renderer,camera,root,n,mod:ARENA_MOD,quality:(window.save&&save.settings&&save.settings.quality)||(typeof save!=='undefined'&&save.settings&&save.settings.quality)||'media'});if(!ok)GZ_LUZ.off();}}catch(e){console.warn('luz',e);}   // v216: luz nueva en todas las arenas
   // v219: público nuevo estilo Strikers (vikinguitos, gnomos, goblins, hongos y esqueletos de la Tundra en adelante; gente.js)
-  HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;try{HONGOS=window.GZ_GENTE({scene,root,renderer,camera,arena:n,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});}catch(e){console.warn('público',e);}};
+  HONGOS=null;try{const mod=ARENA_MOD;if(mod&&mod.seats&&window.GZ_HONGOS_ON!==false){const mk=()=>{if(ARENA_ROOT!==root)return;if(!window.GZ_GENTE){pubErr('no cargó gente.js');return;}try{const H=HONGOS=window.GZ_GENTE({scene,root,renderer,camera,arena:n,seats:mod.seats,kits:[TEAMKIT[0],TEAMKIT[1]],level:i});for(const dl of [8000,25000])setTimeout(()=>{if(ARENA_ROOT!==root||H.ready)return;if(H.error)pubErr(H.error);else if(dl>8000)pubErr('no terminó de cargar (arena '+n+')');},dl);}catch(e){console.warn('público',e);pubErr(e&&e.message||e);}};
     // las gradas se arman cuando terminan de cargar sus modelos (unos segundos después): se espera a que la lista de lugares deje de crecer
     const lib=new Promise(r=>{if(window.GZ_GENTE)r();else{const sc=document.createElement('script');sc.src='assets/arenas/gente.js?v=220b';sc.onload=r;sc.onerror=r;document.head.appendChild(sc);}});
     // v219c: si la arena ya trae sus lugares guardados, el público entra en cuanto hay gradas (sin esperar ni calcular nada)
     let last=-1,tries=0,fast=null;lib.then(()=>window.GZ_GENTE&&GZ_GENTE.hasSpots?GZ_GENTE.hasSpots(n):false).then(v=>{fast=!!v;});
-    const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(fast!==null&&k>0&&(fast||k===last)){mk();return;}last=k;if(++tries<100)setTimeout(wait,fast?150:400);else if(k>0)lib.then(mk);};wait();}}catch(e){console.warn('público',e);}
+    const wait=()=>{if(ARENA_ROOT!==root)return;const k=mod.seats.length;if(fast!==null&&k>0&&(fast||k===last)){mk();return;}last=k;if(++tries<100)setTimeout(wait,fast?150:400);else if(k>0)lib.then(mk);else pubErr('las gradas no se armaron (arena '+n+')');};wait();}else if(mod&&!mod.seats)pubErr('la arena '+n+' no tiene gradas');}catch(e){console.warn('público',e);pubErr(e&&e.message||e);}
   // v212c: el piso de afuera (enorme y plano) se baja un poco para que nunca se pelee con el pasto
   for(const dl of [600,3000,8000])setTimeout(()=>{if(ARENA_ROOT===root)try{fixFloors();}catch(e){}},dl);}
 function applyArena(i){
@@ -2489,15 +2493,34 @@ function MT(m,n){const G=LIBOF(m);return (G&&G[n]&&GMETA[m.peq][n])||ANIMMETA[n]
 const NEWANIM=true;
 async function loadBaseClips(){if(BASECLIPS||typeof THREE==='undefined'||!THREE.GLTFLoader)return;try{const buf=await fetch('assets/base_anims.glb').then(r=>{if(!r.ok)throw new Error('base_anims');return r.arrayBuffer();});
   await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{BASECLIPS={};for(const c of gl.animations)BASECLIPS[c.name]=c;res();},rej));}catch(e){console.warn('animaciones base',e);}}
-const AIRCLIPS=new Set(['hitp_frente','hitp_atras','hitp_der','hitp_izq','fallen','standup','chest','gk_dive_low_l','gk_dive_low_r','gk_dive_high_l','gk_dive_high_r','gk_catch_jump','gk_miss','gk_catch_belly','header','bicycle','gk_dive_l','gk_dive_r','gk_catch_high','fly_back','knocked','getup','getup_slow','gk_block_l','gk_block_r','tackle1','tackle2','tackle3','trip','gk_scoop','electro']);
+const AIRCLIPS=new Set(['r_tijera','r_cabezazo','r_tijera_L','hitp_frente','hitp_atras','hitp_der','hitp_izq','fallen','standup','chest','gk_dive_low_l','gk_dive_low_r','gk_dive_high_l','gk_dive_high_r','gk_catch_jump','gk_miss','gk_catch_belly','header','bicycle','gk_dive_l','gk_dive_r','gk_catch_high','fly_back','knocked','getup','getup_slow','gk_block_l','gk_block_r','tackle1','tackle2','tackle3','trip','gk_scoop','electro']);
 async function loadAnimLib(){
   if(!window.ANIMURL||typeof THREE==='undefined'||!THREE.GLTFLoader)return;
   fetch('assets/floorfix.json?v=207').then(r=>r.ok?r.json():null).then(j=>{FLOORFIX=j;}).catch(()=>{});
   try{const [buf,meta]=await Promise.all([fetch(ANIMURL).then(r=>r.arrayBuffer()),fetch(ANIMMETAURL).then(r=>r.json())]);ANIMMETA=meta;
     await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{ANIMLIB={};for(const c of gl.animations)ANIMLIB[c.name]=c;res();},rej));}catch(e){console.warn('animaciones',e);ANIMLIB=null;}
-  await Promise.all(Object.keys(GRPS).map(async g=>{try{const [buf,meta]=await Promise.all([fetch('assets/anims_'+g+'.glb?v=212').then(r=>r.arrayBuffer()),fetch('assets/anims_'+g+'.json?v=212').then(r=>r.json())]);
+  await Promise.all(Object.keys(GRPS).map(async g=>{try{const [buf,meta]=await Promise.all([fetch('assets/anims_'+g+'.glb?v=212').then(r=>r.arrayBuffer()),fetch('assets/anims_'+g+'.json?v=230a').then(r=>r.json())]);
     await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{const L={};for(const c of gl.animations)L[c.name]=c;GMETA[g]=meta;GLIB[g]=L;res();},rej));}catch(e){console.warn('animaciones '+g,e);}}));
+  try{addMirrors(ANIMLIB,ANIMMETA);for(const g in GLIB)addMirrors(GLIB[g],GMETA[g]);}catch(e){console.warn('zurdas',e);}   // v228b
+  // v231: animaciones nuevas (assets/anims_extra.glb, horneadas con tools/claude/hornear_extra.py): el reposo nuevo reemplaza al quieto en todos
+  try{const [buf,meta]=await Promise.all([fetch('assets/anims_extra.glb?v=232b').then(r=>r.arrayBuffer()),fetch('assets/anims_extra.json?v=232b').then(r=>r.json())]);
+    await new Promise((res,rej)=>new THREE.GLTFLoader().parse(buf,'',gl=>{const X={};for(const c of gl.animations)X[c.name]=c;window.ANIM_EXTRA=X;
+      if(X.reposo){const mi=Object.assign({},meta.reposo,{loop:1});if(ANIMLIB){ANIMLIB.idle=X.reposo;ANIMMETA.idle=mi;}for(const g in GLIB){GLIB[g].idle=X.reposo;GMETA[g].idle=mi;}}
+      for(const n in X){if(!/^r_/.test(n))continue;if(ANIMLIB){ANIMLIB[n]=X[n];ANIMMETA[n]=meta[n];}for(const g in GLIB){GLIB[g][n]=X[n];GMETA[g][n]=meta[n];}}   // v232: remates para todos
+      try{addMirrors(ANIMLIB,ANIMMETA);for(const g in GLIB)addMirrors(GLIB[g],GMETA[g]);}catch(e){}res();},rej));}
+  catch(e){console.warn('animaciones nuevas',e);}
 }
+// v228b: versiones zurdas de tiro, centro, penal y tiro potente, sacadas en espejo de las derechas (todas las originales son con la derecha).
+// Misma fórmula con la que se armaron pass_l, tackle2 y gk_*_r en buildlib.py: se cambia Left↔Right, el giro va (x,-y,-z,w) y la cadera x→-x.
+const KICK_L=['shoot_run','chip','penalty','shoot_power','shoot_quick','r_volea','r_volea_corr','r_tijera'];   // v232: remates en espejo para la zurda
+const REMK={primera:1,volea:1,tijera:1,cabezazo:1,chilena:1};   // v232: tipos de remate (match.js p.remK.kind)
+function mirrorBone(s){return s.replace(/Left/g,'#L#').replace(/Right/g,'Left').replace(/#L#/g,'Right');}
+function mirrorClip(c,name){const tr=c.tracks.map(t=>{const u=t.clone(),dot=u.name.lastIndexOf('.'),prop=u.name.slice(dot);u.name=mirrorBone(u.name.slice(0,dot))+prop;const v=u.values;
+    if(prop==='.quaternion'){for(let i=0;i<v.length;i+=4){v[i+1]=-v[i+1];v[i+2]=-v[i+2];}}else if(prop==='.position'){for(let i=0;i<v.length;i+=3)v[i]=-v[i];}return u;});
+  return new THREE.AnimationClip(name,c.duration,tr);}
+function mirrorMeta(o){if(!o)return o;const r=JSON.parse(JSON.stringify(o));if(r.root)r.root[0]=-r.root[0];if(r.rootTrack)r.rootTrack.forEach(q=>{q[0]=-q[0];});if(r.push!=null)r.push=-r.push;if(r.hit)r.hit[0]=-r.hit[0];if(r.foot)r.foot=r.foot==='l'?'r':'l';return r;}   // v230a: empuje y empeine en espejo
+function addMirrors(lib,meta){if(!lib)return;for(const n of KICK_L)if(lib[n]&&!lib[n+'_L']){lib[n+'_L']=mirrorClip(lib[n],n+'_L');if(meta&&meta[n])meta[n+'_L']=mirrorMeta(meta[n]);}}
+const PASS_R_SIDE={peq:'l',med:'l',gra:'l',atl:'l'};   // v230a: medido con el golpe real: en todas pass_r (pie derecho, por dentro) manda el balón a su izquierda (lo de la v228b estaba medido con el golpe mal marcado)
 function act(m,n){const GL=LIBOF(m);if(GL&&GL[n]){m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(GL[n]);if(!(GMETA[m.peq][n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}   // v209
   if(ANIMLIB&&!ANIMLIB[n]&&m.A&&m.A[n]){m.L=m.L||{};if(!m.L[n])m.L[n]=m.A[n];return m.L[n];}if(!ANIMLIB||!ANIMLIB[n])return null;m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(ANIMLIB[n]);if(!(ANIMMETA[n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}
 function goA(m,n,o){o=o||{};const a=act(m,n);if(!a)return false;if(m.curA===n&&!o.restart)return true;
@@ -3275,7 +3298,7 @@ function libEvents(p,m){
   if(REACT_PROC&&!p.gk&&(m._r||p.flyY>.05||p.flyVy>0||(p.stun>.95&&!(p.slip>0)&&!(p.spinT>0)))){p._flyE=0;p._stE=0;p._stMax=0;if(m.curA!=='idle'&&act(m,'idle'))goA(m,'idle',{fade:.15});m.lockUntil=T+.1;return;}   // v179: la reacción la dibuja reactPose
   if((p.flyVy>0||p.flyY>.05)&&!p._flyE){p._flyE=1;ev('fly_back',{from:.25,ts:1.25,lock:1.1,fade:.08});return;}
   if(p._flyE&&!(p.flyY>.02)&&!(p.flyVy>0)){p._flyE=0;ev('getup',{from:.25,ts:2.3,lock:.85,fade:.12});return;}
-  if(p._arc&&act(m,'penalty')){if(m.curA!=='penalty'||!p._arcE){p._arcE=1;ev('penalty',{from:.74,ts:.02,lock:.3,fade:.1});}else m.lockUntil=T+.2;return;}   // v165: pierna atrás lista en el arco del súper
+  if(p._arc&&act(m,'penalty')){const an=KFOOT[p.card&&p.card.id]==='l'&&act(m,'penalty_L')?'penalty_L':'penalty';if(m.curA!==an||!p._arcE){p._arcE=1;ev(an,{from:.74,ts:.02,lock:.3,fade:.1});}else m.lockUntil=T+.2;return;}   // v228b: los zurdos cargan con la izquierda   // v165: pierna atrás lista en el arco del súper
   if(!p._arc)p._arcE=0;
   if(p.elecT>0){if(m.curA!=='electro')goA(m,'electro',{fade:.08,lock:.2});else m.lockUntil=T+.1;return;}
   if(p.slip>0&&!p._slipE){p._slipE=1;p._slipT=T;const n=Math.random()<.5?'trip':'stumble';p._fallF=n==='trip';ev(n,{ts:1.3,lock:1.0,fade:.08});return;}
@@ -3324,14 +3347,42 @@ function libEvents(p,m){
     if(p.act!=='slide')p._slE=0;
     if(!ball.owner&&!ball.gk&&Math.hypot(ball.x-p.x,ball.z-p.z)<3)p._rcvY=ball.y;
     if(p.kickT>0&&!p._kE&&KICK_PROC&&m.bones&&ball.y<=1.4){p._kE=1;m._kReq=p.kickPow||1;}   // v182: patada hecha a mano (cabezazos y chilenas siguen con su animación)
+    // v230a: patada sincronizada. Empieza cuando la lógica empieza a preparar el golpe (p.windK, o p.netWind en línea) y su golpe real (meta.hitT,
+    // medido con tools/claude/medir_golpes.py) cae exactamente cuando sale el balón. Antes empezaba al salir el balón y con el golpe mal marcado.
+    {const WK=p.windK||p.remK||p.netWind;
+     // v232: remate de primera / en el aire. La lógica ya leyó la jugada (p.remK: tipo, pie, altura y cuánto falta); la animación arranca ya
+     // para que su golpe medido (hitT) caiga justo cuando llega el balón; el brinco sube lo necesario para que el pie o la cabeza lleguen al balón.
+     if(WK&&REMK[WK.kind]&&(p._wK!==WK||p._wKk!==WK.kind)){p._wK=WK;p._wKk=WK.kind;p._wKT=T;const rem=Math.max(.05,WK.dur-WK.t),Lf=WK.foot==='l',run=Math.hypot(p.vx,p.vz)>3.2;
+      let n=WK.kind==='primera'?'shoot_run':WK.kind==='volea'?(run&&act(m,'r_volea_corr')?'r_volea_corr':'r_volea'):WK.kind==='tijera'?'r_tijera':WK.kind==='cabezazo'?'r_cabezazo':'bicycle';
+      if(!act(m,n))n=WK.kind==='cabezazo'?'header':WK.kind==='chilena'?'header':'shoot_run';
+      if(Lf&&act(m,n+'_L'))n+='_L';
+      const mt=M(n),hT=mt.hitT!=null?mt.hitT:(mt.key||.5);let ts=clamp(hT/rem,.75,1.7);const from=Math.max(0,hT-rem*ts);if(from===0)ts=hT/rem;
+      ev(n,{from,ts,lock:rem+Math.min(.7,((mt.dur||hT+.5)-hT)/ts*.7),fade:.1});
+      const part=(WK.kind==='cabezazo'||n==='header')?'header':'foot',Hm=((MODELS[p.card&&p.card.id]||{}).height||2.4);
+      if(WK.kind!=='primera')m._jmp={n:part==='header'?'header':n.replace(/_L$/,''),T0:T+Math.max(0,rem-.42),tk:T+rem,y:WK.y!=null?WK.y:ball.y,hi:WK.kind==='cabezazo'||WK.kind==='chilena',nogrip:1,
+        nat0:mt.hit&&part==='foot'?mt.hit[1]*.46*Hm:null};
+      else m._jmp=null;
+      m._rem={tk:T+rem,part};return;}
+     if(WK&&!REMK[WK.kind]&&p._wK!==WK){p._wK=WK;p._wKT=T;const rem=Math.max(.04,WK.dur-WK.t),L=WK.foot==='l';
+      let n=WK.kind==='pase'?(L?'pass_l':'pass_r'):WK.kind==='centro'?'chip':WK.kind==='super'?(act(m,'penalty')?'penalty':'shoot_power'):'shoot_run';
+      if(L&&KICK_L.includes(n)&&act(m,n+'_L'))n+='_L';
+      if(!act(m,n))n=act(m,'shoot_run')?'shoot_run':null;
+      if(n){const mt=M(n),hT=mt.hitT!=null?mt.hitT:(mt.key||.5);let ts=clamp(hT/rem,.85,1.9);const from=Math.max(0,hT-rem*ts);if(from===0)ts=hT/rem;
+        ev(n,{from,ts,lock:rem+Math.min(.45,((mt.dur||hT+.5)-hT)/ts*.6),fade:.06});
+        m._kick={n,T0:T,rem,push:(mt.push||0)*Math.PI/180,hit:mt.hit||[0,0,.3],face:WK.face!=null?WK.face:p.face};}
+      return;}}
+    if(p.kickT>0&&!p._kE&&p._wKT&&T-p._wKT<2.1){p._kE=1;}   // v230a: esta patada ya se animó desde la preparación
     if(p.kickT>0&&!p._kE){p._kE=1;const high=ball.y>1.4,pw=p.kickPow||1;let n,ts=1.5,lock=.45;
+      // v228b: el pie se escoge con la dirección que traía ANTES de patear (match.js la guarda en kickFace0): balón a su izquierda → zurda, a su derecha → derecha, al frente → su pierna buena
+      const f0=p.kickFace0!=null?p.kickFace0:p.face,bv=Math.hypot(ball.vx,ball.vz)||1,latR=(-Math.cos(f0)*ball.vx+Math.sin(f0)*ball.vz)/bv,pref=KFOOT[p.card&&p.card.id]||'r',foot=pw>1.1?pref:latR<-.34?'l':latR>.34?'r':pref;   // súper tiro: siempre su pierna buena (ya la cargó atrás)
       const hk=((MODELS[p.card&&p.card.id]||{}).height||2.45)/2.45;if(high)n=(ball.y>2.15*hk||(pw>=1&&ball.y>1.8*hk&&Math.random()<.35))?'bicycle':'header';   // v219: según el tamaño   // v212: muy alto = chilena
       else if(pw>1.1&&act(m,'penalty')){n='penalty';ts=1.6;}
-      else if(pw<.6&&act(m,'pass_r')){const lat=-Math.cos(p.face)*ball.vx+Math.sin(p.face)*ball.vz;n=lat>0?'pass_l':'pass_r';ts=1.45;lock=.3;}
+      else if(pw<.6&&act(m,'pass_r')){const side=Math.abs(latR)>.25?(latR>0?'r':'l'):null,rs=PASS_R_SIDE[m.peq]||'l';n=side?(side===rs?'pass_r':'pass_l'):(foot==='l'?'pass_l':'pass_r');ts=1.45;lock=.3;}   // v228b: la animación empuja el balón hacia donde va
       else if(pw<1&&act(m,'flick')&&players.some(o=>o.team!==p.team&&!o.gk&&Math.hypot(o.x-p.x,o.z-p.z)<3.2&&((o.x-p.x)*Math.sin(p.face)+(o.z-p.z)*Math.cos(p.face))>1))n='flick';   // v71: la levanta si tiene un rival enfrente
       else if(pw>1.02&&m.peq&&act(m,'shoot_power')){n='shoot_power';ts=1.3;}   // v209: tiro potente (cargado sin llegar al súper)
       else n=pw>=1?'shoot_run':pw>.6?'chip':'shoot_run';
-      const k=M(n).key||.5,air=n==='header'||n==='bicycle',W=air?0:n==='penalty'?.1:(n==='pass_r'||n==='pass_l'||n==='flick')?.09:.13;   // v219: la pierna se arma antes y el balón espera hasta que el pie lo toca
+      if(foot==='l'&&KICK_L.includes(n)&&act(m,n+'_L'))n+='_L';   // v228b: zurda
+      const k=M(n).key||.5,air=n==='header'||n==='bicycle',W=air?0:n.replace(/_L$/,'')==='penalty'?.1:(n==='pass_r'||n==='pass_l'||n==='flick')?.09:.13;   // v219: la pierna se arma antes y el balón espera hasta que el pie lo toca
       ev(n,{from:Math.max(0,k-(air?.1:W+.02)*ts),ts,lock:n==='bicycle'?1.1:lock+W,fade:.04});
       if(W>0&&ball.y<=.45){const ux=ball.vx,uz=ball.vz,ul=Math.hypot(ux,uz)||1;m._kh={T0:T,dur:W,x:ball.x-ux/ul*.05,y:Math.max(BR,ball.y),z:ball.z-uz/ul*.05};}
       if(high)m._jmp={n,T0:T,tk:T+.1,y:ball.y};else if(ball.y>.45)m._jmp={n:'volley',T0:T,tk:T+.035,y:ball.y,nojump:1};return;}   // v212: el brinco se ajusta a la altura del balón   // v71: la pierna llega cuando sale el balón
@@ -3652,7 +3703,14 @@ function buildAimArrow(){
   const s=new THREE.Shape();s.moveTo(-.16,0);s.lineTo(.16,0);s.lineTo(.16,.74);s.lineTo(.42,.74);s.lineTo(0,1);s.lineTo(-.42,.74);s.lineTo(-.16,.74);s.closePath();
   const mesh=M(new THREE.ShapeGeometry(s),new THREE.MeshBasicMaterial({color:0x3ccf5a,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide}));
   mesh.rotation.x=Math.PI/2;const gp=new THREE.Group();gp.add(mesh);gp.visible=false;gp.userData.mesh=mesh;scene.add(gp);aimArrow=gp;
+  // v229c: aro en el piso sobre el compañero que va a recibir el pase o centro cargado (verde = llega limpio, amarillo = mal control o corto, rojo = se pasa o se queda muy corto)
+  aimRing=M(new THREE.RingGeometry(.62,.82,32),new THREE.MeshBasicMaterial({color:0x3ccf5a,transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide}));aimRing.rotation.x=-Math.PI/2;aimRing.visible=false;aimRing.renderOrder=2;scene.add(aimRing);
 }
+let aimRing=null;const RING_COL={limpio:0x3ccf5a,fuerte:0xffd23a,debil:0xffd23a,nada:0xff4f4f,corto:0xff4f4f};
+function drawAimRing(a){if(!aimRing)return;let m=null,res='limpio';
+  if(a&&!a.arc&&state==='play'&&(a.type==='pass'||a.type==='cross')&&a.t>=.13){const cr=a.type==='cross',want=cr?crossDist(a.power):passDist(a.power);
+    m=pickMate(user,a.dir,a.power,null,want);if(m)res=passOutcome(d2(user,m),want);}
+  aimRing.visible=!!m;if(!m)return;aimRing.position.set(m.x,.06,m.z);aimRing.material.color.setHex(RING_COL[res]||0x3ccf5a);aimRing.scale.setScalar(1+.08*Math.sin(T*10));}
 const zoneCol=pw=>pw<.6?0x3ccf5a:pw<.85?0xffcc33:0xff4d5e;
 /* v63: movido a assets/sim/match.js */
 function startAim(type,key){simStartAim(0,type,key);} // v65: lógica en assets/sim/match.js
@@ -3665,11 +3723,12 @@ function drawAim(dt){
   const a=user&&user.aim;
   if(!aimArrow)return;
   arcDraw(dt||.016);
+  drawAimRing(a);
   if(!a||state!=='play'){aimArrow.visible=false;if(meterEl)meterEl.style.display='none';return;}
   if(a.arc){aimArrow.visible=false;if(meterEl)meterEl.style.display='none';return;}
   const pw=a.power,col=zoneCol(pw),mesh=aimArrow.userData.mesh;
   let len=a.type==='shot'?2.6+pw*6:3+pw*10;
-  if(a.type==='pass'){const m=coneMate(user,a.dir,.6);if(m)len=Math.max(2,d2(user,m)-.8);}
+  if(a.type==='pass'){const m=pickMate(user,a.dir,a.t<.13?null:a.power);if(m)len=Math.max(2,d2(user,m)-.8);}   // v229b: la flecha llega al mismo compañero que va a recibir
   aimArrow.visible=true;aimArrow.position.set(user.x+a.dir.x*.6,.07,user.z+a.dir.z*.6);aimArrow.rotation.y=Math.atan2(a.dir.x,a.dir.z);
   mesh.scale.set(1+pw*.4,len,1);mesh.material.color.setHex(col);mesh.material.opacity=.38+.25*Math.abs(Math.sin(T*8));
   if(meterEl){const v=new THREE.Vector3(user.x,2.2,user.z).project(camera),r=cvs.getBoundingClientRect();
@@ -3848,9 +3907,12 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
   // v212: imán de remates. Mientras la cabeza (o el pie) llega al balón, el balón se ve pegado a ella; justo antes, se va jalando hacia ella.
   let pull=null,pw=0;
   if(!grip&&!ball.owner&&!ball.gk){for(const p of players){if(p.gk)continue;const m=p.mesh;if(!m||!m.glb||!m.bones)continue;const J=m._jmp;
-      if(J&&T<=J.tk+.02&&T-J.T0<.4){m.root.updateMatrixWorld(true);if(contactPos(m,J.n==='volley'?'foot':J.n,I.W)){p._hold=p._hold||new THREE.Vector3();p._hold.copy(I.W);grip=p._hold;break;}}
+      const R=m._rem;if(R){if(T>R.tk+.06||p.stun>0)m._rem=null;else{const w=clamp(1-(R.tk-T)/.15,0,1);if(w>pw){m.root.updateMatrixWorld(true);if(contactPos(m,R.part,I.W)){pw=w;pull=pull||new THREE.Vector3();pull.copy(I.W);}}}}   // v232: imán del remate: en el último instante el balón va al pie o a la cabeza
+      if(J&&!J.nogrip&&T<=J.tk+.02&&T-J.T0<.4){m.root.updateMatrixWorld(true);if(contactPos(m,J.n==='volley'?'foot':J.n,I.W)){p._hold=p._hold||new THREE.Vector3();p._hold.copy(I.W);grip=p._hold;break;}}
       if(ball.cross&&ball.y>.45){const d=Math.hypot(ball.x-p.x,ball.z-p.z);if(d<1.6&&(ball.vx*(p.x-ball.x)+ball.vz*(p.z-ball.z))>0){const w=.5*clamp((1.6-d)/1.1,0,1);
         if(w>pw){m.root.updateMatrixWorld(true);if(contactPos(m,ball.y>1.4?'header':'foot',I.W)){pw=w;pull=pull||new THREE.Vector3();pull.copy(I.W);}}}}}}
+  // v230a: preparación del golpe: el balón se ve frente al empeine del pie que va a patear (cuando el pie llega, sale el de verdad desde ahí)
+  if(!grip){for(const p of players){const m=p.mesh;if(!m||!m._kick)continue;p._kbp=p._kbp||new THREE.Vector3();if(kickBallPos(p,m,p._kbp)){grip=p._kbp;break;}}}
   // v219: patada sincronizada: el balón se ve quieto donde estaba hasta que llega el pie; luego alcanza al de verdad muy rápido
   if(!grip){for(const p of players){const m=p.mesh;if(!m||!m._kh)continue;const K=m._kh;if(T-K.T0>K.dur||p.stun>0){m._kh=null;continue;}
     p._khold=p._khold||new THREE.Vector3();p._khold.set(K.x,K.y,K.z);grip=p._khold;break;}}
@@ -3858,6 +3920,8 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
   if(!grip&&ball.owner&&!ball.owner.gk){const p=ball.owner,m=p.mesh;if(m&&m.bones&&m.bones.feet&&m.bones.feet.length){m.root.updateMatrixWorld(true);
     const fx=Math.sin(p.face),fz=Math.cos(p.face);let bf=null,bd=-1e9;for(const f of m.bones.feet){f.getWorldPosition(I.a);const d=(I.a.x-p.x)*fx+(I.a.z-p.z)*fz;if(d>bd){bd=d;bf=bf||new THREE.Vector3();bf.copy(I.a);}}
     if(bf){const sp=Math.hypot(p.vx,p.vz);pull=pull||new THREE.Vector3();pull.set(bf.x+fx*(BR+.08),BR,bf.z+fz*(BR+.08));pw=Math.max(pw,.6*clamp(sp/2.5,.35,1));}}}
+  // v231: imán de recepción: el último tramo antes de recibir, el balón se ve llegando al pie del receptor
+  if(!grip&&GZFX&&ball.passTo){const p=ball.passTo;I.mg=I.mg||new THREE.Vector3();const g=GZFX.magnet(p,I.mg,ball);if(g&&g.w>pw){pull=pull||new THREE.Vector3();pull.copy(g);pw=g.w;}}
   // posición que se dibuja: el agarre si lo tiene un portero; al cambiar de estado, transición corta sin saltos
   const key=grip?'g':'f';I.disp.copy(grip||I.disp.set(ball.x,ball.y,ball.z));if(!grip&&pull)I.disp.lerp(pull,pw);
   if(I.has&&key!==I.key)I.off.subVectors(I.last,I.disp);I.key=key;
@@ -4455,7 +4519,8 @@ function hitSide(p){const dx=p.kdx,dz=p.kdz;if(!(Math.abs(dx)+Math.abs(dz)>1e-3)
 function jumpFx(p,m){const J=m._jmp;let jy=0;
   if(J){const u=T-J.T0,dk=Math.max(.02,J.tk-J.T0),Hm=((MODELS[p.card&&p.card.id]||{}).height||2.4);
     if(u>dk+.55||p.stun>0){m._jmp=null;}
-    else if(!J.nojump){const key=(p.card&&p.card.id)+':'+J.n,nat=JNAT[key]||(J.n==='header'?.93:.8)*Hm,off=clamp(J.y-nat,-.25*Hm,.55*Hm);
+    else if(u<0){}   // v232: el remate todavía no llega al brinco
+    else if(!J.nojump){const key=(p.card&&p.card.id)+':'+J.n,nat=JNAT[key]||J.nat0||(J.n==='header'?.93:.8)*Hm,off=clamp(J.y-nat,-.25*Hm,(J.hi?1.05:.55)*Hm);   // v232: cabezazo y chilena brincan alto (tipo Strikers)
       const w=u<dk?ease(u/dk):u<dk+.1?1:Math.max(0,1-(u-dk-.1)/.45);jy=off*w;
       if(u>=dk&&!J.meas){J.meas=1;m.root.updateMatrixWorld(true);if(contactPos(m,J.n,_jv)){const v=_jv.y-(p.flyY||0);if(v>.2)JNAT[key]=JNAT[key]?JNAT[key]*.7+v*.3:v;}}}}
   if(jy)m.root.position.y=Math.max(0,m.root.position.y+jy);}   // la posición del jugador se vuelve a poner cada cuadro, así que solo se suma
@@ -4635,6 +4700,13 @@ function turnFx(p,m,dt,sp){if(dt<=0)return;const P=(p.card&&TOONRUN[p.card.id])|
   const pitchT=free?(p._brk>0?-.22*W:clamp(acc*.012,-.1,.12)*W):0;
   m._bank=(m._bank||0)+(bankT-(m._bank||0))*Math.min(1,dt*Rt);m._pitch=(m._pitch||0)+(pitchT-(m._pitch||0))*Math.min(1,dt*Rt*1.2);
   m.tilt.rotation.z=m._bank;m.tilt.rotation.x+=m._pitch;}
+// v230a: durante la patada el cuerpo se gira lo que empuja el pie hacia un lado (push), para que el pie mande el balón justo hacia donde sale
+function kickYaw(m){const K=m._kick;if(!K)return 0;const u=T-K.T0,E=K.rem+.45;if(u>E){m._kick=null;return 0;}const sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+  return K.push*sm(u/Math.max(.05,K.rem*.6))*(1-sm((u-K.rem-.15)/.3));}
+// v230a: dónde se ve el balón mientras se prepara el golpe: justo enfrente del empeine que lo va a golpear (medido en la animación)
+function kickBallPos(p,m,o){const K=m._kick;if(!K||T-K.T0>K.rem)return null;const B=m.bones,hw=(B&&B.hipsWorldH)||1.1,yaw=p.face-K.push,c=Math.cos(yaw),s0=Math.sin(yaw);
+  const hx=K.hit[0]*hw,hz=K.hit[2]*hw;   // en el personaje: x = su izquierda, z = adelante
+  const px=p.x+hz*s0+hx*c,pz=p.z+hz*c-hx*s0,dir=p.face;o.set(px+Math.sin(dir)*BVIS*.95,BVIS,pz+Math.cos(dir)*BVIS*.95);return o;}
 function syncPlayer(p,dt){
   const m=p.mesh,sp=Math.hypot(p.vx,p.vz);
   if(!p._csh&&scene){p._csh=new THREE.Mesh(new THREE.PlaneGeometry(1.9,1.9),new THREE.MeshBasicMaterial({map:cshTex(),transparent:true,opacity:.5,depthWrite:false}));p._csh.rotation.x=-Math.PI/2;p._csh.renderOrder=1;scene.add(p._csh);}
@@ -4655,7 +4727,7 @@ function syncPlayer(p,dt){
     p._turnCD=T+2.2;p._hd1=p.face;goA(m,'turn180',{restart:true,from:.1,ts:1.8,lock:.22,fade:.06});p._vface=want;}
    else if(p.gk&&ANIMLIB&&m.glb&&!(p.dive>0)&&!(p.smother>0))p._vface+=df*Math.min(1,dt*9);   // v77: el portero gira suave (antes daba la vuelta de golpe al agarrar)
    else if(p.kickT>0||p.gk||!(ANIMLIB&&m.glb))p._vface=want;else p._vface+=df*Math.min(1,dt*(look?8:16));p._look=look;}
-  if(p.slip>0)m.root.rotation.y+=dt*22;else m.root.rotation.y=p._vface;
+  if(p.slip>0)m.root.rotation.y+=dt*22;else m.root.rotation.y=p._vface-kickYaw(m);
   if(TURN_PROC&&!p.gk&&ANIMLIB&&m.glb)turnFx(p,m,dt,sp);
   const sw=Math.sin(p.anim)*Math.min(.95,sp*.13);
   m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
@@ -4702,6 +4774,10 @@ function syncPlayer(p,dt){
 }
 function render(dt){
   for(const p of players)syncPlayer(p,dt);
+  // v231: efectos estilo Strikers (aros de destino y posesión, flechas de barrida, estelas de jugador, destello, cabeza al balón, rebote y aplastado)
+  if(!GZFX&&scene&&window.GZ_STRIKERS){try{GZFX=GZ_STRIKERS({scene,ballR:BVIS,ballTrail:false,getRoot:p=>p.mesh&&p.mesh.glb?p.mesh.root:null,
+    getHead:p=>p.mesh&&p.mesh.bones&&p.mesh.bones.hd?p.mesh.bones.hd.b:null,getNeck:p=>{const h=p.mesh&&p.mesh.bones&&p.mesh.bones.hd&&p.mesh.bones.hd.b;return h&&h.parent&&/neck/i.test(h.parent.name)?h.parent:null;}});}catch(e){console.warn('fx',e);GZFX=false;}}
+  if(GZFX){try{GZFX.setColors([TEAMKIT[0].j,TEAMKIT[1].j]);GZFX.update(dt,{T,players,ball,user,state});}catch(e){console.warn('fx',e);}}
   gkHands(dt);gkJuice(dt);const BD=_IK&&_IK.has?_IK.disp:ball;
   if(ball&&ballGlow){const sp=Math.hypot(ball.vx,ball.vz),held=!!(ball.owner||ball.gk);ballGlow.position.set(BD.x,BD.y,BD.z);{const dx=camera.position.x-BD.x,dy=camera.position.y-BD.y,dz=camera.position.z-BD.z,dl=Math.hypot(dx,dy,dz)||1;ballGlow.position.x+=dx/dl*BR*1.4;ballGlow.position.y+=dy/dl*BR*1.4;ballGlow.position.z+=dz/dl*BR*1.4;}
     ballGlow.scale.setScalar(BR*(3.9+Math.min(1.2,sp*.04)));ballGlow.material.opacity=held?.32:.45;
@@ -4709,7 +4785,7 @@ function render(dt){
     if(!held&&h>1.1){const t=ballLandT();ballLand.visible=true;ballLand.position.set(ball.x+ball.vx*t,.05,ball.z+ball.vz*t);ballLand.scale.setScalar(1+.12*Math.sin(T*10));ballLand.material.opacity=Math.min(.75,(h-1.1)*.6);}else ballLand.visible=false;}
   if(ball){ballMesh.position.set(BD.x,BD.y-(BR-BVIS),BD.z);ballShadow.position.set(BD.x,.03,BD.z);const h=BD.y-BR;ballShadow.scale.setScalar(1+h*.25);ballShadow.material.opacity=Math.max(.08,.35-h*.06);
     if(ball.super){ballMesh.material.emissive.setRGB(.8,.4,0);}else ballMesh.material.emissive.setRGB(0,0,0);}
-  if(user&&state==='play'){ring.visible=arrow.visible=true;ring.position.set(user.x,.06,user.z);ring.rotation.z=user.face+Math.PI;ring.scale.setScalar(1+.05*Math.sin(T*6));if(ring.userData.ticks){ring.userData.ticks.rotation.z=-T*1.4;ring.userData.ticks.material.color.copy(ring.material.color);}arrow.position.set(user.x,2.75*CHAR_SCALE+Math.sin(T*6)*.12,user.z);ring.material.color.setHex(attackMode()?0xffcc33:0xb388ff);arrow.material.color.copy(ring.material.color);}
+  if(user&&state==='play'){ring.visible=arrow.visible=true;ring.position.set(user.x,.06,user.z);ring.rotation.z=user.face+Math.PI;ring.scale.setScalar(1+.05*Math.sin(T*6));if(ring.userData.ticks){ring.userData.ticks.rotation.z=-T*1.4;ring.userData.ticks.material.color.copy(ring.material.color);}arrow.position.set(user.x,2.75*CHAR_SCALE+Math.sin(T*6)*.12,user.z);ring.material.color.setHex(attackMode()?0xffcc33:0xb388ff);arrow.material.color.copy(ring.material.color);if(user!==arrow.userData.lastU||(ball.owner===user)!==arrow.userData.had){arrow.userData.pop=1;arrow.userData.lastU=user;arrow.userData.had=ball.owner===user;}const pu=arrow.userData.pop||0;arrow.userData.pop=Math.max(0,pu-dt*3.5);arrow.scale.setScalar(1+1.1*pu*pu);}   // v231: crece de golpe al cambiar de jugador o al recibir (como el 1 de Strikers)
   else{ring.visible=arrow.visible=false;}
   for(let k=0;k<ledMats.length;k++)ledMats[k].color.setHSL(((T*.12+k*.07)%1),.85,.55+(fenceFlash>0?.2:0));
   if(fenceMat&&fenceBase){const f=1,fl=fenceFlash>0?.45:0;fenceMat.color.setRGB(Math.min(1,fenceBase.r*f+fl),Math.min(1,fenceBase.g*f+fl),Math.min(1,fenceBase.b*f+fl));}
@@ -4751,7 +4827,7 @@ function render(dt){
   try{ballFx(dt);}catch(e){}
   try{if(window.GZ_LUZ)GZ_LUZ.tick(dt,camX,camZ);}catch(e){}   // v213
   MG.t-=dt;if(MG.t<=0){MG.t=.7;try{matGuard();}catch(e){}}   // v227
-  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else renderer.render(scene,camera);
+  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);pubErr('se trabó al animarse: '+(e&&e.message||e));HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else renderer.render(scene,camera);
 }
 
 
@@ -4967,7 +5043,7 @@ requestAnimationFrame(loop);
 
 </script>
 <script>window.EMBED_MODELS={"zurdito": "assets/models/zurdito.glb?v=207", "cazador": "assets/models/cazador.glb?v=207", "perro": "assets/models/perro.glb?v=207", "sangre": "assets/models/sangre.glb?v=207", "coletazo": "assets/models/coletazo.glb?v=207", "expreso": "assets/models/expreso.glb?v=207", "rey": "assets/models/rey.glb?v=207", "gato": "assets/models/gato.glb?v=207", "toro": "assets/models/toro.glb?v=207", "vikingo": "assets/models/vikingo.glb?v=207", "muralla": "assets/models/muralla.glb?v=207", "ciclon": "assets/models/ciclon.glb?v=207", "malabares": "assets/models/malabares.glb?v=207", "ruleta": "assets/models/ruleta.glb?v=207", "leon": "assets/models/leon.glb?v=207", "turbo": "assets/models/turbo.glb?v=207", "valkiria": "assets/models/valkiria.glb?v=210", "goblin": "assets/models/goblin.glb?v=210", "duende": "assets/models/duende.glb?v=210", "hongo": "assets/models/hongo.glb?v=210", "monje": "assets/models/monje.glb?v=210", "campeon": "assets/models/campeon.glb?v=210", "momia": "assets/models/momia.glb?v=210", "zombi": "assets/models/zombi.glb?v=210", "yeti": "assets/models/yeti.glb?v=210", "princesa": "assets/models/princesa.glb?v=210", "remiendo": "assets/models/remiendo.glb?v=210", "vampira": "assets/models/vampira.glb?v=210", "reina": "assets/models/reina.glb?v=210", "nebula": "assets/models/nebula.glb?v=210"};window.CARDIMG={"zurdito": {"c": "assets/cards/zurdito_c.webp?v=210", "s": "assets/cards/zurdito_s.webp?v=210"}, "cazador": {"c": "assets/cards/cazador_c.webp?v=210", "s": "assets/cards/cazador_s.webp?v=210"}, "perro": {"c": "assets/cards/perro_c.webp?v=210", "s": "assets/cards/perro_s.webp?v=210"}, "sangre": {"c": "assets/cards/sangre_c.webp?v=56", "s": "assets/cards/sangre_s.webp?v=210"}, "coletazo": {"c": "assets/cards/coletazo_c.webp?v=210", "s": "assets/cards/coletazo_s.webp?v=210"}, "expreso": {"c": "assets/cards/expreso_c.webp?v=210", "s": "assets/cards/expreso_s.webp?v=210"}, "rey": {"c": "assets/cards/rey_c.webp?v=210", "s": "assets/cards/rey_s.webp?v=210"}, "gato": {"c": "assets/cards/gato_c.webp?v=210", "s": "assets/cards/gato_s.webp?v=210"}, "toro": {"c": "assets/cards/toro_c.webp?v=210", "s": "assets/cards/toro_s.webp?v=210"}, "vikingo": {"c": "assets/cards/vikingo_c.webp?v=210", "s": "assets/cards/vikingo_s.webp?v=210"}, "muralla": {"c": "assets/cards/muralla_c.webp?v=210", "s": "assets/cards/muralla_s.webp?v=210"}, "ciclon": {"c": "assets/cards/ciclon_c.webp?v=210", "s": "assets/cards/ciclon_s.webp?v=210"}, "malabares": {"c": "assets/cards/malabares_c.webp?v=210", "s": "assets/cards/malabares_s.webp?v=210"}, "ruleta": {"c": "assets/cards/ruleta_c.webp?v=210", "s": "assets/cards/ruleta_s.webp?v=210"}, "leon": {"c": "assets/cards/leon_c.webp?v=210", "s": "assets/cards/leon_s.webp?v=210"}, "turbo": {"c": "assets/cards/turbo_c.webp?v=210", "s": "assets/cards/turbo_s.webp?v=210"}, "remiendo": {"s": "assets/cards/remiendo_s.webp?v=221", "c": "assets/cards/remiendo_c.webp?v=221"}, "yeti": {"c": "assets/cards/yeti_c.webp?v=221", "s": "assets/cards/yeti_s.webp?v=221"}, "hongo": {"c": "assets/cards/hongo_c.webp?v=221", "s": "assets/cards/hongo_s.webp?v=221"}, "valkiria": {"s": "assets/cards/valkiria_s.webp?v=210", "c": "assets/cards/valkiria_c.webp?v=210"}, "momia": {"c": "assets/cards/momia_c.webp?v=221", "s": "assets/cards/momia_s.webp?v=221"}, "duende": {"c": "assets/cards/duende_c.webp?v=221", "s": "assets/cards/duende_s.webp?v=221"}, "zombi": {"c": "assets/cards/zombi_c.webp?v=221", "s": "assets/cards/zombi_s.webp?v=221"}, "goblin": {"c": "assets/cards/goblin_c.webp?v=221", "s": "assets/cards/goblin_s.webp?v=221"}, "vampira": {"s": "assets/cards/vampira_s.webp?v=221", "c": "assets/cards/vampira_c.webp?v=221"}, "monje": {"c": "assets/cards/monje_c.webp?v=221", "s": "assets/cards/monje_s.webp?v=221"}, "nebula": {"s": "assets/cards/nebula_s.webp?v=221", "c": "assets/cards/nebula_c.webp?v=221"}, "reina": {"c": "assets/cards/reina_c.webp?v=221", "s": "assets/cards/reina_s.webp?v=221"}, "campeon": {"s": "assets/cards/campeon_s.webp?v=221", "c": "assets/cards/campeon_c.webp?v=221"}, "princesa": {"s": "assets/cards/princesa_s.webp?v=210", "c": "assets/cards/princesa_c.webp?v=210"}};window.VFXIMG={"hielo": "assets/vfx/hielo.webp", "onda": "assets/vfx/onda.webp", "rayos": "assets/vfx/rayos.webp", "polvo": "assets/vfx/polvo.webp", "explosion": "assets/vfx/explosion.webp", "chispas": "assets/vfx/chispas.webp", "impacto": "assets/vfx/impacto.webp", "humo": "assets/vfx/humo.webp"};window.POWERIMG={"hielo": "assets/powers/hielo.webp", "rayo": "assets/powers/rayo.webp", "cascara": "assets/powers/cascara.webp", "turbo": "assets/powers/turbo.webp", "bomba": "assets/powers/bomba.webp", "tornado": "assets/powers/tornado.webp", "meteorito": "assets/powers/meteorito.webp", "punetazo": "assets/powers/punetazo.webp", "escudo": "assets/powers/escudo.webp", "superbalon": "assets/powers/superbalon.webp","lodo":"assets/powers/lodo.webp","enredadera":"assets/powers/enredadera.webp","rafaga":"assets/powers/rafaga.webp","iman":"assets/powers/iman.webp","bolapicos":"assets/powers/bolapicos.webp"};window.CROWDIMG={"c00": "assets/crowd/c00.webp", "c01": "assets/crowd/c01.webp", "c02": "assets/crowd/c02.webp", "c03": "assets/crowd/c03.webp", "c04": "assets/crowd/c04.webp", "c05": "assets/crowd/c05.webp", "c06": "assets/crowd/c06.webp", "c07": "assets/crowd/c07.webp", "c08": "assets/crowd/c08.webp", "c09": "assets/crowd/c09.webp", "c10": "assets/crowd/c10.webp", "c11": "assets/crowd/c11.webp"};window.CROWDSIDE={"c00": "assets/crowd/s_c00.webp", "c01": "assets/crowd/s_c01.webp", "c02": "assets/crowd/s_c02.webp", "c03": "assets/crowd/s_c03.webp", "c04": "assets/crowd/s_c04.webp", "c05": "assets/crowd/s_c05.webp", "c07": "assets/crowd/s_c07.webp", "c08": "assets/crowd/s_c08.webp", "c09": "assets/crowd/s_c09.webp", "c10": "assets/crowd/s_c10.webp", "c11": "assets/crowd/s_c11.webp"};window.ARENAIMG=[]; /* v43: miniaturas nuevas pendientes */
-window.ANIMURL='assets/anims.glb?v=207';window.ANIMMETAURL='assets/anims.json?v=207';</script>
+window.ANIMURL='assets/anims.glb?v=207';window.ANIMMETAURL='assets/anims.json?v=230a';</script>
 <script>
 // ================== DATOS ==================
 const RARS={comun:{n:'Común',c:'#cfe0ff'},rara:{n:'Rara',c:'#ffb347'},epica:{n:'Épica',c:'#d68bff'},legendaria:{n:'Legendaria',c:'#ffe066'}};
@@ -6172,7 +6248,7 @@ document.addEventListener('pointerdown',()=>{try{audio();const ids=[save.squad.g
 
 </script>
 <script src="assets/online.js?v=129"></script>
-<script src="assets/online-play.js?v=167"></script>
+<script src="assets/online-play.js?v=232"></script>
 <script src="assets/packs.js?v=129"></script>
 </body>
 </html>

@@ -37,6 +37,7 @@ export function cleanDeck(d) {
 
 export const READY_MS = 15000;
 
+const WKIND = ['pase', 'centro', 'tiro', 'super', 'primera', 'volea', 'tijera', 'cabezazo', 'chilena'];   // v232: + remates   // v230a: tipos de golpe (mismo orden en assets/online-play.js)
 export class GameCore {
   // info = { id, players: [ {uid,name,avatar,country,trophies,squad,deck,plvl,kit}, {...} ] }
   constructor(info, send, opts = {}) {
@@ -130,7 +131,9 @@ export class GameCore {
       u: [idx(M.ctrl[team]), idx(M.ctrl[1 - team])],                    // a quién controla cada quien
       b: [r2(b.x * s), r2(b.y), r2(b.z * s), r2(b.vx * s), r2(b.vy), r2(b.vz * s), idx(b.owner), idx(b.gk), b.super ? 1 : 0],
       p: order.map(p => [r2(p.x * s), r2(p.z * s), r2(p.vx * s), r2(p.vz * s), r2(team === 1 ? p.face + Math.PI : p.face),
-        r2(Math.max(0, p.stun)), ACT[p.act] || 0, r2(p.flyY || 0), r2(Math.max(0, p.star || 0))]),
+        r2(Math.max(0, p.stun)), ACT[p.act] || 0, r2(p.flyY || 0), r2(Math.max(0, p.star || 0)),
+        // v230a: preparación del golpe (cuánto falta, pie, tipo) para que el teléfono anime la patada sincronizada
+        ...((K => [K ? r2(Math.max(.01, K.dur - K.t)) : 0, K && K.foot === 'l' ? 1 : 0, K ? Math.max(0, WKIND.indexOf(K.kind)) : 0, K && K.y != null ? r2(K.y) : 0])(p.windK || p.remK))]),   // v232: también el remate (y su altura)
       g: [order[0], order[5]].map(k => gkSnap(k, s)),                // v67: lo que hace cada portero (para dibujar la misma atajada)
     };
   }

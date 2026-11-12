@@ -7,6 +7,8 @@ p.on('response',r=>{if(r.status()>=400)errs.push('HTTP '+r.status()+' '+r.url().
 await p.goto('http://localhost:8790/index.html');await p.waitForTimeout(6000);
 errs.push('--- start spectate');
 try{await p.evaluate(()=>{for(const id of ['boot','splash']){const e=document.getElementById(id);if(e)e.remove();}startSpectate();});}catch(e){errs.push('eval '+e.message)}
-await p.waitForTimeout(6000);
+await p.waitForFunction(()=>typeof state!=='undefined'&&state==='play'&&players.length>0,null,{timeout:20000}).catch(()=>errs.push('el partido no empezó'));
+await p.waitForTimeout(8000);
+errs.push('estado: '+JSON.stringify(await p.evaluate(()=>({state,jugadores:players.length,marcador:score.join('-'),tiempo:Math.round(time)}))));
 await p.screenshot({path:__dirname+'/m_spec.png'});
 console.log(errs.slice(0,40).join('\n'));await b.close();})();

@@ -1,7 +1,29 @@
 # Herramientas de Claude (para retomar en un chat nuevo)
 Se corren desde la raíz del repo; las que usan Python necesitan numpy, pillow y scipy.
+- hshot.js — THREE de mentira (Proxy) que usan las pruebas de Playwright. Se perdió y se rehizo en la v228a.
+- prueba_publico.js — provoca fallas del público y revisa el cuadro rojo: `node prueba_publico.js ok|sin_gente|sin_datos|traba` (con gradas falsas, porque con el THREE de mentira las de verdad no cargan).
+- gente_hornear.py (+ gente_hornear_goblin.py, pubfix.py, pubret.py, rig.py, clips.py) y gente_modelos/ — hornean el público (vienen del chat de la v217; las rutas hay que ajustarlas; la textura del goblin trae un arreglo manual de muñequeras).
+- test_espejo.js — comprueba que el espejo de index.html (mirrorClip) aplicado a pass_r da exactamente pass_l en las 5 librerías, y que se crean las zurdas.
+- test_pie.js — casos de la elección de pie y de pase (usa las mismas líneas de index.html).
+- test_giro.mjs — giro antes de patear en la simulación real: `node server/build-sim.mjs && node tools/claude/test_giro.mjs` (pase a 0°, 60°, -80°, ±120° y 180°).
+- test_balon.mjs — reglas del balón (v229a): rival en la línea del pase se lo queda, compañero lo deja pasar, tiro fuerte rebota, balón suelto rápido se agarra.
+- stats_partido.mjs — 20 partidos IA contra IA con la lógica real: goles, tiros, % de pases que llegan, robos, balón suelto. Antes del v229a: 78 % llegan / 9 % robados / 1.13 s suelto; después: 73 % / 22 % / 0.91 s.
+- test_pase.mjs — a quién va el pase (toque y cargado), despejes y pase al vacío (v229b/c). Incluye el ejemplo del usuario (flecha 35°, A 50° cerca, B 80° lejos → A).
+- prueba_aro.js — aro del pase cargado en el navegador (colores por resultado; no sale con toque).
+- OJO: el partido espera hasta 8 s a los modelos; prueba_partido.js y prueba_aro.js ya esperan a state==='play' (antes la prueba de partido nunca llegaba a jugar).
+- demo/ — página de prueba (artifact) para jugar los cambios de la v228–v229 con teclado: `tools/claude/demo/armar.sh` arma /home/claude/demo_out (lógica real del servidor + Kragor y Simún + animaciones atl/med con zurdas en espejo). demo/prueba_demo.js la prueba con el THREE de mentira (sirviendo demo_out en 8791).
+- medir_golpes.py — mide en cada patada de las librerías el golpe REAL (hitT: pie que patea, abajo, adelante del cuerpo, después de armar la pierna, más rápido hacia adelante), el empuje (push, grados) y dónde está el empeine (hit, en alturas de cadera). `--escribir` lo guarda en assets/anims*.json. El 'key' viejo de las librerías de grupo estaba mal (tiro/centro con la pierna arriba, pase armando).
+- ver_golpe.py — dibuja el esqueleto (palitos) alrededor del golpe con el balón donde se mide: `python3 tools/claude/ver_golpe.py anims_atl pass_r salida.png`.
+- anim_frames.py — dibuja cuadros de un GLB con piel (skinning en numpy): `python3 tools/claude/anim_frames.py modelo.glb salida.png 0 0.5 1.0`.
+- test_golpe.mjs — preparación del golpe (v230a): el balón sale exactamente a los KPREP segundos, la cara no se mueve, zurda al cargar hacia la izquierda, Simún zurdo.
+- choques_nombres.py — revisa que match.js no declare un nombre que index.html también declara (rompe el juego al cargar; en Node no se nota).
+- assets/fx/strikers.js (no es herramienta: es del juego) — módulo de efectos estilo Strikers que usan el juego Y la página de prueba: aro de destino, aro de posesión, flechas de barrida, estelas, destello, cabeza al balón, rebote/aplastado, imán de recepción. Ajustes en GZ_STRIKERS.CFG.
+- hornear_extra.py — hornea animaciones nuevas (Mixamo u otro esqueleto) al del juego y arma assets/anims_extra.glb/.json. Se corre en /home/claude/anwork (copia de tripo/herramientas + nuevo/pj/Simún.glb y nuevo/canon2/zurdito.glb → assets/models/zurdito.glb, nuevo/an/*.glb).
+- pies_al_piso.py — corrige la cadera cuadro por cuadro para que el pie más bajo quede en el piso (el horneado deja pies hundidos ~8 cm).
 - render.py — renderer de GLB en Python puro (numpy + PIL), para ver modelos sin three.js.
 - capturas_menu.js / capturas_tamanos.js / prueba_partido.js — Playwright: abren index.html servido con `python3 -m http.server 8790` desde la raíz del repo, con un THREE de mentira (el sandbox no puede bajar three.js). Sirven para ver menús y atrapar errores de JS, NO para ver el 3D. capturas_tamanos.js: `node capturas_tamanos.js '[["s22",915,412]]' '["battle","shop"]'`.
 - iconos_quitar_fondo.py — quita el fondo blanco de los íconos (flood fill desde la orilla), recorta y deja 256x256 webp. HOLES = íconos con huecos cerrados que deben quedar transparentes; TH = umbral por ícono (tundra 8).
 - cartas_quitar_fondo.py — igual para las cartas (_c 450x598 y _s 625x900).
 - kragor_* — modelo HD de Kragor: kragor_pelo.py pinta pelo dentro de la corona (componentes: 16 pelo, 21 cabeza, 22 corona), kragor_hd_armar.py le pasa esqueleto+animación del modelo con rig (pesos por los 6 vértices más cercanos) y arma 4K y 2K, kragor_pose_check.py hace skinning en numpy para revisar, kragor_vista_previa.html es la página de prueba (los GLB van como .glb.txt base64).
+- test_remate.mjs — (v232) remate de primera / en el aire: pase raso, de lado, de regreso y centros; revisa qué remate lee, cuándo y a qué altura.
+- hornear_extra.py también hornea los remates (r_volea, r_volea_corr, r_tijera, r_cabezazo) y copia r_chilena de anims.glb; pies_al_piso.py acepta --const=clip (saltos: un solo ajuste para no comerse el brinco).
