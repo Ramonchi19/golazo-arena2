@@ -1528,7 +1528,7 @@ function vib(ms){try{if(typeof save!=='undefined'&&save.settings.vib&&navigator.
 
 // ================== AMBIENTE DE ESTADIO (v15) ==================
 // Capas: murmullo (amb), expectativa (rise), tambores (medio, rápido, tenso) + eventos (uuuh, whoa, gol, griterío, silbato, abucheo)
-const CROWD_FILES={amb:4,rise:4,drums_mid:2,drums_fast:1,drums_tense:1,oooh:0,whoa:3,goal:4,scream:1,whistle:1,boo:1,
+const CROWD_FILES={amb:1,rise:0,drums_mid:0,drums_fast:0,drums_tense:0,oooh:0,whoa:0,goal:0,scream:0,whistle:1,boo:0,   // v234: público = una sola cama constante (amb1), sin reacciones ni tambores
   pw_bomba:1,pw_cascara:1,pw_turbo:1,pw_hielo:1,pw_escudo:1,pw_superbalon:1,pw_punetazo:1,pw_tornado:1,pw_lodo:1,pw_muro:1,pw_barril:1,pw_rayo:1,pw_meteoro:2,pw_electro:1,
   pw_enredadera:3,pw_rafaga:2,pw_iman:2,pw_bolapicos:1,pw_bolapicosx:1,pw_congelar:2,   // v99: poderes nuevos
   pw_bomba_mecha:1,pw_bomba_cae:1,pw_meteorito_cae:1,pw_punetazo_sale:1,pw_tornado_lanza:1,pw_iman_jala:1,pw_lodo_pisa:1,pw_turbo_fin:1,pw_escudo_fin:1,pw_superbalon_carga:1,pw_bolapicos_rueda:1,pw_tornado_gira:1,pw_bolapicos_rebota:1,pw_escudo_bloquea:1,pw_hielo_rompe:1,pw_rayo_carga:1,   // v152-153: fases de los poderes
@@ -1544,16 +1544,17 @@ function pwElectro(dur){if(!AC||muted||!CRB.pw_electro||!CRB.pw_electro.length||
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5,t+.04);g.gain.setValueAtTime(.5,t+Math.max(.1,dur-.25));g.gain.linearRampToValueAtTime(0,t+dur);s.connect(g);g.connect(crBus());s.start(t);s.stop(t+dur+.05);s.onended=()=>{pwElec=Math.max(0,pwElec-1);};}
 const CRB={};let crowdLoading=null,crowdMaster=null,crowdL={},crowdOn=false,crowdLast={},cdBeep=11,crowdT0=180;
 function crowdLoad(){if(!AC)return Promise.resolve();if(crowdLoading)return crowdLoading;
-  const jobs=[];for(const k in CROWD_FILES){CRB[k]=[];for(let i=1;i<=CROWD_FILES[k];i++)jobs.push(fetch('assets/sfx/'+k+i+'.ogg').then(r=>{if(!r.ok)throw new Error(k+i);return r.arrayBuffer();})
+  const jobs=[];for(const k in CROWD_FILES){CRB[k]=[];for(let i=1;i<=CROWD_FILES[k];i++)jobs.push(fetch('assets/sfx/'+k+i+'.ogg?v=234').then(r=>{if(!r.ok)throw new Error(k+i);return r.arrayBuffer();})
     .then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(buf=>CRB[k].push(buf)).catch(e=>console.warn('sonido',k,i,e)));}
   crowdLoading=Promise.all(jobs);return crowdLoading;}
 // ================== v123: MÚSICA (lobby y partido) y sonidos de botones ==================
 // Archivos: assets/music/lobby.ogg y assets/music/partido.ogg (en bucle) · assets/sfx/ui_jugar.ogg (botón Jugar).
 // Si un archivo todavía no existe, simplemente no suena. Se apaga con "Música" en Configuración.
-const MUS_OFF=true;   // v168: sin música de fondo (ni lobby, ni partido, ni resultado)
+const MUS_OFF=false;   // v234: música nueva (lobby funk / partido rock arcade)
 const MUS={buf:{},load:{},cur:null,node:null,gain:null,want:null,
-  vol:{lobby:.3,partido:.08},len:{lobby:21.33333,partido:36.8711},mul:1,   // v161: lobby nuevo (8 compases)   // v158: partido muy bajito, por debajo del público   // len: largo exacto del loop (el ogg trae unas muestras de relleno al final)   // v146: lobby bajito, de fondo (el archivo ya viene a -18 LUFS)
-  fetch(n){if(!AC||this.load[n])return this.load[n]||Promise.resolve();this.load[n]=fetch('assets/music/'+n+'.ogg?v=161').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+  vol:{lobby:.24,partido:.065},len:{lobby:28.80580,partido:32.45959},   // v234: archivos nuevos a -16 LUFS; partido por debajo del público
+  mul:1,   // v161: lobby nuevo (8 compases)   // v158: partido muy bajito, por debajo del público   // len: largo exacto del loop (el ogg trae unas muestras de relleno al final)   // v146: lobby bajito, de fondo (el archivo ya viene a -18 LUFS)
+  fetch(n){if(!AC||this.load[n])return this.load[n]||Promise.resolve();this.load[n]=fetch('assets/music/'+n+'.ogg?v=234').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
     .then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(buf=>{this.buf[n]=buf;}).catch(()=>{this.buf[n]=null;});return this.load[n];},
   play(n,mul){if(MUS_OFF){this.want=null;this.stop();return;}this.want=n;this.mul=mul||1;if(this.gain&&AC&&this.cur===n)this.gain.gain.setTargetAtTime((this.vol[n]||.3)*this.mul,AC.currentTime,.6);if(!AC)return;
     if(!n||muted||!save.settings||save.settings.music===false){this.stop();return;}
@@ -1606,10 +1607,7 @@ function crowdUpdate(dt){if(!crowdOn||!AC)return;
   const prog=overtime?1:clamp((crowdT0-time)/crowdT0,0,1),last=!overtime&&time<=X2T,fin=!overtime&&time<=10;
   const atk=ball?clamp((Math.abs(ball.x)-(L-15))/11,0,1):0;
   // primeros minutos muy sutil; sube poco a poco hacia el final
-  crowdSet('amb',.06+.10*prog+(last?.04:0)+(fin?.06:0)+(overtime?.06:0),1.4);
-  crowdSet('rise',atk*(.05+.15*prog)+(fin?.16:0)+(overtime?.08:0),.5);
-  crowdSet('dmid',last&&!fin?.17:0,1.2);crowdSet('dfast',fin?.27:0,.35);crowdSet('dtense',overtime?.24:0,1.0);
-  if(fin&&time<=8.5)crowdShot('scream',.38,60);
+  crowdSet('amb',.17,1.4);   // v234: siempre igual, sin subir ni bajar
   if(fin&&time>0&&!muted){const s=Math.ceil(time);if(s<cdBeep){cdBeep=s;if(s<=5)snd1('cuenta_palma',.5+(5-s)*.12,1+(5-s)*.015);}}   // v162: palmas del público en los últimos 5 s
 }
 
@@ -3557,9 +3555,9 @@ window.VOICEMAN={"leon":{"frozen":[1],"goal":[1,2],"hit":[1,2,3],"lost":[1,2],"s
 const VOX={buf:{},load:{},last:{},until:0,bus:null,prev:null,st:new Map(),lostBy:null,lostT:0,shooter:null,sc:[0,0]};
 // v159: los personajes ya no hablan; solo sonidos (risa al quitar el balón, queja, esfuerzo al tirar, grito del súper tiro).
 // Archivos en assets/voices2/<personaje>_<sonido>.ogg; los porteros pueden tener además _gol (lamento cuando les meten gol).
-const VOICE2={"cazador":["lost","shot","steal","super"],"ciclon":["lost","shot","steal","super"],"coletazo":["lost","shot","steal"],"expreso":["lost","shot","steal","super"],"gato":["shot","steal"],"gigante":["lost","shot","steal","super"],"leon":["lost","shot","steal","super"],"malabares":["lost","shot","steal","super"],"muralla":["lost","shot","steal"],"pausa":["lost","shot","steal","super"],"perro":["lost","shot","steal","super"],"rey":["lost","shot","steal","super"],"ruleta":["lost","shot","steal","super"],"sangre":["lost","steal","super"],"toro":["lost","shot","steal","super"],"turbo":["lost","shot","steal","super"],"vikingo":["lost","shot","steal","super"],"zurdito":["lost","steal","super"]};
+const VOICE2={"leon":["shot","super","jump","steal","lost","hit","fall","slide"],"vikingo":["shot","super","jump","steal","lost","hit","fall","slide"],"goblin":["shot","super","jump","steal","lost","hit","fall","slide"],"duende":["shot","super","jump","steal","lost","hit","fall","slide"],"hongo":["shot","super","jump","steal","lost","hit","fall","slide"],"monje":["shot","super","jump","steal","lost","hit","fall","slide"],"momia":["shot","super","jump","steal","lost","hit","fall","slide"],"campeon":["shot","super","jump","steal","lost","hit","fall","slide"],"turbo":["shot","super","jump","steal","lost","hit","fall","slide"],"zurdito":["shot","super","jump","steal","lost","hit","fall","slide"],"expreso":["shot","super","jump","steal","lost","hit","fall","slide"],"ciclon":["shot","super","jump","steal","lost","hit","fall","slide"],"malabares":["shot","super","jump","steal","lost","hit","fall","slide"],"valkiria":["shot","super","jump","steal","lost","hit","fall","slide"],"vampira":["shot","super","jump","steal","lost","hit","fall","slide"],"reina":["shot","super","jump","steal","lost","hit","fall","slide"],"nebula":["shot","super","jump","steal","lost","hit","fall","slide"],"zombi":["shot","super","jump","steal","lost","hit","fall","slide"],"toro":["shot","super","jump","steal","lost","hit","fall","slide"],"muralla":["shot","super","jump","steal","lost","hit","fall","slide"],"sangre":["shot","super","jump","steal","lost","hit","fall","slide"],"yeti":["shot","super","jump","steal","lost","hit","fall","slide"],"cazador":["shot","super","jump","steal","lost","hit","fall","slide"],"remiendo":["shot","super","jump","steal","lost","hit","fall","slide"],"ruleta":["shot","super","jump","steal","lost","hit","fall","slide"],"rey":["shot","super","jump","steal","lost","hit","fall","slide"],"perro":["shot","super","jump","steal","lost","hit","fall","slide"],"coletazo":["lost","shot","steal"],"gato":["shot","steal"],"gigante":["lost","shot","steal","super"],"pausa":["lost","shot","steal","super"]};   // v234: voces nuevas (8 sonidos por personaje); coletazo/gato/gigante/pausa siguen con las viejas
 function voxLoad(id){if(!AC||VOX.load[id]||!VOICE2[id])return;VOX.load[id]=1;VOX.buf[id]={};
-  for(const a of VOICE2[id])fetch('assets/voices2/'+id+'_'+a+'.ogg?v=159').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+  for(const a of VOICE2[id])fetch('assets/voices2/'+id+'_'+a+'.ogg?v=234').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
     .then(b=>new Promise((res,rej)=>AC.decodeAudioData(b,res,rej))).then(buf=>{VOX.buf[id][a]=[{n:1,buf}];VOX.ok=(VOX.ok||0)+1;}).catch(()=>{VOX.fail=(VOX.fail||0)+1;});}
 function voxReset(){VOX.prev=null;VOX.st=new Map();VOX.lostBy=null;VOX.shooter=null;VOX.sc=[0,0];VOX.until=0;VOX.last={};
   try{audio();for(const p of players)if(p.card)voxLoad(p.card.id);}catch(e){}}
@@ -3570,9 +3568,10 @@ function voxBus(){if(!VOX.bus&&AC){const g=AC.createGain(),hp=AC.createBiquadFil
     dry.gain.value=.82;wet.gain.value=.3;g.connect(hp);hp.connect(lp);lp.connect(dry);lp.connect(cv);cv.connect(wet);dry.connect(AC.destination);wet.connect(AC.destination);VOX.bus=g;}return VOX.bus;}
 // prio: 2 = súper tiro y gol (pueden encimarse), 1 = lo demás (espera a que termine el que está hablando)
 function voxSay(p,a,prio,chance){if(!p||!p.card||!AC||muted||!VOX.buf[p.card.id])return false;if(chance!=null&&Math.random()>chance)return false;
-  if(a==='hit')a='lost';else if(a==='save')a=Math.random()<.5?'shot':'steal';else if(a==='frozen'||a==='goal')return false;   // v159
-  if(p.gk){if(a==='lost'||a==='super')return false;if(a==='gol'&&!VOX.buf[p.card.id].gol)a='lost';}   // v160: el portero solo se queja cuando le meten gol
-  const L=VOX.buf[p.card.id][a];if(!L||!L.length)return false;const now=AC.currentTime;
+  if(a==='save')a=Math.random()<.5?'shot':'steal';else if(a==='frozen')a='hit';else if(a==='goal'||a==='gol')return false;   // v234: sin lamento de gol
+  if(p.gk&&(a==='lost'||a==='super'||a==='slide'))return false;
+  const B=VOX.buf[p.card.id];if(!B[a]&&(a==='hit'||a==='fall'))a='lost';   // personajes con voces viejas
+  const L=B[a];if(!L||!L.length)return false;const now=AC.currentTime;
   if(prio<2&&now<VOX.until)return false;if(prio<2&&(p._voxT||0)>now)return false;
   const key=p.card.id+a;let c=L.filter(x=>x.n!==VOX.last[key]);if(!c.length)c=L;const pick=c[Math.floor(Math.random()*c.length)];VOX.last[key]=pick.n;
   const s=AC.createBufferSource(),g=AC.createGain();s.buffer=pick.buf;{const far=Math.min(1,Math.abs(p.x-(typeof camX==='number'?camX:0))/38);g.gain.value=(p.team===0?.5:.42)*(prio>1?1.15:1)*(1-far*.4);}      // v159: se oyen dentro de la cancha, no encima del público
@@ -3580,7 +3579,7 @@ function voxSay(p,a,prio,chance){if(!p||!p.card||!AC||muted||!VOX.buf[p.card.id]
   VOX.until=now+pick.buf.duration*.6;p._voxT=now+pick.buf.duration+2.2;return true;}
 function voxTick(){if(!AC||!players.length)return;
   const own=ball.owner||null;
-  if(VOX.prev===null){VOX.prev=own;VOX.sc=score.slice();for(const p of players)VOX.st.set(p,{stun:p.stun>0,fly:p.flyY>0,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0});return;}
+  if(VOX.prev===null){VOX.prev=own;VOX.sc=score.slice();for(const p of players)VOX.st.set(p,{stun:p.stun>0,fly:p.flyY>0,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0,sl:p.act==='slide',dn:p.slip>0||p.down>.2,jp:false});return;}
   const prev=VOX.prev;
   // quitó / perdió el balón (robo directo o lo dejó suelto y el rival lo agarró enseguida)
   if(own&&own!==prev){
@@ -3594,12 +3593,16 @@ function voxTick(){if(!AC||!players.length)return;
     else{VOX.lostBy=prev;VOX.lostT=T;VOX.saidLost=players.some(o=>o.team!==prev.team&&!o.gk&&Math.hypot(o.x-prev.x,o.z-prev.z)<3.5)&&voxSay(prev,'lost',1);}}   // se la tumbaron: se queja de una vez
   VOX.prev=own;
   // gol: festeja el que tiró
-  for(const t of [0,1])if(score[t]>VOX.sc[t]){const k=keeperOf(1-t);if(k)setTimeout(()=>voxSay(k,'gol',2),350);VOX.shooter=null;}   // v159: sin festejo; el portero se lamenta
+  for(const t of [0,1])if(score[t]>VOX.sc[t])VOX.shooter=null;   // v234: nadie se lamenta del gol
   VOX.sc=score.slice();
   // golpes, congelado y atajadas
-  for(const p of players){const o=VOX.st.get(p)||{};const n={stun:p.stun>.2,fly:p.flyY>.05,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0};
+  for(const p of players){const o=VOX.st.get(p)||{},J=p.mesh&&p.mesh._jmp;const n={stun:p.stun>.2,fly:p.flyY>.05,fr:p.frozen>0||p.rooted>0,sv:p.saveT>0,
+      sl:p.act==='slide',dn:p.slip>0||p.down>.2,jp:!!(J&&!J.nojump&&T>=J.T0)};   // v234: brinco del remate, barrida y caída
     if(n.fr&&!o.fr)voxSay(p,'frozen',1);
-    else if((n.fly&&!o.fly)||(n.stun&&!o.stun&&!n.fr))voxSay(p,'hit',1);
+    else if((n.fly&&!o.fly)||(n.stun&&!o.stun&&!n.fr&&!n.dn))voxSay(p,'hit',1);
+    else if(n.dn&&!o.dn)voxSay(p,'fall',1);
+    if(n.sl&&!o.sl)voxSay(p,'slide',1,.85);
+    if(n.jp&&!o.jp)voxSay(p,'jump',1,.9);
     if(p.gk&&n.sv&&!o.sv&&p.saveKind&&p.saveKind!=='fallo')voxSay(p,'save',1,.8);
     VOX.st.set(p,n);}
 }
@@ -4638,7 +4641,7 @@ function boltFx(x,z){if(!boltFx.__noFb&&fb('rayos',x,9.5,z,1,.4,{sx:4.5,sy:19,fr
 function goal(team){
   if(pause>0)return;
   SIM.scoreGoal(SIMW,team);for(const p of players){if(p.mesh&&p.mesh.tilt)p.mesh.tilt.rotation.z=0;} // v58/v62: nadie se queda aturdido durante el festejo
-  crowdShot('goal',team===0?.55:.38);sfx('net');setTimeout(()=>crowdShot('fx_horn',.75),120);if(ARENA_MOD&&ARENA_MOD.onGoal)ARENA_MOD.onGoal(team);try{if(HONGOS&&HONGOS.react)HONGOS.react('gol',team);}catch(e){}
+  sfx('net');setTimeout(()=>crowdShot('fx_horn',.75),120);if(ARENA_MOD&&ARENA_MOD.onGoal)ARENA_MOD.onGoal(team);try{if(HONGOS&&HONGOS.react)HONGOS.react('gol',team);}catch(e){}
   showBig(team===0?'¡GOOOOL!':'Gol rival',team===0?'#ffcc33':'#ff7b88',true);vib(team===0?[90,60,140]:70);
   const gx=team===0?L:-L;
   for(let i=0;i<90;i++)part(gx,rand(.5,3),rand(-GW,GW),rand(-6,6)-dirOf(team)*rand(2,8),rand(4,12),rand(-6,6),[0xffcc33,0x2f7bff,0xff3b4e,0xffffff,0x16c79a][i%5],rand(1.2,2.2),9,rand(.8,1.4));
@@ -5022,7 +5025,7 @@ const BTN_IC=(()=>{const O='#0a1636',S=`stroke="${O}" stroke-width="5" stroke-li
 function setBtn(el,ic,label){const i=el.querySelector('.bi'),l=el.querySelector('.bl');if(i&&i.dataset.ic!==ic){i.dataset.ic=ic;i.innerHTML=`<svg viewBox="0 0 64 64" aria-hidden="true">${BTN_IC[ic]||''}</svg>`;}if(l)l.textContent=label;}
 function endGame(){try{MUS.stop();}catch(e){}try{tensEl.classList.remove('on','fast');clockEl.classList.remove('hot');cdShown=99;}catch(e){}
   state='end';selCard=-1;ghost=null;updateSel();
-  if(!crowdShot('fx_buzzend',.65))sfx('whistle');snd1('fin_rugido',.75);const won=score[0]>score[1];crowdStop(false);setTimeout(()=>crowdShot(won?'goal':'boo',won?.45:.38),700);
+  if(!crowdShot('fx_buzzend',.65))sfx('whistle');const won=score[0]>score[1];crowdStop(false);   // v234: sin rugido ni abucheo del público
   onMatchEnd(score[0],score[1],false);
 }
 document.getElementById('gkcamBtn').onclick=()=>{gkCam=!gkCam;const k=keeperOf(0);if(k){gcx=k.x+dirOf(0)*7.5;gcz=k.z+3;}document.getElementById('gkcamBtn').classList.toggle('on',gkCam);popText(gkCam?'🎥 Cámara: portero':'🎥 Cámara: cancha',0,3,0,'#fff',16);};
