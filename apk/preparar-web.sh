@@ -9,6 +9,12 @@ for u in $(grep -o 'https://cdn[^"]*\.js' index.html); do
   curl -sSfL "$u" -o "$f"
   sed -i "s#$u#$f#" index.html
 done
+# v235: los menús nuevos (assets/menu) usan las mismas copias locales de three.js
+for u in $(grep -o 'https://cdn[^"]*\.js' assets/menu/index.html); do
+  f="vendor/$(basename "$u")"
+  [ -f "$f" ] || curl -sSfL "$u" -o "$f"
+  sed -i "s#$u#../../$f#" assets/menu/index.html
+done
 # fuente Lilita One local
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
 curl -sSfL -A "$UA" "https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" -o vendor/fonts.css

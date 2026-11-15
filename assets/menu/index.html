@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Titan Crashers · menús</title>
+<link rel="stylesheet" href="estilo.css">
+</head><body>
+<div id="stage"><div id="wipe"><i></i><i></i></div><div id="toast"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="datos.js"></script><script src="juego.js"></script><script src="titanes.js"></script><script src="brazos.js"></script><script src="balon_volt.js"></script><script src="efectos.js"></script><script src="pelo.js"></script><script src="contorno.js"></script><script src="lobby3d.js"></script><script src="vs3d.js"></script><script src="nucleo.js"></script>
+<script src="p_lobby.js"></script><script src="p_tienda.js"></script><script src="p_perfil.js"></script><script src="p_personajes.js"></script><script src="p_varios.js"></script><script src="p_partida.js"></script><script src="p_titan.js"></script><script src="juego2.js"></script>
+<script>
+document.fonts.load('40px Lilita').finally(()=>{let q=location.hash.slice(1);try{if(window.J&&parent.MENU.pend){q=parent.MENU.pend;parent.MENU.pend=null;}}catch(e){}
+  window.MENU_LISTO=true;ir(PANT[q]?q:'lobby',{sinWipe:true});});
+</script>
+</body></html>

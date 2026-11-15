@@ -284,6 +284,7 @@ h3{margin:14px 0 7px;font-size:17px;font-weight:400}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:90;background:rgba(10,22,54,.95);border:3px solid var(--gold);padding:8px 16px;border-radius:12px;font-size:15px;animation:toast 2.2s forwards;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
 @keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}10%,85%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
 #confirm{z-index:80}
+#menu3d{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:45;background:#000;display:none}body.menu-on #menu3d{display:block}body.menu-on #meta{visibility:hidden}
 /* apertura FIFA */
 .po{position:relative;min-height:min(560px,90vh);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
 .po .beams{pointer-events:none;z-index:0;position:absolute;width:900px;height:900px;left:50%;top:50%;margin:-450px;background:repeating-conic-gradient(var(--bc,rgba(255,210,80,.35)) 0 6deg,transparent 6deg 18deg);border-radius:50%;-webkit-mask:radial-gradient(circle,#000 10%,transparent 60%);mask:radial-gradient(circle,#000 10%,transparent 60%);animation:rot 9s linear infinite;opacity:0;transition:opacity .5s}
@@ -5311,8 +5312,9 @@ function go(tab){if(SWAP&&tab!=='squad')endSwap(true);const prev=metaTab,home=ta
   $$('.screen').forEach(sc=>{sc.classList.toggle('on',sc.id==='sc-'+tab);sc.classList.toggle('left',left);});renderTab();
   $$('#navbar [data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===tab));
   if(!main&&MAIN.includes(prev)){try{history.pushState({sub:1},'');}catch(e){}}
-  try{homeStage(home&&!gameOn);}catch(e){console.warn(e);}
-  try{if(!gameOn)MUS.play('lobby');}catch(e){}}
+  try{homeStage(home&&!gameOn&&!(window.MENU&&MENU.on));}catch(e){console.warn(e);}
+  try{if(!gameOn)MUS.play('lobby');}catch(e){}
+  if(home&&!gameOn&&window.MENU&&MENU.on)MENU.mostrar(MENU.res?'victoria':'lobby');}
 (function(){const nb=document.getElementById('navbar');if(!nb)return;const L={shop:['cart','Tienda'],battle:['home2','Inicio'],squad:['cards2','Cartas']};
   nb.querySelectorAll('[data-nav]').forEach(b=>{const [ic,l]=L[b.dataset.nav];b.innerHTML=`<i class="nb-ic">${ICON(ic,44)}</i><span class="ct">${l}</span>`;b.onclick=()=>{if(metaTab!==b.dataset.nav)go(b.dataset.nav);};});
   // deslizar a los lados entre las tres pantallas
@@ -5326,7 +5328,7 @@ function fmtBig(n){n=+n||0;if(n>=1e6)return (Math.floor(n/1e5)/10).toString().re
 function goBack(){if(metaTab==='battle')return;if(history.state&&history.state.sub){try{history.back();return;}catch(e){}}go('battle');}
 window.addEventListener('popstate',()=>{if(!MAIN.includes(metaTab))go('battle');});
 function renderTab(){renderTop();({shop:renderShop,squad:renderSquad,battle:renderBattle,locker:renderLocker,rank:renderRank})[metaTab]();}
-function renderTop(){$('#tbLvl').textContent=save.lvl;$('#tbXp').style.width=Math.round(save.xp/xpNeed(save.lvl)*100)+'%';$('#tbXpT').textContent=save.xp+'/'+xpNeed(save.lvl);
+function renderTop(){try{if(window.MENU)setTimeout(()=>MENU.cambio(),0);}catch(e){}$('#tbLvl').textContent=save.lvl;$('#tbXp').style.width=Math.round(save.xp/xpNeed(save.lvl)*100)+'%';$('#tbXpT').textContent=save.xp+'/'+xpNeed(save.lvl);
   $('#tbGold').textContent=fmtBig(save.gold);$('#tbGem').textContent=fmtBig(save.gems);$('#tbName').textContent=save.name;$('#tbAv').textContent=save.avatar;$('#tbHome').style.setProperty('--bc',save.color);
   const up=Object.entries(save.players).some(([id,o])=>o.lvl<MAXLVL&&o.copies>=needOf(id,o.lvl))||Object.entries(save.powers).some(([id,o])=>o.lvl<MAXLVL&&o.copies>=needOf(id,o.lvl));
   const sb=$('#sc-battle [data-sc="squad"]');if(sb){let dot=sb.querySelector('.dot');if(up&&!dot){dot=document.createElement('span');dot.className='dot ct';dot.textContent='!';sb.appendChild(dot);}if(!up&&dot)dot.remove();}}
@@ -5338,6 +5340,10 @@ $$('#topbar .res').forEach(r=>r.addEventListener('click',e=>{if(e.target.closest
 (function(){try{const C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return;const A=(C.Plugins&&C.Plugins.App)||(C.registerPlugin&&C.registerPlugin('App'));if(!A||!A.addListener)return;
   A.addListener('backButton',()=>{const m=$('#modal');if(m&&!m.classList.contains('hide')){if(!modalLock)closeModal();return;}
     if(gameOn){const q=document.getElementById('quit');if(q&&state==='play')q.click();return;}
+    // v235: en el menú nuevo, atrás cierra la ventanita o regresa a la pantalla anterior
+    if(window.MENU&&MENU.vis){const w=MENU.win();try{if(w){const v=w.document.querySelector('.velo');if(v){v.remove();return;}
+      if(w.ACTUAL==='buscar'&&MM&&MM.menu&&!MM.vs){MENU_API.cancelarBusqueda();return;}if(w.ACTUAL==='victoria'){MENU_API.salirResultado(false);return;}
+      if(w.ACTUAL&&w.ACTUAL!=='lobby'&&w.ACTUAL!=='vs'){w.ir('back');return;}}}catch(e){}}
     if(metaTab!=='battle'){go('battle');return;}askConfirm('¿Salir del juego?','Tu progreso queda guardado.',()=>{try{A.exitApp();}catch(e){}});});}catch(e){}})();
 
 // ================== BATALLA (inicio) ==================
@@ -5900,12 +5906,14 @@ function askConfirm(t,d,ok){const h=document.getElementById('confirm');h.innerHT
   $('#cfN').onclick=()=>h.classList.add('hide');$('#cfY').onclick=()=>{h.classList.add('hide');ok();};}
 
 // ================== PARTIDO ==================
+const M4K=new Set(['leon','turbo','zurdito','nebula','reina','malabares','muralla','ciclon','ruleta','valkiria','vampira','remiendo','vikingo','rey','momia','zombi','yeti','toro','cazador','perro','sangre','expreso','goblin','duende','hongo','monje','campeon']);
 function makeOpponent(){
   const li=leagueIdx(save.trophies),mi=li<1?1:li<3?2:3;
   // v154: nunca repite jugador en la plantilla del bot
-  const used=new Set(),pick=pos=>{const fr=p=>!used.has(p.id);let o=PLAYERS.filter(p=>fr(p)&&p.pos===pos&&RORD.indexOf(p.rar)<=mi&&(Math.random()<.6||RORD.indexOf(p.rar)<=Math.max(0,mi-1)));
+  const used=new Set(),pick=pos=>{const fr=p=>!used.has(p.id)&&(!MENU.on||M4K.has(p.id));   // v235: con los menús nuevos el bot solo usa titanes que tienen modelo 4K
+let o=PLAYERS.filter(p=>fr(p)&&p.pos===pos&&RORD.indexOf(p.rar)<=mi&&(Math.random()<.6||RORD.indexOf(p.rar)<=Math.max(0,mi-1)));
     if(!o.length)o=PLAYERS.filter(p=>fr(p)&&p.pos===pos);if(!o.length)o=PLAYERS.filter(p=>fr(p)&&(pos==='POR')===(p.pos==='POR'));if(!o.length)o=PLAYERS.filter(fr);
-    const c=o[Math.floor(Math.random()*o.length)];used.add(c.id);return c;};
+    if(!o.length)o=PLAYERS.filter(p=>!used.has(p.id));const c=o[Math.floor(Math.random()*o.length)];used.add(c.id);return c;};
   const lvl=Math.min(MAXLVL,1+Math.floor(li/2)+(Math.random()<.3?1:0)),forms=Object.keys(FORMS),form=forms[Math.floor(Math.random()*forms.length)];
   // v68: el rival usa cualquier uniforme (también los de la tienda); si se confunde con el tuyo se pone el visitante
   const ok2=Object.keys(KITS).filter(k=>k!==save.equip.kit),kk=ok2[Math.floor(Math.random()*ok2.length)];
@@ -5925,6 +5933,7 @@ const MM_ART=['assets/ui/espera.webp?v=222'];   // v222: la misma imagen de Krag
 let MM=null;
 function mmTip(){const T=window.GAME_TIPS||[];return T.length?T[Math.floor(Math.random()*T.length)]:'';}
 function mmOpen(onCancel){mmClose(true);
+  if(MENU.on){MENU.partida=menuEquipos(null);MM={el:null,menu:true,cancel:onCancel,t0:performance.now(),vs:false};MENU.mostrar('buscar');try{MUS.play(null);}catch(e){}setTimeout(introWarm,350);return null;}
   const el=document.createElement('div');el.id='mmx';el.className='mm-search';
   const pick=MM_ART[Math.floor(Math.random()*MM_ART.length)];
   el.innerHTML=`<div class="mm-art" style="background-image:url(assets/ui/espera.webp?v=222)"></div><div class="mm-shade"></div>
@@ -5939,14 +5948,15 @@ function mmOpen(onCancel){mmClose(true);
   el.querySelector('#mmX').onclick=()=>{audio();const c=MM&&MM.cancel;mmClose();if(c)c();try{MUS.play('lobby');}catch(e){}};
   clearInterval(mmOpen.tt);mmOpen.tt=setInterval(()=>{const t=document.getElementById('mmTip');if(!t){clearInterval(mmOpen.tt);return;}t.classList.add('fade');setTimeout(()=>{t.textContent=mmTip();t.classList.remove('fade');},280);},5000);
   return el;}
-function mmSet(a,b){const x=document.getElementById('mmT'),y=document.getElementById('mmS');if(x&&a!=null)x.textContent=a;if(y&&b!=null)y.innerHTML=b;}
+function mmSet(a,b){if(MM&&MM.menu)return;const x=document.getElementById('mmT'),y=document.getElementById('mmS');if(x&&a!=null)x.textContent=a;if(y&&b!=null)y.innerHTML=b;}
 const MM_LUPA='<svg viewBox="0 0 64 64" width="46" height="46"><circle cx="26" cy="26" r="17" fill="#bfeaff" stroke="#0a1636" stroke-width="5"/><path d="M17 20a11 11 0 0 1 9-7" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M38 38l15 15" stroke="#0a1636" stroke-width="12" stroke-linecap="round"/><path d="M38 38l15 15" stroke="#c9852e" stroke-width="6" stroke-linecap="round"/></svg>';
 function vsCard(id,lvl,i){const pl=PBY[id];if(!pl)return '';const art=window.CARDIMG&&CARDIMG[id];
   return `<div class="vx-c r-${pl.rar}" style="--i:${i}"><div class="vx-ci">${art?`<img src="${art.c}" alt="">`:`<div class="vx-face">${faceSVG(pl)}</div>`}<span class="vx-pos p-${pl.pos} ct">${pl.pos}</span></div><span class="vx-lv ct">Nv ${lvl}</span><b class="ct">${esc(pl.nick)}</b></div>`;}
 function vsSide(cls,P){return `<div class="vx-side ${cls}"><div class="vx-tag"><span class="vx-av" style="background:${P.color}">${avIco(P.av)}</span><div><b class="ct">${esc(P.name)}</b><small class="ct">${flag(P.c)} ${ICON('trophy',15)} ${P.tr}</small></div></div>
    <div class="vx-team">${P.ids.map(([id,l],i)=>vsCard(id,l,i)).join('')}</div></div>`;}
 // cambia la pantalla de búsqueda al VS (rival arriba, tú abajo)
-function mmVS(opp){if(!MM)mmOpen();MM.vs=true;MM.cancel=null;const el=MM.el;el.classList.add('vs-on');
+function mmVS(opp){if(!MM)mmOpen();
+  if(MM.menu){MM.vs=true;MM.cancel=null;MENU.partida=menuEquipos(opp);const w=MENU.win();try{w&&w.RIVAL_ENCONTRADO&&w.RIVAL_ENCONTRADO();}catch(e){}return;}MM.vs=true;MM.cancel=null;const el=MM.el;el.classList.add('vs-on');
   const sq=save.squad,lv=id=>(save.players[id]||{}).lvl||1;
   const me={name:save.name||'Tú',av:save.avatar,color:save.color,c:save.country,tr:save.trophies,ids:[sq.gk,...sq.f].map(id=>[id,lv(id)])};
   const os=opp.squad||{},rv={name:opp.name||'Rival',av:opp.av||'⚽',color:'#ff3b4e',c:opp.c,tr:opp.trophies|0,
@@ -5956,8 +5966,9 @@ function mmVS(opp){if(!MM)mmOpen();MM.vs=true;MM.cancel=null;const el=MM.el;el.c
   el.querySelector('#mmVS').innerHTML='';   // v154: solo el letrero y la barra; las plantillas salen después sobre la arena
   el.querySelector('#mmX').classList.add('hide');el.querySelector('#mmL').classList.remove('hide');
   mmProg(0,'Cargando arena…');}
-function mmProg(k,txt){const b=document.getElementById('mmB'),t=document.getElementById('mmLT');if(b&&k!=null)b.style.width=Math.round(Math.max(0,Math.min(1,k))*100)+'%';if(t&&txt!=null)t.textContent=txt;}
-function mmClose(now){clearInterval(mmOpen.tt);const el=MM&&MM.el||document.getElementById('mmx');MM=null;if(!el)return;
+function mmProg(k,txt){if(MM&&MM.menu){const w=MENU.win();try{w&&w.PROGRESO&&w.PROGRESO(k,txt);}catch(e){}return;}const b=document.getElementById('mmB'),t=document.getElementById('mmLT');if(b&&k!=null)b.style.width=Math.round(Math.max(0,Math.min(1,k))*100)+'%';if(t&&txt!=null)t.textContent=txt;}
+function mmClose(now){clearInterval(mmOpen.tt);
+  if(MM&&MM.menu){const vs=MM.vs;MM=null;if(vs||gameOn)MENU.descargar();else MENU.mostrar('lobby');return;}const el=MM&&MM.el||document.getElementById('mmx');MM=null;if(!el)return;
   if(now){el.remove();return;}el.classList.add('out');setTimeout(()=>el.remove(),420);}
 window.mmOpen=mmOpen;window.mmSet=mmSet;window.mmVS=mmVS;window.mmProg=mmProg;window.mmClose=mmClose;
 // carga todo el partido detrás del VS y lo deja congelado, listo para el saque (state='vs')
@@ -5976,7 +5987,7 @@ function beginMatch(){state='play';crowdStart();showBig('¡A jugar!');try{crowdS
 async function playBot(opp){mmVS(opp);const t0=performance.now();
   try{await prepMatch(opp);}catch(e){console.warn(e);}
   if(!gameOn){mmClose();return;}
-  mmProg(1,'¡Listo!');const wait=1800-(performance.now()-t0);if(wait>0)await sleep(wait);
+  mmProg(1,'¡Listo!');const wait=(MENU.on?4300:1800)-(performance.now()-t0);if(wait>0)await sleep(wait);
   mmClose();await matchIntro(opp);if(!gameOn)return;await sleep(500);snd1('inicio_tambores',.85);await sleep(2150);if(gameOn&&state==='vs')beginMatch();}
 window.prepMatch=prepMatch;window.playBot=playBot;window.beginMatch=beginMatch;
 // ================== v153: ENTRADA AL PARTIDO ==================
@@ -5993,7 +6004,7 @@ function luSide(cls,P){return `<div class="vx-side ${cls}"><div class="vx-tag"><
 async function matchIntro(opp){
   const app=document.getElementById('app'),end=document.getElementById('end');
   app.classList.add('rx-on');INTRO={t0:performance.now(),dur:2.3};
-  await sleep(2300);if(!gameOn){app.classList.remove('rx-on');return;}
+  await sleep(2300);if(!gameOn||MENU.on){app.classList.remove('rx-on');return;}
   const sq=save.squad,lv=id=>(save.players[id]||{}).lvl||1;
   const me={name:save.name||'Tú',av:save.avatar,color:save.color,c:save.country,tr:save.trophies,ids:[sq.gk,...sq.f].map(id=>[id,lv(id)])};
   const os=opp.squad||{},rv={name:opp.name||'Rival',av:opp.av||'⚽',color:'#ff3b4e',c:opp.c,tr:opp.trophies|0,ids:[os.gk,...(os.f||[])].filter(x=>x&&x.card).map(x=>[x.card.id,x.lvl||1])};
@@ -6034,7 +6045,7 @@ function spectEnd(a,b){const end=document.getElementById('end');const t=document
   end.innerHTML=`<div class="mpanel res-draw"><h2 class="ct">Fin del partido</h2><div class="rs">${a} - ${b}</div><small class="sys" style="display:block;text-align:center;margin-bottom:8px">IA contra IA · no cuenta para tus copas</small><div class="acts"><button class="btn b" id="spAgain">Ver otro</button><button class="btn y" id="spOk">Salir</button></div></div>`;
   end.classList.remove('hide');$('#spOk').onclick=spectExit;$('#spAgain').onclick=()=>{end.classList.add('hide');spectRestore();startSpectate();};}
 async function startMatch(opp){
-  lockOri('landscape');
+  lockOri('landscape');if(!MM)try{MENU.descargar();}catch(e){}
   if(typeof THREE==='undefined'){toast('No se pudo cargar el motor 3D');return;}
   if(MODEL_IDS.some(id=>MSTATUS[id]==='cargando')){toast('Cargando personajes 3D…');await Promise.race([modelsReady,sleep(8000)]);}
   document.getElementById('meta').classList.add('hide');document.getElementById('app').classList.add('on');
@@ -6124,6 +6135,12 @@ function resStage(cv,id,res){resStageStop();if(!cv||typeof THREE==='undefined'||
 function showEnd(a,b,forfeit,r,errMsg,pre){
   const res=r?r.res:a>b?'win':a<b?'loss':'draw',dt=r?r.dt:0,gold=r?r.gold:0,xp=r?r.xp:0,lu=r?r.lu:0,pack=r?r.pack:null,li=r?r.li:leagueIdx(save.trophies),nl=r?r.nl:li;
   const O=oppInfo||{},P=pre||{xp:save.xp,lvl:save.lvl,tr:save.trophies},T={win:'¡VICTORIA!',loss:forfeit?'TE RENDISTE':'DERROTA',draw:'EMPATE'}[res];
+  if(MENU.on){MENU.res={res,a,b,forfeit:!!forfeit,dt,gold,xp,pack:pack&&PACKS[pack]?PACKS[pack].n:null,lu:!!lu,lvl:save.lvl,tr:save.trophies,tr0:P.tr,
+      liga:nl!==li?(nl>li?'¡Subiste a ':'Bajaste a ')+LEAGUES[nl].n+'!':'',rival:O.name||'Rival',yo:save.name||'Tú',eq:menuEquipos(null).yo,
+      adG:gold>0&&adLeft('gold2')>0?gold:0,adT:dt<0&&adLeft('tro')>0?Math.ceil(-dt/2):0,err:r?'':(errMsg||'')};
+    if(res==='win')try{snd1('res_victoria',.8);}catch(e){}
+    save.mcount=(save.mcount||0)+1;persist();const e2=document.getElementById('end'),ap=document.getElementById('app');e2.className='hide';e2.innerHTML='';ap.classList.remove('rx-on');
+    gameOn=false;updLand();state='menu';crowdStop(true);ap.classList.remove('on');document.getElementById('meta').classList.remove('hide');try{MUS.play('lobby',.6);}catch(e){}go('battle');return;}
   const end=document.getElementById('end');end.className='rx-end res-'+res;document.getElementById('app').classList.add('rx-on');
   // v227: como la pantalla de resultado de los juegos de arena: tu capitán al centro (en 3D), dos compañeros atrás, el letrero y tus copas a la izquierda,
   // premios a la derecha y abajo VOLVER A JUGAR / SALIR
@@ -6218,7 +6235,7 @@ function perfMeter(on){let el=document.getElementById('perfM');
 function bgfxStart(){const c=document.getElementById('bgfx');if(!c)return;const x=c.getContext('2d');
   const np=init=>({x:Math.random(),y:init?Math.random():1.04,r:rand(1.2,3.8),v:rand(.01,.03),ph:rand(0,6.28),st:Math.random()<.28,a:rand(.25,.65)});
   for(let i=0;i<36;i++)BGFX.p.push(np(true));
-  const tick=now=>{requestAnimationFrame(tick);if(gameOn||document.hidden)return;if(now-BGFX.lt<30)return;const dt=Math.min(.05,(now-BGFX.lt)/1000);BGFX.lt=now;
+  const tick=now=>{requestAnimationFrame(tick);if(gameOn||document.hidden||(window.MENU&&MENU.vis))return;if(now-BGFX.lt<30)return;const dt=Math.min(.05,(now-BGFX.lt)/1000);BGFX.lt=now;
     const dpr=Math.min(2,window.devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}
     x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
     for(let i=0;i<BGFX.p.length;i++){const p=BGFX.p[i];p.y-=p.v*dt*1.6;p.ph+=dt*2;if(p.y<-.05){BGFX.p[i]=np(false);continue;}
@@ -6229,6 +6246,60 @@ function bgfxStart(){const c=document.getElementById('bgfx');if(!c)return;const 
   requestAnimationFrame(tick);}
 bgfxStart();
 
+// ================== v235: MENÚS NUEVOS (lobby, titanes, buscar/VS y resultado con los modelos 4K) ==================
+// Viven en assets/menu/ dentro de un iframe encima de #meta. La tienda, el ranking, ajustes, perfil y los sobres siguen siendo los de antes
+// (salen encima en ventanas, o se abre #meta y al volver a "inicio" regresa el menú nuevo).
+const MENU={on:true,el:null,vis:false,res:null,cargado:false,
+  win(){try{return this.el&&this.el.contentWindow;}catch(e){return null;}},
+  crear(){if(this.el)return;const f=document.createElement('iframe');f.id='menu3d';f.setAttribute('allow','autoplay');f.src='assets/menu/index.html?v=235';document.body.appendChild(f);this.el=f;this.cargado=true;},
+  // muestra el menú en la pantalla indicada (lobby por defecto)
+  mostrar(scr){if(!this.on)return;scr=scr||'lobby';this.crear();this.vis=true;document.body.classList.add('menu-on');try{homeStage(false);}catch(e){}
+    this.pend=scr;if(!this.cargado){this.cargado=true;this.el.src='assets/menu/index.html?v=235';return;}
+    const w=this.win();if(w&&w.MENU_LISTO){this.pend=null;try{w.JUEGO_CAMBIO&&w.JUEGO_CAMBIO();w.ir(scr,{sinWipe:true,forzar:true});}catch(e){console.warn('menú',e);}}},   // si aún carga, el menú lee MENU.pend al arrancar
+  ocultar(){this.vis=false;document.body.classList.remove('menu-on');const w=this.win();try{w&&w.VS3D&&w.VS3D.parar();w&&w.LOBBY3D&&w.LOBBY3D.parar();}catch(e){}},
+  // durante el partido se descarga todo el menú para que el teléfono tenga la memoria libre
+  descargar(){this.ocultar();if(this.el){this.el.src='about:blank';this.cargado=false;}},
+  cambio(){const w=this.vis&&this.win();try{w&&w.JUEGO_CAMBIO&&w.JUEGO_CAMBIO();}catch(e){}},
+  // abre una pantalla vieja de #meta (tienda, ranking…)
+  vieja(tab){this.ocultar();document.getElementById('meta').classList.remove('hide');go(tab);}
+};
+window.MENU=MENU;
+const ART_M=id=>{const A=window.CARDIMG&&CARDIMG[id];return A?{s:A.s,c:A.c}:null;};
+window.MENU_API={
+  info(){const li=leagueIdx(save.trophies),Lg=LEAGUES[li],nx=LEAGUES[li+1],ai=save.testArena!=null?save.testArena:li;
+    const own={};for(const id in save.players){if(PBY[id])own[id]={lvl:save.players[id].lvl||1,copies:save.players[id].copies||0};}
+    return{name:save.name||'Jugador',tr:save.trophies,lvl:save.lvl,xp:save.xp,xpNeed:xpNeed(save.lvl),gold:save.gold,gems:save.gems,cap:captainId(),
+      squad:[save.squad.gk,...save.squad.f],own,max:MAXLVL,liga:Lg.n,ligaMin:Lg.min,ligaSig:nx?nx.min:null,arena:ai,arenaN:(ARENAS[ai]||ARENAS[0]).n};},
+  titan(id){const pl=PBY[id];if(!pl)return null;const o=save.players[id],lv=o?o.lvl:1,max=lv>=MAXLVL;
+    return{own:!!o,lvl:lv,max:MAXLVL,copies:o?o.copies:0,need:max?0:needOf(id,lv),cost:max?0:LVL_GOLD[lv],gold:save.gold,estilo:pl.estilo||'',fuerte:pl.fuerte||'',debil:pl.debil||'',pos:pl.pos,
+      enEquipo:[save.squad.gk,...save.squad.f].includes(id),cap:captainId()===id,
+      stats:statKeys(pl).map(k=>({c:k,k:STATN[k],v:stat(pl,k,lv),n:max?null:stat(pl,k,lv+1)}))};},
+  packs(){return save.packs.map((p,i)=>{if(!p)return null;const st=packState(p);return{i,t:p.t,n:PACKS[p.t].n,st,left:st==='abriendo'?fmtT((p.at-nowS())/1000):''};});},
+  sobre(i){tapPackSlot(i);},
+  capitan(id){if(![save.squad.gk,...save.squad.f].includes(id))return false;save.captain=id;save.homeStar=id;persist();return true;},
+  alEquipo(id){MENU.vieja('squad');setTimeout(()=>{try{startSwap(id);}catch(e){console.warn(e);}},350);},
+  mejorar(id){const o=save.players[id];if(!o)return Promise.reject(new Error('No lo tienes'));const cost=LVL_GOLD[o.lvl];
+    if(o.lvl>=MAXLVL)return Promise.reject(new Error('Ya está al máximo'));if(o.copies<needOf(id,o.lvl))return Promise.reject(new Error('Te faltan fichas'));
+    if(save.gold<cost)return Promise.reject(new Error('Te faltan monedas'));
+    return econDo({t:'upgrade',k:'player',id}).then(r=>{try{renderTop();}catch(e){}return r;});},
+  ruta(id){const R={tienda:()=>MENU.vieja('shop'),ranking:()=>MENU.vieja('rank'),vestidor:()=>MENU.vieja('locker'),equipo:()=>MENU.vieja('squad'),
+      ajustes:()=>openSettings(),perfil:()=>openProfile(),noticias:()=>openNews(),camino:()=>openArenas(),ayuda:()=>openHow(),
+      buscar:()=>{audio();matchmaking();},espectador:()=>{MENU.ocultar();startSpectate();}};
+    if(!R[id])return false;R[id]();return true;},
+  cancelarBusqueda(){const c=MM&&MM.cancel;mmClose(true);if(c)c();try{MUS.play('lobby');}catch(e){}},
+  resultado(){return MENU.res;},
+  partida(){return MENU.partida;},
+  anuncio(k){return watchAd({k},o=>k==='gold2'?'+'+o.gold+' monedas':'+'+o.tro+' copas recuperadas').then(o=>{try{renderTop();}catch(e){}return o;});},
+  salirResultado(again){const offerI=save.mcount%5===0;MENU.res=null;if(offerI)setTimeout(offerInter,450);
+    if(again&&!offerI){MENU.mostrar('lobby');setTimeout(()=>{if(!gameOn)matchmaking();},200);}else MENU.mostrar('lobby');},
+  sonido(n){try{uiSnd(n||'tap');}catch(e){}},
+  arte:ART_M
+};
+// el rival y tu equipo como los pide la pantalla nueva (capitán + 4)
+function menuEquipos(opp){const sq=[save.squad.gk,...save.squad.f],cap=captainId(),lv=id=>(save.players[id]||{}).lvl||1;
+  const os=opp&&opp.squad||{},rids=[os.gk,...(os.f||[])].filter(x=>x&&x.card).map(x=>x.card.id);
+  const rf=rids.filter(id=>PBY[id]&&PBY[id].pos!=='POR'),rcap=(rf.length?rf:rids).slice().sort((a,b)=>ovr(PBY[b],1)-ovr(PBY[a],1))[0];
+  return{yo:{n:save.name||'Tú',tr:save.trophies,cap,eq:sq.filter(x=>x!==cap)},riv:opp?{n:opp.name||'Rival',tr:opp.trophies|0,cap:rcap,eq:rids.filter(x=>x!==rcap)}:null};}
 // ================== ARRANQUE ==================
 applySettings();go('battle');modelsReady=Promise.all([loadModels(),loadAnimLib()]);
 // v57: pantalla de carga con progreso real (scripts, animaciones y personajes 3D)
