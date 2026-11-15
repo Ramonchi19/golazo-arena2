@@ -790,6 +790,7 @@ body.sub .tb-prof{display:none}body.sub .tb-back{display:flex}
 .offmk.me{animation:none!important;box-shadow:0 0 0 4px rgba(255,204,51,.35),0 2px 8px rgba(0,0,0,.45)}
 .pack::after{display:none}
 .pslot.ps-listo .pack::after,.bigpack .pack::after,#modal .pack::after{display:block}
+#perfD{position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:10000;display:flex;gap:6px;align-items:center;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:8px;font:11px monospace;color:#fff}#perfD button{white-space:nowrap;font:11px monospace;padding:4px 8px;border-radius:6px;border:1px solid #fff;background:#1d3fc0;color:#fff}#perfD button.off{background:#b81a14}
 #perfM{position:fixed;left:50%;top:calc(2px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:10000;background:rgba(0,0,0,.72);color:#fff;font:12px/1.3 monospace;padding:2px 8px;border-radius:8px;pointer-events:none;white-space:nowrap}
 
 /* ================== v125: luces y pantallas más llamativas (mismo fondo de siempre) ================== */
@@ -1616,7 +1617,7 @@ function crowdUpdate(dt){if(!crowdOn||!AC)return;
 const cvs=document.getElementById('c');
 function M(geo,mat){const m=new THREE.Mesh(geo,mat);return m;}
 function init3D(){
-  renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true});
+  renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,powerPreference:'high-performance'});   // v236: que el teléfono use la tarjeta gráfica a toda su velocidad
   renderer.setPixelRatio(qualityPR());
   renderer.shadowMap.enabled=save.settings.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   scene=new THREE.Scene();scene.background=new THREE.Color(ARENA.sky);scene.fog=new THREE.Fog(ARENA.sky,260,520);
@@ -4795,7 +4796,7 @@ function render(dt){
   if(fenceMat&&fenceBase){const f=1,fl=fenceFlash>0?.45:0;fenceMat.color.setRGB(Math.min(1,fenceBase.r*f+fl),Math.min(1,fenceBase.g*f+fl),Math.min(1,fenceBase.b*f+fl));}
   // cámara vertical: detrás de tu portería mirando hacia el ataque
   if(gkCam&&state==='play'){const k=keeperOf(0);if(k){const d=dirOf(0);const tx=k.x+d*7.5,tz=k.z*.6+3.2;gcx+=(tx-gcx)*Math.min(1,dt*4);gcz+=(tz-gcz)*Math.min(1,dt*4);camera.position.set(gcx,3.3,gcz);camera.lookAt(k.x,1.1,k.z);
-    if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
+    if(window.GZ_LUZ&&!DIAG.cine&&GZ_LUZ.render()){}else if(useBloom()&&!DIAG.cine)composer.render();else{drawAim();renderer.render(scene,camera);}return;}}
   // cámara que sigue al balón (donde está la jugada)
   if(LAND){if(!camFit||!camFit.land||camFit.w!==cvs.clientWidth||camFit.h!==cvs.clientHeight)fitLandCam();
     const bvx=ball?clamp(ball.vx||0,-30,30):0,bx=ball?ball.x+bvx*.3:0,bz=ball?ball.z+clamp(ball.vz||0,-14,14)*.1:0,xLim=Math.max(0,L+3-camFit.span/2),zLim=Math.max(0,HW+1.5-camFit.zVis),cRate=3.2+Math.min(6,Math.abs(bvx)*.25);   // v212
@@ -4831,7 +4832,7 @@ function render(dt){
   try{ballFx(dt);}catch(e){}
   try{if(window.GZ_LUZ)GZ_LUZ.tick(dt,camX,camZ);}catch(e){}   // v213
   MG.t-=dt;if(MG.t<=0){MG.t=.7;try{matGuard();}catch(e){}}   // v227
-  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);pubErr('se trabó al animarse: '+(e&&e.message||e));HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&GZ_LUZ.render()){}else if(useBloom())composer.render();else renderer.render(scene,camera);
+  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);pubErr('se trabó al animarse: '+(e&&e.message||e));HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&!DIAG.cine&&GZ_LUZ.render()){}else if(useBloom()&&!DIAG.cine)composer.render();else renderer.render(scene,camera);
 }
 
 
@@ -5034,13 +5035,39 @@ document.getElementById('mute').onclick=()=>{save.settings.sound=!save.settings.
 document.getElementById('quit').onclick=()=>{if(window.SPECT){askConfirm('¿Salir?','Dejas de ver el partido.',spectExit);return;}if(state!=='play')return;askConfirm('¿Rendirte?','Contará como derrota.',()=>{state='end';crowdStop(false);onMatchEnd(score[0],Math.max(score[1],score[0]+1),true);});};
 
 let last=0,gameOn=false;
+// v236: PASO FIJO. Antes el juego avanzaba lo que durara cada cuadro con tope de 1/30 s: si el teléfono daba 20 cuadros por segundo,
+// TODO el partido iba en cámara lenta (los jugadores corrían a 2/3). Ahora la física avanza siempre en pasos de 1/60 s (los que hagan falta)
+// y el dibujo muestra la posición entre el paso anterior y el actual (interpolada): misma velocidad en una tostadora que en un S24,
+// y movimiento suave también en pantallas de 90/120 Hz. En línea se queda como estaba (lo manda el servidor).
+const SIM_STEP=1/60,SIM_MAXSTEPS=8;let simAcc=0;const SIMP=new WeakMap(),SIMB={x:0,y:0,z:0,ok:false},SIMNOW=new WeakMap(),SIMBN={x:0,y:0,z:0};
+const PERF={sim:0,ren:0,steps:0,frame:0};
+function simSave(){for(const p of players){let o=SIMP.get(p);if(!o){o={};SIMP.set(p,o);}o.x=p.x;o.z=p.z;o.f=p.flyY||0;o.ok=true;}
+  if(ball){SIMB.x=ball.x;SIMB.y=ball.y;SIMB.z=ball.z;SIMB.ok=true;}}
+function simLerp(a){if(a>=1)return false;const L=(u,v)=>u+(v-u)*a;
+  for(const p of players){const o=SIMP.get(p);let n=SIMNOW.get(p);if(!n){n={};SIMNOW.set(p,n);}n.x=p.x;n.z=p.z;n.f=p.flyY;n.on=false;
+    if(!o||!o.ok)continue;if(Math.abs(p.x-o.x)+Math.abs(p.z-o.z)>2.5)continue;   // saltos de lugar (saque, reinicio): sin mezclar
+    n.on=true;p.x=L(o.x,p.x);p.z=L(o.z,p.z);if(typeof p.flyY==='number')p.flyY=L(o.f,p.flyY);}
+  SIMBN.on=false;if(ball&&SIMB.ok&&Math.abs(ball.x-SIMB.x)+Math.abs(ball.z-SIMB.z)+Math.abs(ball.y-SIMB.y)<4){SIMBN.x=ball.x;SIMBN.y=ball.y;SIMBN.z=ball.z;SIMBN.on=true;ball.x=L(SIMB.x,ball.x);ball.y=L(SIMB.y,ball.y);ball.z=L(SIMB.z,ball.z);}
+  return true;}
+function simRestore(){for(const p of players){const n=SIMNOW.get(p);if(!n||!n.on)continue;p.x=n.x;p.z=n.z;if(typeof n.f==='number')p.flyY=n.f;n.on=false;}
+  if(ball&&SIMBN.on){ball.x=SIMBN.x;ball.y=SIMBN.y;ball.z=SIMBN.z;SIMBN.on=false;}}
 function loop(ts){
   requestAnimationFrame(loop);
-  const dt=Math.min(.033,last?(ts-last)/1000:0);last=ts;T+=dt;
-  if(!gameOn)return;
-  if(state==='play'&&!(LAND===false&&document.body.classList.contains('landwait')&&!window.ONLINE))update(dt*timeScaleNow(dt));   // v83: pausa mientras giras el teléfono
-  updateFX(dt);render(dt);
+  const rdt=Math.min(.25,last?(ts-last)/1000:0);last=ts;const dt=Math.min(.1,rdt);T+=dt;
+  if(!gameOn){simAcc=0;return;}
+  const t0=performance.now();let alpha=1;PERF.steps=0;
+  const run=state==='play'&&!(LAND===false&&document.body.classList.contains('landwait')&&!window.ONLINE);   // v83: pausa mientras giras el teléfono
+  if(run&&window.ONLINE){const d=Math.min(.033,rdt);update(d*timeScaleNow(d));}
+  else if(run){const sc=Math.max(.02,timeScaleNow(Math.min(.1,rdt)));simAcc+=rdt*sc;
+    while(simAcc>=SIM_STEP*sc&&PERF.steps<SIM_MAXSTEPS){simSave();update(SIM_STEP*sc);simAcc-=SIM_STEP*sc;PERF.steps++;if(!gameOn||state!=='play')break;}
+    if(PERF.steps>=SIM_MAXSTEPS)simAcc=0;   // menos de 8 cuadros por segundo: ahí sí se frena (mejor que trabarse)
+    alpha=sc>0?Math.min(1,simAcc/(SIM_STEP*sc)):1;}
+  else simAcc=0;
+  const t1=performance.now();
+  const lerped=run&&!window.ONLINE&&simLerp(alpha);
+  try{updateFX(dt);render(dt);}finally{if(lerped)simRestore();}
   if(state==='play'){hud();crowdUpdate(dt);try{voxTick();}catch(e){}try{ambTick();}catch(e){}}
+  const t2=performance.now();PERF.sim=PERF.sim*.9+(t1-t0)*.1;PERF.ren=PERF.ren*.9+(t2-t1)*.1;PERF.frame=PERF.frame*.9+rdt*1000*.1;
   if(T-(loop.pin||0)>1.5){loop.pin=T;pinPrograms();}
 }
 requestAnimationFrame(loop);
@@ -6222,6 +6249,23 @@ const BGPAL=[['#3fd14a','#2fb83c','#0f5e1c'],['#2fd78a','#22bd74','#0b5a3a'],['#
 function bgTheme(){const i=save.testArena!=null?save.testArena:leagueIdx(save.trophies),c=BGPAL[i]||BGPAL[0],m=document.getElementById('meta');if(!m)return;
   m.style.setProperty('--c1',c[0]);m.style.setProperty('--c2',c[1]);m.style.setProperty('--c3',c[2]);}
 // v122: medidor de rendimiento (Ajustes): FPS, cuadro más lento del último segundo, tirones y ping en línea
+// v236: en el partido también dice cuánto tarda el juego (física y dibujo en el procesador) contra el cuadro completo:
+// si el cuadro tarda mucho más que el procesador, el que no alcanza es la tarjeta gráfica. Más llamadas de dibujo y triángulos.
+function perfExtra(){try{const R=renderer.info.render,cpu=PERF.sim+PERF.ren,fr=PERF.frame||16.7,gpu=fr-cpu>6&&fr>20;
+  return `<br>física ${PERF.sim.toFixed(1)} ms · dibujo ${PERF.ren.toFixed(1)} ms · cuadro ${fr.toFixed(0)} ms${gpu?' <b style="color:#ff9a5c">(tarjeta gráfica)</b>':fr>20?' <b style="color:#ff9a5c">(procesador)</b>':''}<br>llamadas ${R.calls} · triángulos ${(R.triangles/1000).toFixed(0)}k · pasos ${PERF.steps} · ${renderer.domElement.width}×${renderer.domElement.height}`;}catch(e){return '';}}
+// v236: PRUEBAS DE RENDIMIENTO (solo con el medidor prendido y en el partido): apaga UNA cosa a la vez para ver cuánto cuesta en tu teléfono.
+// No es para jugar así: es para saber qué hay que rehacer más ligero sin que se vea peor. Se reinicia al cerrar el juego.
+const DIAG={cine:false,sombras:false,luces:false,res:false};
+function diagToggle(k){DIAG[k]=!DIAG[k];try{
+  if(k==='sombras'&&renderer)renderer.shadowMap.autoUpdate=!DIAG.sombras;
+  if(k==='luces'&&scene)scene.traverse(o=>{if(o.isPointLight||o.isSpotLight){if(DIAG.luces){o.userData._dv=o.visible;o.visible=false;}else if(o.userData._dv!=null)o.visible=o.userData._dv;}});
+  if(k==='res'&&renderer){renderer.setPixelRatio(DIAG.res?1:qualityPR());resize();}}catch(e){console.warn('prueba',e);}
+  diagButtons();}
+function diagButtons(){let d=document.getElementById('perfD');if(!perfMeter.on||!gameOn){if(d)d.remove();return;}
+  if(!d){d=document.createElement('div');d.id='perfD';document.body.appendChild(d);}
+  const N={cine:'Capa de cine',sombras:'Sombras',luces:'Luces de fuego',res:'Resolución 1x'};
+  d.innerHTML='<small>Prueba: apaga una y mira los FPS</small>'+Object.keys(N).map(k=>`<button data-k="${k}" class="${DIAG[k]?'off':''}">${DIAG[k]?'✕ ':''}${N[k]}</button>`).join('');
+  d.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();diagToggle(b.dataset.k);});}
 function perfMeter(on){let el=document.getElementById('perfM');
   if(!on){if(el)el.remove();perfMeter.on=false;return;}
   if(!el){el=document.createElement('div');el.id='perfM';document.body.appendChild(el);}
@@ -6229,8 +6273,8 @@ function perfMeter(on){let el=document.getElementById('perfM');
   const lo=typeof PerformanceObserver!=='undefined'?(()=>{try{const o=new PerformanceObserver(l=>{for(const e of l.getEntries())if(e.duration>lt)lt=e.duration;});o.observe({entryTypes:['longtask']});return o;}catch(e){return null;}})():null;
   const f=now=>{if(!perfMeter.on){try{lo&&lo.disconnect();}catch(e){}return;}requestAnimationFrame(f);const d=now-last;last=now;n++;if(d>worst)worst=d;if(d>50)jank++;
     if(now-t0>=1000){const fps=Math.round(n*1000/(now-t0)),O=window.ONLINE;
-      el.innerHTML=`<b style="color:${fps>=50?'#7cff8a':fps>=30?'#ffd23f':'#ff5c5c'}">${fps} FPS</b> · lento ${Math.round(worst)} ms · tirones ${jank}${lt?` · JS ${Math.round(lt)} ms`:''}${O?` · ping ${Math.round(O.rtt||0)} ms`:''}${typeof renderer!=='undefined'&&renderer&&gameOn?` · ${Math.round(renderer.getPixelRatio()*100)/100}x`:''}`;
-      n=0;worst=0;t0=now;jank=0;lt=0;}};
+      el.innerHTML=`<b style="color:${fps>=50?'#7cff8a':fps>=30?'#ffd23f':'#ff5c5c'}">${fps} FPS</b> · lento ${Math.round(worst)} ms · tirones ${jank}${lt?` · JS ${Math.round(lt)} ms`:''}${O?` · ping ${Math.round(O.rtt||0)} ms`:''}${typeof renderer!=='undefined'&&renderer&&gameOn?` · ${Math.round(renderer.getPixelRatio()*100)/100}x`:''}${typeof renderer!=='undefined'&&renderer&&gameOn?perfExtra():''}`;
+      n=0;worst=0;t0=now;jank=0;lt=0;try{const d=document.getElementById('perfD');if(!!d!==(gameOn&&perfMeter.on))diagButtons();}catch(e){}}};
   requestAnimationFrame(f);}
 function bgfxStart(){const c=document.getElementById('bgfx');if(!c)return;const x=c.getContext('2d');
   const np=init=>({x:Math.random(),y:init?Math.random():1.04,r:rand(1.2,3.8),v:rand(.01,.03),ph:rand(0,6.28),st:Math.random()<.28,a:rand(.25,.65)});
