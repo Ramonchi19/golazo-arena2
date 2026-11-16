@@ -185,9 +185,13 @@ function flood(){const F=M.flood;if(F&&!S.flood){S.flood={L:[],H:[],P:null};
   if(S.flood){for(const l of S.flood.L){l.visible=ON&&!!F;if(F){l.color.set(F.c).convertSRGBToLinear();l.intensity=F.i;}}for(const g of S.flood.H)g.visible=ON&&!!F;if(S.flood.P){S.flood.P.visible=ON&&!!F;if(F)S.flood.P.material.opacity=F.pool;}}}
 // ---- capa de cine ----
 function composer(){if(S.comp||G.quality!=='alta'||!THREE.EffectComposer||!THREE.UnrealBloomPass)return S.comp;try{const r=G.renderer,hf=r.capabilities.isWebGL2||r.extensions.has('EXT_color_buffer_half_float'),sz=r.getSize(new THREE.Vector2());
-  const rt=new THREE.WebGLRenderTarget(sz.x*r.getPixelRatio(),sz.y*r.getPixelRatio(),{type:hf?THREE.HalfFloatType:THREE.UnsignedByteType});
-  S.comp=new THREE.EffectComposer(r,rt);S.comp.addPass(new THREE.RenderPass(G.scene,G.camera));
-  S.bloom=new THREE.UnrealBloomPass(new THREE.Vector2(sz.x/(M.blq||4),sz.y/(M.blq||4)),M.bl[0],.65,M.bl[1]);S.comp.addPass(S.bloom);
+  // v239: la escena se dibuja CON suavizado de bordes (antes la capa de cine lo perdía: bordes dentados y todo se veía borroso);
+  // el resplandor se calcula a un cuarto de resolución (se ve igual, cuesta mucho menos)
+  const W=sz.x*r.getPixelRatio(),H=sz.y*r.getPixelRatio(),fl=r.capabilities.isWebGL2&&r.extensions.has('EXT_color_buffer_float'),tp=fl?THREE.HalfFloatType:THREE.UnsignedByteType;
+  const ms=r.capabilities.isWebGL2&&THREE.WebGLMultisampleRenderTarget,rt=ms?new THREE.WebGLMultisampleRenderTarget(W,H,{type:tp}):new THREE.WebGLRenderTarget(W,H,{type:hf?THREE.HalfFloatType:THREE.UnsignedByteType});if(ms)rt.samples=4;
+  S.comp=new THREE.EffectComposer(r,rt);if(ms){const r2=new THREE.WebGLRenderTarget(W,H,{type:tp});S.comp.renderTarget2.dispose();S.comp.renderTarget2=r2;S.comp.readBuffer=r2;}
+  S.comp.addPass(new THREE.RenderPass(G.scene,G.camera));
+  S.bloom=new THREE.UnrealBloomPass(new THREE.Vector2(sz.x/4,sz.y/4),M.bl[0],.65,M.bl[1]);S.comp.addPass(S.bloom);
   S.grade=new THREE.ShaderPass({uniforms:{tDiffuse:{value:null},uExp:{value:M.exp},uCon:{value:M.con},uSat:{value:M.sat},uTint:{value:new THREE.Vector3().fromArray(M.tint)}},
     vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader:'uniform sampler2D tDiffuse;uniform float uExp,uCon,uSat;uniform vec3 uTint;varying vec2 vUv;\nvec3 enc(vec3 c){c=clamp(c,0.,1.);return mix(c*12.92,1.055*pow(c,vec3(1./2.4))-.055,step(.0031308,c));}\nvoid main(){vec3 c=enc(texture2D(tDiffuse,vUv).rgb*uExp*uTint);c=mix(c,c*c*(3.-2.*c),uCon);float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,uSat);gl_FragColor=vec4(c,1.);}'});
@@ -210,6 +214,8 @@ window.GZ_LUZ={
     for(const dl of [500,1500,3500,7000])setTimeout(()=>{if(ON&&G===g)apply();},dl);return true;},
   off(){if(!G||!ON)return;ON=false;apply();},
   get active(){return ON;},get n(){return N;},
+  // v239: cambiar la calidad en pleno partido (la calidad automática): fuera de alta no hay capa de cine
+  setQuality(q){if(!G)return;G.quality=q;if(q!=='alta'&&S.comp){try{S.comp.renderTarget1.dispose();S.comp.renderTarget2.dispose();}catch(e){}S.comp=null;S.bloom=null;S.grade=null;}if(ON)apply();},
   profile(){return M;},
   tune(o){Object.assign(M,o);if(G)apply();},
   tick(dt,cx,cz){if(!ON||!G)return;T+=dt;scanT-=dt;if(scanT<=0){scanT=1;scan();if(!S.field&&M.grass||!S.sky&&!S.own)apply();firesInit();}

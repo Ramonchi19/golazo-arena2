@@ -1452,9 +1452,9 @@ img.ico-img{display:inline-block;object-fit:contain;vertical-align:middle;pointe
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
 <script src="assets/sim/match.js?v=238"></script>
-<script src="assets/gk2.js?v=238"></script>
+<script src="assets/gk2.js?v=239"></script>
 <script src="assets/fx/strikers.js?v=231"></script>
-<script src="assets/arenas/luz.js?v=219"></script>
+<script src="assets/arenas/luz.js?v=239"></script>
 <script src="assets/kits.js?v=68"></script>
 <script src="assets/econ.js?v=129"></script>
 <script src="assets/icons.js?v=225"></script>
@@ -1620,7 +1620,7 @@ function M(geo,mat){const m=new THREE.Mesh(geo,mat);return m;}
 function init3D(){
   renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,powerPreference:'high-performance'});   // v236: que el teléfono use la tarjeta gráfica a toda su velocidad
   renderer.setPixelRatio(qualityPR());
-  renderer.shadowMap.enabled=save.settings.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled=save.settings.shadows;renderer.shadowMap.type=THREE.PCFShadowMap;   // v239: la suave cuesta varias veces más y con la cámara de arriba no se distingue
   scene=new THREE.Scene();scene.background=new THREE.Color(ARENA.sky);scene.fog=new THREE.Fog(ARENA.sky,260,520);
   camera=new THREE.PerspectiveCamera(38,1,1.5,300);   // v212c: plano cercano más lejos = más precisión de profundidad (en celulares el pasto y el piso de afuera se peleaban en renglones)
   hemiL=new THREE.HemisphereLight(0xd6e4ff,0x24451f,.8);scene.add(hemiL);
@@ -2422,6 +2422,18 @@ function selfLit(mat){if(!mat||mat.userData.selfLit)return mat;mat.userData.self
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2*(1.-uLzOff);')
       .replace('#include <tonemapping_fragment>','if(uLzOff>.5){vec3 N=normalize(vLzN),V=normalize(vLzV);float w=clamp(dot(N,uLzKey)*.5+.5,0.,1.);gl_FragColor.rgb*=mix(uLzShade,1.1,smoothstep(.3,.8,w));float sp=pow(max(dot(N,normalize(uLzKey+V)),0.),90.);gl_FragColor.rgb+=vec3(1.,.97,.9)*sp*uLzSpec;float fr=1.-clamp(dot(N,V),0.,1.);gl_FragColor.rgb+=uLzRimCol*uLzRim*pow(fr,4.);}\n#include <tonemapping_fragment>');};
   mat.customProgramCacheKey=()=>(mat.userData.kit?'kitproj':'std')+'-self2'+(window.GZ_LUZ_U?'-lz':'');if('roughness' in mat)mat.roughness=.62;mat.needsUpdate=true;return mat;}
+// v239: CONTORNO DE EQUIPO. Una copia del cuerpo un poco más gruesa, por dentro, del color oscuro de la camiseta del equipo.
+// Usa los mismos huesos (se mueve igual) y su grosor se mantiene igual sin importar el tamaño del titán.
+const OUTLINE_W=.055;
+function addOutline(o,team){if(!o||!o.isSkinnedMesh||o.userData.outline||o.userData.hasOutline)return null;
+  const K=TEAMKIT[team]||{j:0x222222},col=new THREE.Color(K.j).multiplyScalar(.62),u={value:.03};
+  const mat=new THREE.MeshBasicMaterial({color:col,side:THREE.BackSide,skinning:true});mat.userData.gzOutline=true;
+  mat.onBeforeCompile=sh=>{sh.uniforms.uOut=u;sh.vertexShader='uniform float uOut;\n'+sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed=vec3(position)+normalize(normal)*uOut;');};
+  mat.customProgramCacheKey=()=>'gzOutline';
+  const ol=new THREE.SkinnedMesh(o.geometry,mat);ol.bind(o.skeleton,o.bindMatrix);ol.userData.outline=true;ol.frustumCulled=false;ol.castShadow=false;ol.receiveShadow=false;
+  ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);ol.renderOrder=o.renderOrder;
+  ol.onBeforeRender=()=>{const sc=ol.matrixWorld.getMaxScaleOnAxis()||1;u.value=OUTLINE_W/sc;};
+  o.parent.add(ol);o.userData.hasOutline=ol;return ol;}
 function makeGLBChar(team,id){
   const M0=MODELS[id],root=new THREE.Group(),tilt=new THREE.Group();root.add(tilt);
   const model=THREE.SkeletonUtils?THREE.SkeletonUtils.clone(M0.scene):M0.scene.clone(true);
@@ -2438,8 +2450,9 @@ function makeGLBChar(team,id){
   const mats=[],byName={};
   const K=TEAMKIT[team]||TEAMKIT[0];
   const skinned=[];model.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o);});
-  // v12: sin contorno negro en los personajes
+  // v12: sin contorno negro en los personajes · v239: contorno delgado del color oscuro de SU EQUIPO (se distinguen en cualquier pantalla)
   model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K,(TEAMNUM[team]&&TEAMNUM[team][id])||DEFNUM[id]||10);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
+  if(save.settings.outline!==false)for(const o of skinned)addOutline(o,team);
   // detectar hacia dónde mira y de qué lado está cada brazo
   root.updateMatrixWorld(true);
   const lp=b=>{const w=new THREE.Vector3();b.getWorldPosition(w);return model.worldToLocal(w);};
@@ -4096,7 +4109,9 @@ function updateFB(dt){for(const f of fbList){f.t+=dt;if(f.t<0){f.m.visible=false
     if(f.follow){f.m.position.x=f.follow.x;f.m.position.z=f.follow.z;}
     f.m.position.y+=f.rise*dt;if(!f.ground)f.m.quaternion.copy(camera.quaternion);}
   fbList=fbList.filter(f=>!f.done);}
-function setupBloom(){try{if(!THREE.EffectComposer||!THREE.UnrealBloomPass||!THREE.RenderPass)return;composer=new THREE.EffectComposer(renderer);composer.addPass(new THREE.RenderPass(scene,camera));
+function setupBloom(){try{if(!THREE.EffectComposer||!THREE.UnrealBloomPass||!THREE.RenderPass)return;{const r=renderer,ms=r.capabilities.isWebGL2&&THREE.WebGLMultisampleRenderTarget,sz=r.getSize(new THREE.Vector2()),W=sz.x*r.getPixelRatio(),H=sz.y*r.getPixelRatio();   // v239: con suavizado de bordes
+    if(ms){const rt=new THREE.WebGLMultisampleRenderTarget(W,H);rt.samples=4;composer=new THREE.EffectComposer(r,rt);const r2=new THREE.WebGLRenderTarget(W,H);composer.renderTarget2.dispose();composer.renderTarget2=r2;composer.readBuffer=r2;}else composer=new THREE.EffectComposer(r);}
+  composer.addPass(new THREE.RenderPass(scene,camera));
   bloomPass=new THREE.UnrealBloomPass(new THREE.Vector2(256,256),.25,.3,.93);composer.addPass(bloomPass);}catch(e){composer=null;console.warn('bloom',e);}}
 function useBloom(){return composer&&typeof save!=='undefined'&&save.settings.quality==='alta';}
 
@@ -4879,7 +4894,7 @@ function render(dt){
   try{ballFx(dt);}catch(e){}
   try{if(window.GZ_LUZ)GZ_LUZ.tick(dt,camX,camZ);}catch(e){}   // v213
   MG.t-=dt;if(MG.t<=0){MG.t=.7;try{matGuard();}catch(e){}}   // v227
-  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);pubErr('se trabó al animarse: '+(e&&e.message||e));HONGOS=null;}}drawAim(dt);offMarkers();if(window.GZ_LUZ&&!DIAG.cine&&GZ_LUZ.render()){}else if(useBloom()&&!DIAG.cine)composer.render();else renderer.render(scene,camera);
+  netStep(dt);if(ARENA_MOD){try{ARENA_MOD.update(dt);}catch(e){console.warn(e);ARENA_MOD=null;}}if(HONGOS&&HONGOS.ready){try{HONGOS.setKits(TEAMKIT);HONGOS.update(dt,ball);}catch(e){console.warn('hongos',e);pubErr('se trabó al animarse: '+(e&&e.message||e));HONGOS=null;}}drawAim(dt);offMarkers();try{autoQTick();}catch(e){}if(window.GZ_LUZ&&!DIAG.cine&&GZ_LUZ.render()){}else if(useBloom()&&!DIAG.cine)composer.render();else renderer.render(scene,camera);
 }
 
 
@@ -5259,7 +5274,7 @@ function defSave(){return{v:2,name:'',nameN:0,hist:[],streak:0,best:0,ads:{d:0,n
   powers:{bomba:{lvl:1,copies:0},cascara:{lvl:1,copies:0},rayo:{lvl:1,copies:0},turbo:{lvl:1,copies:0},punetazo:{lvl:1,copies:0},tornado:{lvl:1,copies:0},meteorito:{lvl:1,copies:0}},
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
   packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},nums:{},equip:{kit:'clasico',boots:'negro'},seen:{},
-  settings:{sound:true,vib:true,shadows:true,quality:'alta',zurdo:false,land:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
+  settings:{sound:true,vib:true,shadows:true,quality:'alta',qauto:true,outline:true,zurdo:false,land:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
 const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo", "valkiria", "goblin", "duende", "hongo", "monje", "campeon", "momia", "zombi", "yeti", "princesa", "remiendo", "vampira", "reina", "nebula"];
 function migrate(s){
   const d=defSave();
@@ -5308,7 +5323,17 @@ function loadSave(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(s&&s
 var save=loadSave();
 function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(save));}catch(e){}}
 muted=!save.settings.sound;
-function qualityPR(){const d=window.devicePixelRatio||1;return save.settings.quality==='alta'?Math.min(d,1.5):save.settings.quality==='media'?Math.min(d,1):.75;}
+// v239: CALIDAD AUTOMÁTICA. En cada partido mide los cuadros por segundo reales (del segundo 3 al 9).
+// Si el teléfono no llega a ~40, baja un escalón (alta → media → baja). Nunca baja la nitidez de pantalla de 1.5.
+// Si sobra (58+), sube un escalón para el siguiente partido, pero nunca regresa a uno del que ya tuvo que bajar.
+const AUTOQ={t:0,n:0,sum:0,done:false,last:0};
+function autoQReset(){AUTOQ.t=0;AUTOQ.n=0;AUTOQ.sum=0;AUTOQ.done=false;AUTOQ.last=0;}
+function autoQTick(){const s=save.settings;if(!s.qauto||AUTOQ.done||state!=='play')return;const now=performance.now();if(!AUTOQ.last){AUTOQ.last=now;return;}
+  const dt=Math.min(.25,(now-AUTOQ.last)/1000);AUTOQ.last=now;AUTOQ.t+=dt;if(AUTOQ.t<3)return;AUTOQ.n++;AUTOQ.sum+=dt;if(AUTOQ.t<9)return;
+  AUTOQ.done=true;const fps=AUTOQ.n/AUTOQ.sum,L=['baja','media','alta'],i=Math.max(0,L.indexOf(s.quality));s.qfps=Math.round(fps);s.qcap=s.qcap==null?2:s.qcap;
+  let ni=i;if(fps<40&&i>0){ni=i-1;s.qcap=Math.min(s.qcap,ni);}else if(fps>=58&&i<s.qcap)ni=i+1;
+  if(ni!==i){s.quality=L[ni];persist();applySettings();try{if(window.GZ_LUZ)GZ_LUZ.setQuality(s.quality);}catch(e){}}else persist();}
+function qualityPR(){const d=window.devicePixelRatio||1;return save.settings.quality==='alta'?Math.min(d,2):save.settings.quality==='media'?Math.min(d,1.75):Math.min(d,1.5);}   // v239: nítido en cualquier pantalla (antes media=1 y baja=.75: se veía borroso)
 
 // ================== UTILIDADES ==================
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -5882,7 +5907,8 @@ function needName(){if(save.name||askName.open||gameOn)return;if(document.getEle
 function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div><b class="ct">${l}</b><small>${d}</small></div><button class="tgl ${s[k]?'on':''}" data-k="${k}" role="switch" aria-checked="${s[k]}" aria-label="${l}"><i></i></button></div>`;
   showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Configuración</div>
    ${tg('sound','Sonido','Efectos del partido y del menú')}${tg('vib','Vibración','Al chocar, explotar o abrir sobres')}${tg('shadows','Sombras','Apágalas si el teléfono se calienta')}${tg('zurdo','Modo zurdo','Joystick a la derecha, botones a la izquierda')}${tg('music','Música','Música del menú y de los partidos')}${tg('perf','Medidor de rendimiento','Muestra FPS, tirones y ping arriba de la pantalla')}
-   <div class="set"><div><b class="ct">Gráficos</b><small>Alta = brillo en efectos · Baja = más fluido</small></div><div class="seg">${['baja','media','alta'].map(q=>`<button data-q="${q}" class="${s.quality===q?'on':''}">${q[0].toUpperCase()+q.slice(1)}</button>`).join('')}</div></div>
+   <div class="set"><div><b class="ct">Gráficos</b><small>${s.qauto?'Automática: se ajusta sola a tu teléfono (ahora '+s.quality+(s.qfps?' · '+s.qfps+' cuadros/s':'')+')':'Alta = brillo en efectos · Baja = más fluido'}</small></div><div class="seg">${['auto','baja','media','alta'].map(q=>`<button data-q="${q}" class="${(q==='auto'?s.qauto:!s.qauto&&s.quality===q)?'on':''}">${q==='auto'?'Auto':q[0].toUpperCase()+q.slice(1)}</button>`).join('')}</div></div>
+   <div class="set"><div><b class="ct">Contorno de equipo</b><small>Cada jugador con una orilla del color de su equipo</small></div><button class="tgl ${s.outline!==false?'on':''}" data-k="outline" role="switch"><i></i></button></div>
    <div class="set"><div><b class="ct">Modelo 3D de Zurdito</b><small>${statusTxt()} · también puedes cargar otro .glb</small></div><label class="btn b sm">Cargar<input type="file" accept=".glb,model/gltf-binary,application/octet-stream" id="glbIn" hidden></label></div>
    ${MODELS.zurdito?`<div class="set"><div><b class="ct">Girar modelo 180°</b><small>Si corre de espaldas</small></div><button class="tgl ${save.modelFlip&&save.modelFlip.zurdito?'on':''}" id="flipT" role="switch"><i></i></button></div><div class="set"><div><b class="ct">Quitar modelo</b><small>Vuelve al muñeco de código</small></div><button class="btn r sm" id="glbDel">Quitar</button></div>`:''}
    <div class="set"><div><b class="ct">Probar voces</b><small id="voxInfo">Escucha a los personajes que ya tienen voz</small></div><button class="btn b sm" id="voxB">Probar</button></div>
@@ -5890,7 +5916,7 @@ function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div
    <div class="set"><div><b class="ct" style="color:#ffb3ba">Reiniciar progreso</b><small>Borra todo</small></div><button class="btn r sm" id="rstB">Borrar</button></div>
    <p class="note">Titan Crashers · versión de prueba</p></div>`);
   $$('.tgl').forEach(b=>b.onclick=()=>{const k=b.dataset.k;s[k]=!s[k];b.classList.toggle('on',s[k]);b.setAttribute('aria-checked',s[k]);persist();applySettings();});
-  $$('.seg button').forEach(b=>b.onclick=()=>{s.quality=b.dataset.q;$$('.seg button').forEach(x=>x.classList.toggle('on',x===b));persist();applySettings();});
+  $$('.seg button').forEach(b=>b.onclick=()=>{if(b.dataset.q==='auto'){s.qauto=true;s.qcap=2;}else{s.qauto=false;s.quality=b.dataset.q;}try{if(window.GZ_LUZ)GZ_LUZ.setQuality(s.quality);}catch(e){}$$('.seg button').forEach(x=>x.classList.toggle('on',x===b));persist();applySettings();});
   $('#howB').onclick=openHow;$('#mx').onclick=closeModal;
   $('#voxB').onclick=()=>{audio();const ids=Object.keys(VOICE2),inf=$('#voxInfo'),tot=Object.values(VOICE2).reduce((a,m)=>a+m.length,0);ids.forEach(id=>voxLoad(id));   // v105: diagnóstico de voces
     const txt=()=>`Cargadas: ${VOX.ok||0} de ${tot}${VOX.fail?' · fallaron '+VOX.fail+' ('+VOX.err+')':''} · audio: ${AC?AC.state:'sin audio'}`;
@@ -5911,7 +5937,8 @@ function openHow(){showModal(`<div class="mpanel"><button class="mclose" id="mx"
   <p class="desc"><b>Alineación:</b> elige formación y pon a cada jugador en su posición. Fuera de posición rinde menos (⚠️).</p></div>`);$('#mx').onclick=closeModal;}
 function openNews(){showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Novedades</div>
   <p class="desc">⚽ Ahora juegan 4 de campo + portero, con 5 formaciones.</p><p class="desc">🏟️ Cada arena tiene su propio estadio.</p><p class="desc">🎁 Las recompensas llegan en sobres.</p><p class="desc">👕 Nuevo vestuario con uniformes y taquetes.</p><p class="desc">🏅 Ranking global y por país.</p>${ADS.slot('inicio')}</div>`);$('#mx').onclick=closeModal;}
-function applySettings(){const s=save.settings;if(s.music===undefined)s.music=true;try{perfMeter(!!s.perf);}catch(e){}muted=!s.sound;try{MUS.play(gameOn?(state==='play'&&!window.SPECT?'partido':null):'lobby');}catch(e){}document.body.classList.toggle('zurdo',s.zurdo);const m=document.getElementById('mute');if(m)m.innerHTML=ICON(muted?'mute':'sound',30);
+function applySettings(){const s=save.settings;if(s.music===undefined)s.music=true;if(s.qauto===undefined){s.qauto=true;s.quality='alta';s.qcap=2;}   // v239: automática para todos (una vez)
+  try{perfMeter(!!s.perf);}catch(e){}muted=!s.sound;try{MUS.play(gameOn?(state==='play'&&!window.SPECT?'partido':null):'lobby');}catch(e){}document.body.classList.toggle('zurdo',s.zurdo);const m=document.getElementById('mute');if(m)m.innerHTML=ICON(muted?'mute':'sound',30);
   if(renderer){renderer.setPixelRatio(qualityPR());renderer.shadowMap.enabled=s.shadows;scene.traverse(o=>{if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(mm=>mm.needsUpdate=true);});resize();}}
 
 
@@ -6056,7 +6083,7 @@ async function prepMatch(opp){VS_HOLD=true;try{snd1Pre();crowdLoad();}catch(e){}
     // se dibujan varios cuadros escondidos para que el teléfono prepare la arena, los personajes y los efectos
     for(let i=0;i<24;i++){await new Promise(r=>requestAnimationFrame(r));mmProg(.6+.4*(i+1)/24,i<12?'Cargando arena…':'Preparando efectos…');}
   }finally{VS_HOLD=false;}}
-function beginMatch(){state='play';crowdStart();showBig('¡A jugar!');try{crowdShot('fx_buzzstart',.7);}catch(e){}}   // v162: bocina de inicio después de los tambores   // v140: sin bocina/silbato al empezar
+function beginMatch(){autoQReset();state='play';crowdStart();showBig('¡A jugar!');try{crowdShot('fx_buzzstart',.7);}catch(e){}}   // v162: bocina de inicio después de los tambores   // v140: sin bocina/silbato al empezar
 // partido contra la IA (cuando no hay rival real)
 async function playBot(opp){mmVS(opp);const t0=performance.now();
   try{await prepMatch(opp);}catch(e){console.warn(e);}

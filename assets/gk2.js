@@ -25,7 +25,7 @@ const K={
   block:{n:'gk_block_l',from:.35,to:2.2,ts:2.7,key:1.07},
   miss:{n:'gk_miss',from:.5,to:3.4,ts:2.0}};
 const VMAXL=5.2,VMAXF=4.2,LOOPS=['gk_base','gk_lado','gk_lado_l','gk_frente','atras'];
-const _v=new THREE.Vector3(),_v2=new THREE.Vector3(),_q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_up=new THREE.Vector3(0,1,0);
+const _fa=new THREE.Vector3(),_fb=new THREE.Vector3(),_fc=new THREE.Vector3(),_v=new THREE.Vector3(),_v2=new THREE.Vector3(),_q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_up=new THREE.Vector3(0,1,0);
 function mirrorBone(s){return s.replace(/Left/g,'#L#').replace(/Right/g,'Left').replace(/#L#/g,'Right');}
 function mirror(c,name){const tr=c.tracks.map(t=>{const u=t.clone(),dot=u.name.lastIndexOf('.'),prop=u.name.slice(dot);u.name=mirrorBone(u.name.slice(0,dot))+prop;const v=u.values;
     if(prop==='.quaternion'){for(let i=0;i<v.length;i+=4){v[i+1]=-v[i+1];v[i+2]=-v[i+2];}}else if(prop==='.position'){for(let i=0;i<v.length;i+=3)v[i]=-v[i];}return u;});
@@ -150,10 +150,10 @@ function fingers(p,m,S,dt){const Q=S.seq,kind=Q&&!Q.ending?Q.kind:null,held=ball
     h.b.getWorldQuaternion(_q);const n=_v2.copy(h.palm).applyQuaternion(_q).normalize();
     for(const f of h.F){const C=fist?FIST:CURL,amt=f.fn==='Thumb'?C.t:C.f;
       for(let i=0;i<3;i++){const j=f.js[i],nx=i<2?f.js[i+1]:f.tip;if(!nx)continue;j.updateMatrixWorld(true);
-        const a=j.getWorldPosition(new THREE.Vector3()),b=nx.getWorldPosition(new THREE.Vector3()),d=b.sub(a).normalize();
-        const ax=new THREE.Vector3().crossVectors(d,n);if(ax.lengthSq()<1e-6)continue;ax.normalize();
+        const a=j.getWorldPosition(_fa),b=nx.getWorldPosition(_fb),d=b.sub(a).normalize();   // v239: sin crear objetos cada cuadro
+        const ax=_fc.crossVectors(d,n);if(ax.lengthSq()<1e-6)continue;ax.normalize();
         j.getWorldQuaternion(_q2);ax.applyQuaternion(_q2.invert());
-        h.fs.push([j,j.quaternion.clone()]);j.quaternion.multiply(_q2.setFromAxisAngle(ax,amt[i]*h.g));}}}}
+        const sv=h.fs.length<(h.fp||(h.fp=[])).length?h.fp[h.fs.length]:(h.fp[h.fs.length]=[null,new THREE.Quaternion()]);sv[0]=j;sv[1].copy(j.quaternion);h.fs.push(sv);j.quaternion.multiply(_q2.setFromAxisAngle(ax,amt[i]*h.g));}}}}
 function restoreFingers(S){for(const k in S.H){const h=S.H[k];for(const [b,q] of h.fs)b.quaternion.copy(q);h.fs.length=0;}}
 // ---------- seguro: nunca desaparece ----------
 function guard(p,m,S){const B=m.bones,h=B.hips&&B.hips.b;if(!h)return;h.getWorldPosition(_v);const H=(B.hipsWorldH||1);
