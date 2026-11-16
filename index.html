@@ -1451,7 +1451,8 @@ img.ico-img{display:inline-block;object-fit:contain;vertical-align:middle;pointe
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="assets/sim/ball.js?v=212"></script>
 <script src="assets/sim/data.js?v=129"></script>
-<script src="assets/sim/match.js?v=232"></script>
+<script src="assets/sim/match.js?v=238"></script>
+<script src="assets/gk2.js?v=238"></script>
 <script src="assets/fx/strikers.js?v=231"></script>
 <script src="assets/arenas/luz.js?v=219"></script>
 <script src="assets/kits.js?v=68"></script>
@@ -1631,7 +1632,7 @@ function init3D(){
   const bc=document.createElement('canvas');bc.width=128;bc.height=64;const bg=bc.getContext('2d');
   bg.fillStyle='#fff';bg.fillRect(0,0,128,64);bg.fillStyle='#1b1b1b';
   [[16,14],[48,10],[80,14],[112,10],[0,40],[32,46],[64,40],[96,46],[128,40],[20,62],[84,62],[52,2],[116,2]].forEach(([x,y])=>{bg.beginPath();for(let i=0;i<5;i++){const a=i*1.2566-1.57;bg.lineTo(x+Math.cos(a)*7,y+Math.sin(a)*7);}bg.fill();});
-  ballMesh=M(new THREE.SphereGeometry(BVIS,20,14),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(bc)}));ballMesh.castShadow=true;scene.add(ballMesh);
+  ballMesh=styledBall(BVIS);ballMesh.castShadow=true;scene.add(ballMesh);   // v238: balón de caricatura propio (ya no el de la vida real)
   {const S=128,c=document.createElement('canvas');c.width=c.height=S;const q=c.getContext('2d'),gr=q.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
    gr.addColorStop(0,'rgba(255,255,255,.06)');gr.addColorStop(.42,'rgba(255,255,255,.10)');gr.addColorStop(.56,'rgba(255,255,255,.55)');gr.addColorStop(.72,'rgba(225,240,255,.22)');gr.addColorStop(1,'rgba(225,240,255,0)');q.fillStyle=gr;q.fillRect(0,0,S,S);
    const tx=new THREE.CanvasTexture(c);
@@ -2509,6 +2510,7 @@ async function loadAnimLib(){
       for(const n in X){if(!/^r_/.test(n))continue;if(ANIMLIB){ANIMLIB[n]=X[n];ANIMMETA[n]=meta[n];}for(const g in GLIB){GLIB[g][n]=X[n];GMETA[g][n]=meta[n];}}   // v232: remates para todos
       try{addMirrors(ANIMLIB,ANIMMETA);for(const g in GLIB)addMirrors(GLIB[g],GMETA[g]);}catch(e){}res();},rej));}
   catch(e){console.warn('animaciones nuevas',e);}
+  try{if(window.GK2)await GK2.load();}catch(e){console.warn('portero nuevo',e);}   // v238
 }
 // v228b: versiones zurdas de tiro, centro, penal y tiro potente, sacadas en espejo de las derechas (todas las originales son con la derecha).
 // Misma fórmula con la que se armaron pass_l, tackle2 y gk_*_r en buildlib.py: se cambia Left↔Right, el giro va (x,-y,-z,w) y la cadera x→-x.
@@ -3458,6 +3460,7 @@ function pTrail(p,m,sp,dt){
 function animLib(m,p,dt){
   const sp=window.ONLINE?Math.max(Math.hypot(p.vx,p.vz),p._mv||0):Math.hypot(p.vx,p.vz);   // v96: en línea también cuenta lo que lo mueve el servidor (ya no se desliza sin correr)
   try{pTrail(p,m,sp,dt);}catch(e){}   // v212: estela al correr a tope
+  if(p.gk&&window.GK2){let h=false;try{h=GK2.anim(p,m,dt);}catch(e){console.warn('portero',e);GK2.on=false;}if(h)return;}   // v238: portero nuevo (assets/gk2.js)
   libEvents(p,m);   // v171: esta llamada estaba pegada al comentario desde v96 y no corría (patadas, barridas, controles, levantarse...)
   // v77: después de tirarse se levanta con la misma animación (sin saltar de acostado a parado)
   if(p.gk&&/^gk_dive/.test(m.curA||'')&&!(p.dive>0)&&m.L){const a=m.L[m.curA],mt=ANIMMETA[m.curA]||{},d=a?a.getClip().duration:0,land=mt.land||1.3;
@@ -3864,6 +3867,9 @@ function jxBoom(x,y,z,big,catchIt){const T0=jxTex(),F=clamp(Math.hypot(camera.po
   for(let i=0,n=big?9:6;i<n;i++){const a=i/n*6.283+rand(-.3,.3),up=rand(.2,1),v=rand(4,7.5)*(big?1.2:1);   // estrellitas que salen volando
     add(T0.star,i%3?0xffe066:0xffffff,{life:rand(.45,.65),s0:big?1.1:.9,s1:.15,vx:Math.cos(a)*v,vy:up*v*.9,vz:Math.sin(a)*v,g:9,rot:rand(-12,12)});}
   for(let i=0,n=big?6:4;i<n;i++)add(T0.spark,0xffffff,{life:.18,s0:.2,s1:big?2.6:1.8,rot0:rand(0,3.14),stretch:5,op:.85});   // rayitas de impacto
+  // v238: chispitas blancas pequeñas (brillo) que salen hacia donde va el rebote y se apagan rápido
+  {const bv=Math.hypot(ball.vx,ball.vy,ball.vz)||1,ux=catchIt?0:ball.vx/bv,uy=catchIt?.4:ball.vy/bv,uz=catchIt?0:ball.vz/bv,n=big?22:14;
+   for(let i=0;i<n;i++){const s=rand(3,8)*(big?1.2:1);part(x,y,z,ux*s+rand(-3,3),uy*s+rand(-.5,3.5),uz*s+rand(-3,3),i%4?0xffffff:0xe8f6ff,rand(.22,.45),5,rand(.16,.32));}}
   if(catchIt)ballSq=Math.max(ballSq,.12);
   hitstop=Math.max(hitstop||0,big?.11:.065);shakeAmt=Math.max(shakeAmt,big?.55:.3);vib(big?45:25);
   if(window.ONLINE)sfx(catchIt?'catch':'hit');}
@@ -3922,7 +3928,7 @@ function gkHands(dt){if(!ANIMLIB||!ball)return;const I=ikV();let grip=null;
       I.tL.copy(p._grip).addScaledVector(I.ax,R);I.tR.copy(p._grip).addScaledVector(I.ax,-R);if(!NEWANIM){ikArm(m,'l',I.tL,p._hw);ikArm(m,'r',I.tR,p._hw);}}
     p._gripR=p._gripR||new THREE.Vector3();{const B=m.bones;palmW(m,'r',p._gripR);(B.ra?B.ra.b:B.rh).getWorldPosition(I.a);I.b.subVectors(p._gripR,I.a).normalize();p._gripR.addScaledVector(I.b,BR*.8);}
     p._gripT=T;
-    if(held&&!(p.distrib&&p.distrib.type!=='mano'&&p.distrib.t>.45))grip=p.distrib&&p.distrib.type==='mano'?p._gripR:p._grip;}
+    if(held&&!(p.distrib&&p.distrib.type==='largo'&&p.distrib.t>.3))grip=p.distrib&&(p.distrib.type==='mano'||p.distrib.type==='corto')?p._gripR:p._grip;}   // v238: rodando también sale de la mano derecha
   // v212: imán de remates. Mientras la cabeza (o el pie) llega al balón, el balón se ve pegado a ella; justo antes, se va jalando hacia ella.
   let pull=null,pw=0;
   if(!grip&&!ball.owner&&!ball.gk){for(const p of players){if(p.gk)continue;const m=p.mesh;if(!m||!m.glb||!m.bones)continue;const J=m._jmp;
@@ -4690,6 +4696,27 @@ function updateFX(dt){
   shakeAmt=Math.max(0,shakeAmt-dt*2.2);if(fenceFlash>0)fenceFlash-=dt;if(GLASS.mat){GLASS.mat.uniforms.uTime.value=T;GLASS.mat.uniforms.uFlash.value=Math.max(0,fenceFlash)*2.5;}if(goalCam>0)goalCam-=dt;
 }
 
+// v238: BALÓN DE CARICATURA (diseño propio). Esfera hecha de un cubo redondeado: cada cara es un panel crema con panal fino,
+// ranuras oscuras entre paneles y una ventana triangular con aro grueso (azul / café alternado), núcleo naranja que brilla y remaches dorados.
+// Contorno negro de caricatura. Todo dibujado por código (no pesa nada).
+function styledBall(R){const g=new THREE.BoxGeometry(1,1,1,14,14,14),pa=g.attributes.position,v=new THREE.Vector3();
+  for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i).normalize().multiplyScalar(R);pa.setXYZ(i,v.x,v.y,v.z);}g.computeVertexNormals();
+  const N=256,mats=[];
+  const tri=(ctx,rad,rot)=>{ctx.beginPath();for(let k=0;k<3;k++){const a=rot+k*2*Math.PI/3,b=a+2*Math.PI/3,p0=[N/2+Math.cos(a)*rad,N/2+Math.sin(a)*rad],p1=[N/2+Math.cos(b)*rad,N/2+Math.sin(b)*rad],m=[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2];
+    if(k===0)ctx.moveTo(m[0],m[1]);ctx.arcTo(p1[0],p1[1],(p1[0]+N/2+Math.cos(b+2*Math.PI/3)*rad)/2,(p1[1]+N/2+Math.sin(b+2*Math.PI/3)*rad)/2,rad*.32);}ctx.closePath();};
+  for(let f=0;f<6;f++){const c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d'),e=document.createElement('canvas');e.width=e.height=N;const y=e.getContext('2d');
+    x.fillStyle='#e2c38c';x.fillRect(0,0,N,N);x.strokeStyle='rgba(150,110,60,.28)';x.lineWidth=1.2;const hs=9;
+    for(let r=-1;r<N/(hs*1.5)+1;r++)for(let q=-1;q<N/(hs*1.73)+1;q++){const cx=q*hs*1.732+(r%2?hs*.866:0),cy=r*hs*1.5;x.beginPath();for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3;x.lineTo(cx+Math.cos(a)*hs,cy+Math.sin(a)*hs);}x.closePath();x.stroke();}
+    const sh=x.createRadialGradient(N/2,N/2,N*.2,N/2,N/2,N*.75);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(90,50,20,.25)');x.fillStyle=sh;x.fillRect(0,0,N,N);
+    x.strokeStyle='#2a1d1a';x.lineWidth=14;x.strokeRect(0,0,N,N);y.fillStyle='#000';y.fillRect(0,0,N,N);
+    const rot=-Math.PI/2+(f%2?Math.PI:0),rim=f%2?'#6e4632':'#2c3168';
+    x.fillStyle='#1b1410';tri(x,108,rot);x.fill();x.fillStyle=rim;tri(x,101,rot);x.fill();
+    x.fillStyle='rgba(255,255,255,.22)';tri(x,101,rot);x.save();x.clip();x.fillRect(0,0,N,N*.42);x.restore();
+    x.fillStyle='#1b1410';tri(x,60,rot);x.fill();const core=x.createRadialGradient(N/2,N/2,4,N/2,N/2,52);core.addColorStop(0,'#ffd27a');core.addColorStop(.5,'#ff7a1a');core.addColorStop(1,'#8a2508');x.fillStyle=core;tri(x,51,rot);x.fill();
+    for(let k=0;k<3;k++){const a=rot+k*2*Math.PI/3;x.fillStyle='#e8b94a';x.beginPath();x.arc(N/2+Math.cos(a)*80,N/2+Math.sin(a)*80,7,0,7);x.fill();x.fillStyle='#5a3b10';x.beginPath();x.arc(N/2+Math.cos(a)*80,N/2+Math.sin(a)*80,2.6,0,7);x.fill();}
+    const eg=y.createRadialGradient(N/2,N/2,4,N/2,N/2,52);eg.addColorStop(0,'#ffb04a');eg.addColorStop(1,'#7a2206');y.fillStyle=eg;tri(y,51,rot);y.fill();
+    mats.push(new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c),emissiveMap:new THREE.CanvasTexture(e),emissive:0xffffff,emissiveIntensity:.75}));}
+  const m=new THREE.Mesh(g,mats);const ol=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x120c0a,side:THREE.BackSide}));ol.scale.setScalar(1.06);m.add(ol);return m;}
 // ================== VISUALES ==================
 // v127: sombra suave bajo cada jugador (los despega del piso aunque las sombras estén apagadas)
 let CSH_TEX=null;function cshTex(){if(CSH_TEX)return CSH_TEX;const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(0,0,0,.75)');g.addColorStop(.55,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return CSH_TEX=new THREE.CanvasTexture(c);}
@@ -4752,6 +4779,7 @@ function syncPlayer(p,dt){
    else if(p.gk&&ANIMLIB&&m.glb&&!(p.dive>0)&&!(p.smother>0))p._vface+=df*Math.min(1,dt*9);   // v77: el portero gira suave (antes daba la vuelta de golpe al agarrar)
    else if(p.kickT>0||p.gk||!(ANIMLIB&&m.glb))p._vface=want;else p._vface+=df*Math.min(1,dt*(look?8:16));p._look=look;}
   if(p.slip>0)m.root.rotation.y+=dt*22;else m.root.rotation.y=p._vface-kickYaw(m);
+  if(p.gk&&window.GK2)GK2.place(p,m);   // v238: lo que avanza y gira con la animación del portero
   if(TURN_PROC&&!p.gk&&ANIMLIB&&m.glb)turnFx(p,m,dt,sp);
   const sw=Math.sin(p.anim)*Math.min(.95,sp*.13);
   m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
@@ -4808,7 +4836,7 @@ function render(dt){
     ballXray.visible=false;const h=ball.y-BR;
     if(!held&&h>1.1){const t=ballLandT();ballLand.visible=true;ballLand.position.set(ball.x+ball.vx*t,.05,ball.z+ball.vz*t);ballLand.scale.setScalar(1+.12*Math.sin(T*10));ballLand.material.opacity=Math.min(.75,(h-1.1)*.6);}else ballLand.visible=false;}
   if(ball){ballMesh.position.set(BD.x,BD.y-(BR-BVIS),BD.z);ballShadow.position.set(BD.x,.03,BD.z);const h=BD.y-BR;ballShadow.scale.setScalar(1+h*.25);ballShadow.material.opacity=Math.max(.08,.35-h*.06);
-    if(ball.super){ballMesh.material.emissive.setRGB(.8,.4,0);}else ballMesh.material.emissive.setRGB(0,0,0);}
+    {const sup=!!ball.super;if(ballMesh._sup!==sup){ballMesh._sup=sup;for(const mm of (Array.isArray(ballMesh.material)?ballMesh.material:[ballMesh.material])){if(mm.emissiveMap){mm.emissive.setRGB(1,sup?.75:1,sup?.35:1);mm.emissiveIntensity=sup?1.8:.75;}else mm.emissive.setRGB(sup?.8:0,sup?.4:0,0);}}}}
   if(user&&state==='play'){ring.visible=arrow.visible=true;ring.position.set(user.x,.06,user.z);ring.rotation.z=user.face+Math.PI;ring.scale.setScalar(1+.05*Math.sin(T*6));if(ring.userData.ticks){ring.userData.ticks.rotation.z=-T*1.4;ring.userData.ticks.material.color.copy(ring.material.color);}arrow.position.set(user.x,2.75*CHAR_SCALE+Math.sin(T*6)*.12,user.z);ring.material.color.setHex(attackMode()?0xffcc33:0xb388ff);arrow.material.color.copy(ring.material.color);if(user!==arrow.userData.lastU||(ball.owner===user)!==arrow.userData.had){arrow.userData.pop=1;arrow.userData.lastU=user;arrow.userData.had=ball.owner===user;}const pu=arrow.userData.pop||0;arrow.userData.pop=Math.max(0,pu-dt*3.5);arrow.scale.setScalar(1+1.1*pu*pu);}   // v231: crece de golpe al cambiar de jugador o al recibir (como el 1 de Strikers)
   else{ring.visible=arrow.visible=false;}
   for(let k=0;k<ledMats.length;k++)ledMats[k].color.setHSL(((T*.12+k*.07)%1),.85,.55+(fenceFlash>0?.2:0));

@@ -313,7 +313,7 @@ function gkTrajChanged(k){const h=Math.atan2(ball.vz,ball.vx),s=Math.hypot(ball.
   if(k._th!=null){let dh=h-k._th;while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;if(Math.abs(dh)>.22||Math.abs(s-k._ts)>Math.max(3,k._ts*.3))ch=true;}
   k._th=h;k._ts=s;return ch;}
 // v176: duración del manotazo de cada portero y momento del contacto (igual que el dibujo)
-const GK_SWD={gato:[.8,.52],gigante:[.9,.52],muralla:[.9,.52],coletazo:[.8,.5],_:[.85,.5]};
+const GK_SWD={gato:[.5,.5],gigante:[.55,.5],muralla:[.55,.5],coletazo:[.5,.5],_:[.52,.5]};   // v238: rápido (antes ~.9 s)
 function gkSwipeHit(k,G_){const c=k.swipeTgt,d=dirOf(k.team);k.swipeTgt=null;if(!c||k.stun>0||k.frozen>0)return;
   const big=k.card&&(k.card.id==='muralla'||k.card.id==='gigante'),reach=big?2.4:2.1;
   if(ball.owner!==c||d2(k,c)>reach){popText('¡Lo esquivó!',c.x,2.6,c.z,'#bff',16);return;}
@@ -328,7 +328,9 @@ function updateKeeper(k,dt){
   if(k.dive>0)k.dive-=dt;if(k.smother>0)k.smother-=dt;if(k.highT>0)k.highT-=dt;if(k.blockT>0)k.blockT-=dt;if(k.saveT>0)k.saveT-=dt;if(k.backT>0)k.backT-=dt;if(k.prepT>0)k.prepT-=dt;if(k.swipeT>0)k.swipeT-=dt;k.swipeCD=(k.swipeCD||0)-dt;
   if(k.setPos&&k.vx===0&&k.vz===0)k.face=Math.atan2(ball.x-k.x,ball.z-k.z);
   if(k.frozen>0||k.rooted>0){if(k.frozen>0)k.frozen-=dt;if(k.rooted>0)k.rooted-=dt;k.vx=k.vz=0;if(ball.gk===k){ball.gk=null;ball.vy=3;ball.vx=rand(-3,3);ball.vz=rand(-3,3);}return;}
-  if(k.stun>0){k.stun-=dt;k.vx*=.9;k.vz*=.9;movePlayer(k,dt);return;}
+  if(k.stun>0){k.stun-=dt;k.vx*=.9;k.vz*=.9;movePlayer(k,dt);k.clearT=0;k.clearing=false;return;}
+  // v238: despeje de patada (el golpe cae justo cuando termina clearT; la animación arranca para que el pie llegue ahí)
+  if(k.clearT>0){k.clearT-=dt;k.vx*=.8;k.vz*=.8;movePlayer(k,dt);if(k.clearT<=0){k.clearing=false;if(!ball.owner&&!ball.gk&&d2(k,ball)<2.6&&ball.y<1.6)gkClear(k);}return;}
   if(ball.gk===k){k.vx=k.vz=0;k.face=d>0?Math.PI/2:-Math.PI/2;k.down=0;return;}
   const hs=Math.hypot(ball.vx,ball.vz),free=!ball.owner&&!ball.gk;
   if(free&&gkTrajChanged(k)){k.alert=false;k.plan=null;k._prepd=0;if(!(k.down>0))ball.tried[k.team]=false;}
@@ -357,7 +359,7 @@ function updateKeeper(k,dt){
           if(an<=G_.arm*.75){k.plan='paso';}
           else{k.plan='estirada';k.dive=.6;k.diveArrive=pred.k.t;k.diveDir=Math.sign(need)||1;k.diveH=pred.k.y;k.diveGoal=Math.min(G_.diveMax,Math.max(0,an-G_.arm*.55));k.diveDone=0;}}
         if(k.plan==='paso'){const st=Math.min(an,G_.shuffle*dt);k.z+=Math.sign(need)*st;
-          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;k.prepSlap=Math.hypot(ball.vx,ball.vy,ball.vz)>=G_.catchV;}}   // para el dibujo: las manos llegan justo cuando llega el balón
+          if(!k._prepd){k._prepd=1;k.prepT=pred.k.t;k.prepY=pred.k.y;k.prepZ=need;k.prepSlap=Math.hypot(ball.vx,ball.vy,ball.vz)>=G_.catchV;k.prepKind=gkKind(pred.k.y,Math.hypot(ball.vx,ball.vy,ball.vz),G_);}}   // para el dibujo: las manos llegan justo cuando llega el balón
         else if(k.plan==='estirada'&&k.diveDone<k.diveGoal){const st=Math.min(k.diveGoal-k.diveDone,G_.diveV*dt);k.z+=k.diveDir*st;k.diveDone+=st;}
         k.z=clamp(k.z,-GW-1.4,GW+1.4);
       }
@@ -373,7 +375,10 @@ function updateKeeper(k,dt){
     let out=clamp(.7+(26-dist)*.055,.6,1.5+G_.SAL*.012);if(dist<6)out=Math.min(out,Math.max(.5,dist*.45));
     let tx,tz;if(Math.abs(vx)>.15){const tB=((gx+d*out)-bx)/vx;tx=bx+vx*tB;tz=bz+vz*tB;}else{tx=gx+d*out;tz=bz*.5;}
     tz=clamp(tz,-GW+.25,GW-.25);
-    k.claim=false;if(free&&Math.abs(ball.x-gx)<11&&Math.abs(ball.z)<12.5&&ball.y<1.7&&hs<15){const o=nearestOpp({x:ball.x,z:ball.z,team:k.team});if(!o||Math.hypot(o.x-ball.x,o.z-ball.z)>d2(k,ball)-1.5){tx=ball.x+ball.vx*.25;tz=ball.z+ball.vz*.25;k.claim=true;}}
+    k.claim=false;k.clearing=false;if(free&&Math.abs(ball.x-gx)<11&&Math.abs(ball.z)<12.5&&ball.y<1.7&&hs<15){const o=nearestOpp({x:ball.x,z:ball.z,team:k.team}),od=o?Math.hypot(o.x-ball.x,o.z-ball.z):99,inA=Math.abs(ball.x-gx)<8&&Math.abs(ball.z)<GW+4;
+      // v238: el área es suya: dentro del área sale aunque el rival esté un poco más cerca; con un rival encima la despeja en vez de agarrarla
+      if(od>d2(k,ball)-(inA?3.2:1.5)){tx=ball.x+ball.vx*.25;tz=ball.z+ball.vz*.25;k.claim=true;k.clearing=inA&&od<3.6;
+        if(k.clearing&&d2(k,ball)<1.75&&!(k.clearT>0)){k.clearT=.3;k.vx*=.5;k.vz*=.5;}}}
     const c=ball.owner;k.rushCD=(k.rushCD||0)-dt;
     // v174: manotazo — el rival tiene el balón pegado dentro del área chica y no tira: el portero se lo quita de un manotazo
     if(c&&c.team!==k.team&&Math.abs(c.x-gx)<5.5&&Math.abs(c.z)<GW+1.5&&d2(k,c)<1.45&&!(k.dive>0))k._closeT=(k._closeT||0)+dt;else k._closeT=0;
@@ -384,7 +389,7 @@ function updateKeeper(k,dt){
       let cover=false;for(const m of fieldOf(k.team)){if(Math.abs(m.x-gx)<Math.abs(c.x-gx)-.3&&d2(m,c)<3.2){cover=true;break;}}
       if(!cover){tx=ball.x;tz=ball.z;k.rushing=true;
         if(d2(k,ball)<1.25){k.rushCD=1.4;const exp=clamp((Math.hypot(ball.x-c.x,ball.z-c.z)-.5)/.8,0,1),pr=clamp(.32+(G_.SAL-60)*.012+exp*.3-(c.dodge||0),.1,.85)*G_.dif;
-          if(Math.random()<pr){catchBall(k);popText('¡Salida perfecta!',k.x,2.6,k.z,'#fff',18);bigSave();}
+          if(Math.random()<Math.min(.93,pr+(Math.abs(c.x-gx)<6?.22:0))){catchBall(k);popText('¡Salida perfecta!',k.x,2.6,k.z,'#fff',18);bigSave();}
           else{k.stun=.7;k.dive=.55;k.diveDir=Math.sign(c.z-k.z)||1;c.protect=Math.max(c.protect||0,.4);popText('¡Lo esquivó!',c.x,2.6,c.z,'#bff',18);}}}
     }else k.rushing=false;
     let sp=(4.5+G_.SAL*.025)*G_.dif*(k.rushing||k.claim?1.45:k.setPos?.8:1);
@@ -395,10 +400,27 @@ function updateKeeper(k,dt){
     movePlayer(k,dt);
   }
   if(!k.distrib&&!(k.dive>0)&&!(k.smother>0)&&!(k.backT>0)){const want=Math.atan2(ball.x-k.x,ball.z-k.z);let df=want-k.face;while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;k.face+=df*Math.min(1,dt*10);}
-  if(k.pcd<=0&&free&&!pred&&d2(k,ball)<1.15&&ball.y<1.9&&hs<14&&!ball.super){catchBall(k);return;}
+  if(k.pcd<=0&&free&&!pred&&!k.clearing&&!(k.clearT>0)&&d2(k,ball)<1.15&&ball.y<1.9&&hs<14&&!ball.super){catchBall(k);return;}
   if(free&&ball.vx*-d>2){const front=(ball.x-k.x)*d;if(front<.6&&front>-1.3&&!ball.tried[k.team]){ball.tried[k.team]=true;resolveSave(k,G_);}}
   if(Math.abs(ball.x-gx)>9)ball.tried[k.team]=false;
 }
+// v238: qué hace de frente (lo mismo decide la animación): rasante → con el pie (o la recoge si viene suave), al centro → de puño,
+// arriba → la atrapa si puede o la saca de manotazo
+function gkKind(y,s,G_){if(y<.55)return s<11?'recoge':'pie';if(y<1.7)return 'puno';return (s<G_.catchV&&y<2.45)?'alta':'slap';}
+// v238: rebote con lógica. Sale de cómo viene el balón (dirección y fuerza) y de con qué le pega (palma, puño, pie, cuerpo):
+// se refleja contra la superficie que lo toca, pierde parte de la fuerza (lo que absorbe cada parte) y suma el empujón del golpe.
+// Nunca regresa hacia su propia portería.
+const GK_REB={puno:{e:.32,push:7,up:.45,lat:.25,fw:1},pie:{e:.22,push:2.2,up:.12,lat:.7,fw:1},slap:{e:.3,push:4.5,up:1.1,lat:.35,fw:.45},
+  desvio:{e:.38,push:3.2,up:.3,lat:1,fw:.35},punta:{e:.3,push:2.5,up:.25,lat:1.1,fw:.2},cuerpo:{e:.28,push:1.8,up:.2,lat:.35,fw:1},travesano:{e:.3,push:4.5,up:1.4,lat:.2,fw:.15},rechazo:{e:.18,push:1,up:.3,lat:.3,fw:1}};
+function gkRebound(k,kind,cz){const d=dirOf(k.team),P=GK_REB[kind]||GK_REB.desvio,side=Math.sign((cz!=null?cz:ball.z)-k.z)||Math.sign(ball.z)||1,out=Math.sign(ball.z)||side;
+  const lat=(kind==='desvio'||kind==='punta'||kind==='travesano')?out:side;   // las estiradas la mandan hacia afuera del palo; puño y pie hacia donde le pegó
+  let nx=d*P.fw,ny=P.up,nz=lat*P.lat;const nl=Math.hypot(nx,ny,nz)||1;nx/=nl;ny/=nl;nz/=nl;
+  const vx=ball.vx,vy=ball.vy,vz=ball.vz,dot=vx*nx+vy*ny+vz*nz;let rx=vx-2*dot*nx,ry=vy-2*dot*ny,rz=vz-2*dot*nz;   // reflejo contra la superficie
+  rx=rx*P.e+nx*P.push;ry=ry*P.e+ny*P.push;rz=rz*P.e+nz*P.push;
+  if(rx*d<1.2)rx=d*Math.max(1.2,Math.abs(rx)*.5);   // nunca hacia su portería
+  ry=Math.max(ry,kind==='pie'||kind==='cuerpo'?.6:1.2);
+  const sp=Math.hypot(rx,ry,rz),mx=kind==='puno'?20:16;if(sp>mx){rx*=mx/sp;ry*=mx/sp;rz*=mx/sp;}
+  ball.vx=rx;ball.vy=ry;ball.vz=rz;}
 function resolveSave(k,G_){
   const d=dirOf(k.team),gx=-d*L;
   const line=crossAt(gx);
@@ -435,20 +457,31 @@ function resolveSave(k,G_){
     ball.lastTeam=k.team;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;k.saveKind='desvio';k.saveT=.7;
     popText('¡ATAJADÓN!',k.x,2.8,k.z,'#ffcc33',26);burst(ball.x,ball.y,ball.z,0xffcc33,24,8);sfx('catch');sfx('hit');bigSave();return;}
   const big=margin<.25||s>27;
+  // v238: de frente (sin tirarse): ya no la ataja de pecho; al centro la saca de puño, rasante con el pie, arriba manotazo si no la puede atrapar
+  if(!diving&&!down){const pk=(k._prepd&&k.prepKind)?k.prepKind:gkKind(y,s,G_);   // v238: lo que ya decidió (y ya se está animando) es lo que pasa
+    if(pk==='puno'||pk==='pie'||pk==='slap'){gkRebound(k,pk,cz);k.saveKind=pk;k.saveT=.7;k.saveY=y;k.saveZ=cz-k.z;k.blockT=Math.max(k.blockT||0,.45);k.catchY=y;
+      popText(pk==='puno'?'¡De puño!':pk==='pie'?'¡Con el pie!':'¡Manotazo!',k.x,2.7,k.z,'#fff',big?20:17);
+      ball.lastTeam=k.team;ball.super=false;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;sfx(pk==='pie'?'catch':'punch');
+      if(!fb('impacto',ball.x,ball.y,ball.z,big?3.2:2,.35))burst(ball.x,ball.y,ball.z,0xffffff,10,5);if(big)bigSave();return;}}
   if(s<G_.catchV+(body?5:0)&&y<2.45&&!down&&(body||margin>.3)){
-    if(shield[k.team]<=0&&s>18&&Math.random()<Math.max(0,(68-G_.REF)/100)*.25){ball.vx*=-.15;ball.vz=rand(-2,2);ball.vy=2;ball.lastTeam=k.team;k.saveKind='rechazo';k.saveT=.6;popText('¡Se le escapó!',k.x,2.6,k.z,'#ff9aa4');sfx('bounce');ball.tried[k.team]=true;return;}
+    if(shield[k.team]<=0&&s>18&&Math.random()<Math.max(0,(68-G_.REF)/100)*.25){gkRebound(k,'rechazo',cz);ball.lastTeam=k.team;k.saveKind='rechazo';k.saveT=.6;popText('¡Se le escapó!',k.x,2.6,k.z,'#ff9aa4');sfx('bounce');ball.tried[k.team]=true;return;}
     k.saveKind=y>1.65?'alta':y<.75?'baja':(dz<.6?'pecho':'lado');k.saveT=.8;
     catchBall(k);popText(big?'¡ATAJADÓN!':(Math.random()<.5?'¡Atajada!':'¡A las manos!'),k.x,2.7,k.z,'#fff',big?22:16);if(big)bigSave();return;}
   // no la puede atrapar: la desvía, siempre hacia afuera del arco
-  if(y>GH-.7&&margin<.3){ball.vx*=.25;ball.vy=6+rand(0,2);ball.vz+=out*1.2;k.saveKind='travesano';popText('¡Por arriba del travesaño!',k.x,2.8,k.z,'#fff',18);}
-  else if(y<.5&&!diving&&dz<.9){ball.vx=-ball.vx*rand(.25,.4);ball.vz=out*rand(2,5);ball.vy=rand(1,2.5);k.saveKind='pie';popText('¡Con el pie!',k.x,2.6,k.z,'#fff',17);}
-  else if(down||(body&&!diving)){ball.vx=-ball.vx*rand(.3,.45);ball.vz=out*rand(1,4);ball.vy=rand(1,2.5);k.saveKind='cuerpo';popText(k.smother>0?'¡Achique!':'¡Con el cuerpo!',k.x,2.6,k.z,'#fff',18);}
-  else if(margin<.14){ball.vx=-ball.vx*rand(.05,.15);ball.vz=out*rand(5,8);ball.vy=rand(1,3);k.saveKind='punta';popText('¡Con la punta!',k.x,2.7,k.z,'#fff',20);}
-  else{ball.vx=-ball.vx*rand(.2,.35);ball.vz=out*rand(4,8)*(s>27?.8:1);ball.vy=rand(1.5,4.5);k.saveKind='desvio';popText(big?'¡ATAJADÓN!':'¡Qué mano!',k.x,2.7,k.z,'#fff',big?20:16);}
+  if(y>GH-.7&&margin<.3){gkRebound(k,'travesano',cz);k.saveKind='travesano';popText('¡Por arriba del travesaño!',k.x,2.8,k.z,'#fff',18);}
+  else if(y<.5&&!diving&&dz<.9){gkRebound(k,'pie',cz);k.saveKind='pie';popText('¡Con el pie!',k.x,2.6,k.z,'#fff',17);}
+  else if(down||(body&&!diving)){gkRebound(k,'cuerpo',cz);k.saveKind='cuerpo';popText(k.smother>0?'¡Achique!':'¡Con el cuerpo!',k.x,2.6,k.z,'#fff',18);}
+  else if(margin<.14){gkRebound(k,'punta',cz);k.saveKind='punta';popText('¡Con la punta!',k.x,2.7,k.z,'#fff',20);}
+  else{gkRebound(k,'desvio',cz);k.saveKind='desvio';popText(big?'¡ATAJADÓN!':'¡Qué mano!',k.x,2.7,k.z,'#fff',big?20:16);}
   k.saveT=.7;k.saveY=y;k.saveZ=cz-k.z;if(!diving&&!down){k.blockT=Math.max(k.blockT||0,.45);k.catchY=y;}
   ball.lastTeam=k.team;ball.super=false;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.6;settle();
   sfx(k.saveKind==='travesano'||k.saveKind==='punta'||k.saveKind==='desvio'?'punch':'catch');if(!fb('impacto',ball.x,ball.y,ball.z,big?3.2:2,.35))burst(ball.x,ball.y,ball.z,0xffffff,10,5);if(big)bigSave();
 }
+// v238: despeje de patada lejos, hacia la cancha y a un costado (lejos del rival que la peleaba)
+function gkClear(k){const d=dirOf(k.team),o=nearestOpp({x:ball.x,z:ball.z,team:k.team});let a=rand(.15,.55)*(o?(Math.sign(ball.z-o.z)||1):(Math.random()<.5?-1:1));
+  const sp=rand(20,24);ball.vx=d*Math.cos(a)*sp;ball.vz=Math.sin(a)*sp;ball.vy=rand(7.5,9.5);ball.y=Math.max(ball.y,.5);ball.owner=null;ball.gk=null;ball.passTo=null;ball.cross=false;ball.super=false;
+  ball.lastTeam=k.team;ball.tried=[false,false];ball.tried[k.team]=true;k.pcd=.8;k.saveKind='despeje';k.saveT=.5;popText('¡Despeje!',k.x,2.7,k.z,'#fff',18);sfx('kick');
+  if(typeof fb==='function'&&!fb('impacto',ball.x,ball.y,ball.z,2.2,.3)&&typeof burst==='function')burst(ball.x,ball.y,ball.z,0xffffff,10,5);}
 function catchBall(k){k.catchY=ball.y;if(ball.y>1.75&&k.dive<=0)k.highT=.45;else if(k.dive<=0)k.blockT=.5;ball.gk=k;ball.owner=null;k.hold=(k.team===0||H1)?2.2:rand(.55,.95);if(k.dive>0||k.plan==='estirada')k.hold=Math.max(k.hold,rand(1.35,1.6));/* v77: tiempo para levantarse con el balón */k.distrib=null;ball.super=false;ball.passTo=null;ball.cross=false;ball.vx=ball.vy=ball.vz=0;sfx('catch');}
 function gkTargets(k,dir){
   const d=dirOf(k.team),mates=fieldOf(k.team).filter(m=>m.stun<=0);let best=null,bs=-1e9;
@@ -458,7 +491,7 @@ function gkTargets(k,dir){
 function keeperDistribute(k,type,dir){
   if(k.distrib)return;const d=dirOf(k.team);
   if(!type){const t=gkTargets(k,null),o=t?nearestOpp(t):null,open=t&&(!o||d2(t,o)>4.5),dist=t?d2(k,t):99;
-    type=open&&dist<13?(nearestOpp(k)&&d2(k,nearestOpp(k))<9?'mano':(Math.random()<.5?'corto':'mano')):'largo';}
+    const no=nearestOpp(k),press=no&&d2(k,no)<5.5;type=press?'largo':open&&dist<13?(no&&d2(k,no)<9?'mano':(dist<8?'corto':'mano')):open&&dist<22?'mano':'largo';}   // v238: lee la presión y la distancia
   k.distrib={type,t:0,dir:dir||null,target:type==='largo'?null:gkTargets(k,dir)};
   if(type==='largo'&&!k.distrib.target){let far=null,fx=-1e9;for(const m of fieldOf(k.team)){const v=m.x*d-(dir?0:0);if(v>fx){fx=v;far=m;}}k.distrib.target=far;}
   if(k.distrib.target)faceTo(k,k.distrib.target.x-k.x,k.distrib.target.z-k.z);else faceTo(k,d,0);
@@ -468,14 +501,14 @@ function ballToHands(k,which){const h=handPos(k,which);if(!h)return false;ball.x
 function gkSequence(k,dt){
   const s=k.distrib;if(!s)return false;s.t+=dt;const d=dirOf(k.team),hx=Math.sin(k.face),hz=Math.cos(k.face),tg=s.target;
   if(s.type==='mano'){k.throwT=s.t;if(!ballToHands(k,'r')){ball.x=k.x-hx*.2;ball.z=k.z-hz*.2;ball.y=1.05+Math.min(1,s.t/.35)*1.3;}
-    if(s.t>=.38){const tx=tg?tg.x:k.x+d*12,tz=tg?tg.z:k.z;release(k);k.kickT=0;ball.y=2.2;const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,ft=clamp(l/19,.35,.9);
+    if(s.t>=.6){const tx=tg?tg.x:k.x+d*12,tz=tg?tg.z:k.z;release(k);k.kickT=0;ball.y=2.2;const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,ft=clamp(l/19,.35,.9);
       ball.vx=dx/ft;ball.vz=dz/ft;ball.vy=(1-ball.y)/ft+.5*GRAV*ft;ball.passTo=tg;if(tg)setCtrl(k.team,tg);sfx('pass');k.distrib=null;k.throwT=-1;ball.tried[k.team]=true;k.pcd=1.2;}
     return true;}
-  if(s.type==='largo'){if(s.t<.32){if(!ballToHands(k,'mid')){ball.x=k.x+hx*.6;ball.z=k.z+hz*.6;ball.y=1.05+Math.sin(s.t/.32*Math.PI)*.5;}return true;}
+  if(s.type==='largo'){if(s.t<.45){if(!ballToHands(k,'mid')){ball.x=k.x+hx*.6;ball.z=k.z+hz*.6;ball.y=1.05+Math.sin(s.t/.45*Math.PI)*.5;}return true;}
     const tx=tg?tg.x+d*4:k.x+d*30,tz=tg?tg.z:rand(-6,6);release(k);k.kickPow=1;ball.y=.7;const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,ft=clamp(l/24,.9,1.4);
     ball.vx=dx/ft;ball.vz=dz/ft;ball.vy=(1-ball.y)/ft+.5*GRAV*ft;ball.passTo=null;ball.cross=false;sfx('kick');fb('impacto',ball.x,.8,ball.z,1.6,.25);if(tg)setCtrl(k.team,tg);k.distrib=null;ball.tried[k.team]=true;k.pcd=1.2;return true;}
-  if(s.type==='corto'){k.crouchT=s.t<.3?s.t/.3:Math.max(0,1-(s.t-.3)/.3);if(!(s.t<.45&&ballToHands(k,'mid'))){ball.x=k.x+hx*.75;ball.z=k.z+hz*.75;ball.y=Math.max(BR,1.05-s.t/.3*(1.05-BR));}
-    if(s.t>=.75){const tx=tg?tg.x:k.x+d*10,tz=tg?tg.z:k.z;release(k);ball.y=BR;const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(l*1.2+8,10,22);
+  if(s.type==='corto'){k.crouchT=s.t<.3?s.t/.3:Math.max(0,1-(s.t-.3)/.3);if(!(s.t<.6&&ballToHands(k,'r'))){ball.x=k.x+hx*.75;ball.z=k.z+hz*.75;ball.y=Math.max(BR,1.05-s.t/.3*(1.05-BR));}
+    if(s.t>=.6){const tx=tg?tg.x:k.x+d*10,tz=tg?tg.z:k.z;release(k);ball.y=BR;const dx=tx-ball.x,dz=tz-ball.z,l=Math.hypot(dx,dz)||1,sp=clamp(l*1.2+8,10,22);
       ball.vx=dx/l*sp;ball.vz=dz/l*sp;ball.vy=.6;ball.passTo=tg;if(tg)setCtrl(k.team,tg);sfx('pass');k.distrib=null;k.crouchT=0;ball.tried[k.team]=true;k.pcd=1.2;}
     return true;}
   return false;}
