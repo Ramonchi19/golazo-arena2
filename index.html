@@ -2422,18 +2422,6 @@ function selfLit(mat){if(!mat||mat.userData.selfLit)return mat;mat.userData.self
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=diffuseColor.rgb*0.2*(1.-uLzOff);')
       .replace('#include <tonemapping_fragment>','if(uLzOff>.5){vec3 N=normalize(vLzN),V=normalize(vLzV);float w=clamp(dot(N,uLzKey)*.5+.5,0.,1.);gl_FragColor.rgb*=mix(uLzShade,1.1,smoothstep(.3,.8,w));float sp=pow(max(dot(N,normalize(uLzKey+V)),0.),90.);gl_FragColor.rgb+=vec3(1.,.97,.9)*sp*uLzSpec;float fr=1.-clamp(dot(N,V),0.,1.);gl_FragColor.rgb+=uLzRimCol*uLzRim*pow(fr,4.);}\n#include <tonemapping_fragment>');};
   mat.customProgramCacheKey=()=>(mat.userData.kit?'kitproj':'std')+'-self2'+(window.GZ_LUZ_U?'-lz':'');if('roughness' in mat)mat.roughness=.62;mat.needsUpdate=true;return mat;}
-// v239: CONTORNO DE EQUIPO. Una copia del cuerpo un poco más gruesa, por dentro, del color oscuro de la camiseta del equipo.
-// Usa los mismos huesos (se mueve igual) y su grosor se mantiene igual sin importar el tamaño del titán.
-const OUTLINE_W=.055;
-function addOutline(o,team){if(!o||!o.isSkinnedMesh||o.userData.outline||o.userData.hasOutline)return null;
-  const K=TEAMKIT[team]||{j:0x222222},col=new THREE.Color(K.j).multiplyScalar(.62),u={value:.03};
-  const mat=new THREE.MeshBasicMaterial({color:col,side:THREE.BackSide,skinning:true});mat.userData.gzOutline=true;
-  mat.onBeforeCompile=sh=>{sh.uniforms.uOut=u;sh.vertexShader='uniform float uOut;\n'+sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed=vec3(position)+normalize(normal)*uOut;');};
-  mat.customProgramCacheKey=()=>'gzOutline';
-  const ol=new THREE.SkinnedMesh(o.geometry,mat);ol.bind(o.skeleton,o.bindMatrix);ol.userData.outline=true;ol.frustumCulled=false;ol.castShadow=false;ol.receiveShadow=false;
-  ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);ol.renderOrder=o.renderOrder;
-  ol.onBeforeRender=()=>{const sc=ol.matrixWorld.getMaxScaleOnAxis()||1;u.value=OUTLINE_W/sc;};
-  o.parent.add(ol);o.userData.hasOutline=ol;return ol;}
 function makeGLBChar(team,id){
   const M0=MODELS[id],root=new THREE.Group(),tilt=new THREE.Group();root.add(tilt);
   const model=THREE.SkeletonUtils?THREE.SkeletonUtils.clone(M0.scene):M0.scene.clone(true);
@@ -2450,9 +2438,8 @@ function makeGLBChar(team,id){
   const mats=[],byName={};
   const K=TEAMKIT[team]||TEAMKIT[0];
   const skinned=[];model.traverse(o=>{if(o.isSkinnedMesh)skinned.push(o);});
-  // v12: sin contorno negro en los personajes · v239: contorno delgado del color oscuro de SU EQUIPO (se distinguen en cualquier pantalla)
+  // v12: sin contorno negro en los personajes (v240: tampoco el de color de equipo)
   model.traverse(o=>{if((o.isMesh||o.isSkinnedMesh)&&!o.userData.outline){o.castShadow=true;o.frustumCulled=false;if(!Array.isArray(o.material))o.material=toonize(o.material);if(!Array.isArray(o.material)&&M0.kitInfo)o.material=applyKit(o.material,M0.kitInfo,K,(TEAMNUM[team]&&TEAMNUM[team][id])||DEFNUM[id]||10);(Array.isArray(o.material)?o.material:[o.material]).forEach(selfLit);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m&&!mats.includes(m))mats.push(m);});}if(o.isBone)byName[o.name]=o;});
-  if(save.settings.outline!==false)for(const o of skinned)addOutline(o,team);
   // detectar hacia dónde mira y de qué lado está cada brazo
   root.updateMatrixWorld(true);
   const lp=b=>{const w=new THREE.Vector3();b.getWorldPosition(w);return model.worldToLocal(w);};
@@ -5274,7 +5261,7 @@ function defSave(){return{v:2,name:'',nameN:0,hist:[],streak:0,best:0,ads:{d:0,n
   powers:{bomba:{lvl:1,copies:0},cascara:{lvl:1,copies:0},rayo:{lvl:1,copies:0},turbo:{lvl:1,copies:0},punetazo:{lvl:1,copies:0},tornado:{lvl:1,copies:0},meteorito:{lvl:1,copies:0}},
   squad:{form:'ataque',gk:'coletazo',f:['sangre','perro','cazador','zurdito']},deck:['bomba','cascara','rayo','turbo'],
   packs:['bronce',null,null,null],freeAt:0,kits:{clasico:1},boots:{negro:1},nums:{},equip:{kit:'clasico',boots:'negro'},seen:{},
-  settings:{sound:true,vib:true,shadows:true,quality:'alta',qauto:true,outline:true,zurdo:false,land:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
+  settings:{sound:true,vib:true,shadows:true,quality:'alta',qauto:true,zurdo:false,land:false},zurditoAligned2:true,starters3D:true,raras3D:true,ataque1:true,obst1:true,todos18:true};}
 const R18=["zurdito", "cazador", "perro", "sangre", "coletazo", "expreso", "rey", "gato", "toro", "vikingo", "muralla", "ciclon", "malabares", "ruleta", "leon", "turbo", "valkiria", "goblin", "duende", "hongo", "monje", "campeon", "momia", "zombi", "yeti", "princesa", "remiendo", "vampira", "reina", "nebula"];
 function migrate(s){
   const d=defSave();
@@ -5908,7 +5895,6 @@ function openSettings(){const s=save.settings,tg=(k,l,d)=>`<div class="set"><div
   showModal(`<div class="mpanel"><button class="mclose" id="mx">${ICON("close",20)}</button><div class="mtitle ct">Configuración</div>
    ${tg('sound','Sonido','Efectos del partido y del menú')}${tg('vib','Vibración','Al chocar, explotar o abrir sobres')}${tg('shadows','Sombras','Apágalas si el teléfono se calienta')}${tg('zurdo','Modo zurdo','Joystick a la derecha, botones a la izquierda')}${tg('music','Música','Música del menú y de los partidos')}${tg('perf','Medidor de rendimiento','Muestra FPS, tirones y ping arriba de la pantalla')}
    <div class="set"><div><b class="ct">Gráficos</b><small>${s.qauto?'Automática: se ajusta sola a tu teléfono (ahora '+s.quality+(s.qfps?' · '+s.qfps+' cuadros/s':'')+')':'Alta = brillo en efectos · Baja = más fluido'}</small></div><div class="seg">${['auto','baja','media','alta'].map(q=>`<button data-q="${q}" class="${(q==='auto'?s.qauto:!s.qauto&&s.quality===q)?'on':''}">${q==='auto'?'Auto':q[0].toUpperCase()+q.slice(1)}</button>`).join('')}</div></div>
-   <div class="set"><div><b class="ct">Contorno de equipo</b><small>Cada jugador con una orilla del color de su equipo</small></div><button class="tgl ${s.outline!==false?'on':''}" data-k="outline" role="switch"><i></i></button></div>
    <div class="set"><div><b class="ct">Modelo 3D de Zurdito</b><small>${statusTxt()} · también puedes cargar otro .glb</small></div><label class="btn b sm">Cargar<input type="file" accept=".glb,model/gltf-binary,application/octet-stream" id="glbIn" hidden></label></div>
    ${MODELS.zurdito?`<div class="set"><div><b class="ct">Girar modelo 180°</b><small>Si corre de espaldas</small></div><button class="tgl ${save.modelFlip&&save.modelFlip.zurdito?'on':''}" id="flipT" role="switch"><i></i></button></div><div class="set"><div><b class="ct">Quitar modelo</b><small>Vuelve al muñeco de código</small></div><button class="btn r sm" id="glbDel">Quitar</button></div>`:''}
    <div class="set"><div><b class="ct">Probar voces</b><small id="voxInfo">Escucha a los personajes que ya tienen voz</small></div><button class="btn b sm" id="voxB">Probar</button></div>
