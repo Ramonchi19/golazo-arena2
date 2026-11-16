@@ -2523,11 +2523,24 @@ function addMirrors(lib,meta){if(!lib)return;for(const n of KICK_L)if(lib[n]&&!l
 const PASS_R_SIDE={peq:'l',med:'l',gra:'l',atl:'l'};   // v230a: medido con el golpe real: en todas pass_r (pie derecho, por dentro) manda el balón a su izquierda (lo de la v228b estaba medido con el golpe mal marcado)
 function act(m,n){const GL=LIBOF(m);if(GL&&GL[n]){m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(GL[n]);if(!(GMETA[m.peq][n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}   // v209
   if(ANIMLIB&&!ANIMLIB[n]&&m.A&&m.A[n]){m.L=m.L||{};if(!m.L[n])m.L[n]=m.A[n];return m.L[n];}if(!ANIMLIB||!ANIMLIB[n])return null;m.L=m.L||{};if(!m.L[n]){const a=m.mixer.clipAction(ANIMLIB[n]);if(!(ANIMMETA[n]||{}).loop){a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;}m.L[n]=a;}return m.L[n];}
+// v237: three.js solo vuelve a poner el hueso cuando el valor de la animación CAMBIA. Si la pose está quieta (fin de una animación
+// que se queda en su último cuadro, congelado, pausa), no lo vuelve a poner, y lo que el juego le hace encima se ACUMULA cuadro tras cuadro:
+// la cadera del portero se multiplicaba por su escala cada cuadro (salía volando o se hundía = "se borra") y la cabeza quedaba sin su pose.
+// Después de cada update se marca como inválido el valor que se acaba de poner (solo la casilla de comparación; la mezcla
+// usa la otra), así el siguiente cuadro siempre escribe la pose de la animación.
+function mixForce(m){const mx=m.mixer,bs=mx&&mx._bindings;if(!bs)return;const A=mx._accuIndex|0;
+  for(let i=0;i<bs.length;i++){const b=bs[i],st=b.valueSize,buf=b.buffer;if(!buf||b.useCount===0)continue;const o=A*st+st;buf[o]+=1e-7;}}   // apenas distinto: el siguiente cuadro escribe; si alguna vez se usa para mezclar, es casi el mismo valor
+// la animación que más pesa ahora mismo (para mezclar desde ahí aunque el nombre guardado no sea una animación real, p. ej. 'gk_hold')
+function heavyA(m,skip){let best=null,bw=.01;const chk=x=>{if(!x||x===skip||!x.enabled)return;const w=x.getEffectiveWeight();if(w>bw){bw=w;best=x;}};
+  if(m.L)for(const k in m.L)chk(m.L[k]);if(m.A)for(const k in m.A)chk(m.A[k]);return best;}
+// se apaga suave (desde su peso actual) en vez de cortarla de golpe
+function softOut(x,f){try{if(x._weightInterpolant!==null)return;const w=x.getEffectiveWeight();if(f>0&&w>.01&&x._scheduleFading)x._scheduleFading(f,w,0);else x.stop();}catch(e){x.stop();}}
 function goA(m,n,o){o=o||{};const a=act(m,n);if(!a)return false;if(m.curA===n&&!o.restart)return true;
-  const prev=m.curA?(m.L[m.curA]||(m.A&&m.A[m.curA])):null;a.reset();a.time=o.from||0;a.setEffectiveTimeScale(o.ts||1);a.setEffectiveWeight(1);a.play();
-  if(prev&&prev!==a)a.crossFadeFrom(prev,o.fade==null?.12:o.fade,false);
-  for(const k in m.L){if(m.L[k]!==a&&m.L[k]!==prev&&m.L[k].isRunning())m.L[k].stop();}
-  if(m.A)for(const k in m.A){if(m.A[k]!==prev&&m.A[k].isRunning())m.A[k].stop();}
+  let prev=m.curA?((m.L&&m.L[m.curA])||(m.A&&m.A[m.curA])):null;if(!prev||prev===a||!prev.enabled)prev=heavyA(m,a);   // v237: siempre se mezcla desde lo que se ve
+  const fd=o.fade==null?.12:o.fade;a.reset();a.time=o.from||0;a.setEffectiveTimeScale(o.ts||1);a.setEffectiveWeight(1);a.play();
+  if(prev&&prev!==a)a.crossFadeFrom(prev,fd,false);
+  for(const k in m.L){const x=m.L[k];if(x!==a&&x!==prev&&x.enabled&&x.getEffectiveWeight()>0)softOut(x,fd);}   // v237: antes se cortaban de golpe (saltos de pose)
+  if(m.A)for(const k in m.A){const x=m.A[k];if(x!==a&&x!==prev&&x.enabled&&x.getEffectiveWeight()>0)softOut(x,fd);}
   m.curA=n;m.lockUntil=o.lock!=null?T+o.lock:0;return true;}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const BIGARMS={gigante:1,muralla:1,coletazo:1,toro:1,sangre:1};
@@ -3402,7 +3415,7 @@ function libLoco(p,m,sp){
   let n,ts=1;
   if(p.gk){if(ball.gk===p&&!p.distrib){if(m.curA!=='gk_hold'){const a=act(m,'gk_throw');if(a){goA(m,'gk_throw',{from:.33,ts:.0001,fade:.28});m.curA='gk_hold';}}else{const a=m.L&&m.L.gk_throw;if(a)a.time=.31+.045*Math.sin(T*2.3+p.idx);}return;}else if(p.backT>0&&sp>.8&&act(m,'gk_backpedal')){n='gk_backpedal';ts=clamp(sp/3.2,.7,1.5);}else if(p.setPos){const lat=-Math.cos(p.face)*p.vx+Math.sin(p.face)*p.vz;n=Math.abs(lat)>.9?(lat>0?'gk_step_r':'gk_step_l'):'gk_idle_low';ts=n==='gk_idle_low'?1:clamp(Math.abs(lat)/3,.7,1.5);}
     else n=sp>4.5?'sprint':sp>1.2?'jog':(Math.abs(ball.x-p.x)>40&&!ball.gk&&act(m,'gk_direct')?'gk_direct':'gk_idle');}
-  else if(sp<.7)n=ball.owner===p?'idle_ball':(Math.hypot(ball.x-p.x,ball.z-p.z)<22&&act(m,'ready')?'ready':'idle');
+  else if(sp<.7)n=ball.owner===p?'idle_ball':'idle';   // v237: quitada la espera en cuclillas con brazos en L ('ready') de los jugadores de campo
   else if(ball.owner===p&&act(m,'dribble'))n='dribble';
   else if(p._look){const vf=p._vface,f=p.vx*Math.sin(vf)+p.vz*Math.cos(vf),lat=-Math.cos(vf)*p.vx+Math.sin(vf)*p.vz;   // v70: marcando, mirando al balón
     n=f<-.5*sp?(Math.abs(lat)<.5*sp?'jog_back':(lat>0?'back_diag_r':'back_diag_l')):Math.abs(lat)>Math.abs(f)?(lat>0?'strafe_jr':'strafe_jl'):runGait(p,m,sp);if(!act(m,n))n=sp<4.6?'jog':'sprint';}
@@ -3411,7 +3424,8 @@ function libLoco(p,m,sp){
   if(n==='trot')ts=clamp(sp/nat('trot'),.6,1.7);if(n==='jog')ts=clamp(sp/nat('jog'),.6,1.75);if(n==='sprint')ts=clamp(sp/nat('sprint'),.7,1.8);if(n==='turbo_run')ts=clamp(sp/nat('turbo_run'),.7,1.6);
   if(['jog_back','back_diag_r','back_diag_l','strafe_jr','strafe_jl'].includes(n))ts=clamp(sp/nat(n),.6,1.7);
   if(n==='dribble')ts=clamp(sp/nat(n),.7,2.3);
-  if(n==='idle'&&!m.peq){if(m.curA!=='idle'&&m.A&&m.A.idle){const prev=m.curA&&m.L&&m.L[m.curA];m.A.idle.reset().play();if(prev)m.A.idle.crossFadeFrom(prev,.25,false);m.curA='idle';}return;}
+  if(n==='idle'&&!m.peq){if(m.curA!=='idle'&&m.A&&m.A.idle){const I=m.A.idle;let prev=m.curA&&((m.L&&m.L[m.curA])||(m.A&&m.A[m.curA]));if(!prev||prev===I||!prev.enabled)prev=heavyA(m,I);I.reset().play();if(prev&&prev!==I)I.crossFadeFrom(prev,.25,false);   // v237: mezcla siempre desde lo que se ve
+    const so=x=>{if(x&&x!==I&&x!==prev&&x.enabled&&x.getEffectiveWeight()>0)softOut(x,.25);};if(m.L)for(const k in m.L)so(m.L[k]);for(const k in m.A)so(m.A[k]);m.curA='idle';m.lockUntil=0;}return;}
   // v212: al pasar de trote a correr o a correr inclinado, la pierna sigue en el mismo paso (sin brinco)
   let from=0,fade=.14;if(LOCO_RE.test(n)&&LOCO_RE.test(m.curA||'')&&m.curA!==n&&m.L&&m.L[m.curA]&&act(m,n)){const pa=m.L[m.curA],pd=pa.getClip().duration||1;from=(pa.time%pd)/pd*act(m,n).getClip().duration;fade=.22;}
   goA(m,n,{fade,from});const a=m.L&&m.L[n];if(a)a.setEffectiveTimeScale(ts);
@@ -3452,7 +3466,7 @@ function animLib(m,p,dt){
   else p._gu=0;
   if(!(m.lockUntil&&T<m.lockUntil))libLoco(p,m,sp);
   const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);}
-  m.mixer.update((p.frozen>0)?0:(p.rooted>0)?dt*.25:(m._slT!=null||(p.act==='slide'&&SLIDE_PROC)||m._bT!=null||m._r||m._k||m._gd)?dt*.15:dt);   // v173: en la barrida la animación casi se detiene (la pose la pone slidePose). v95: congelado = quieto; atrapado = forcejea lento
+  m.mixer.update((p.frozen>0)?0:(p.rooted>0)?dt*.25:(m._slT!=null||(p.act==='slide'&&SLIDE_PROC)||m._bT!=null||m._r||m._k||m._gd)?dt*.15:dt);mixForce(m);   // v173: en la barrida la animación casi se detiene (la pose la pone slidePose). v95: congelado = quieto; atrapado = forcejea lento
   // altura de cadera adaptada a cada personaje
   if(Bz&&Bz.hips&&ANIMMETA._hips&&m.curA&&m.L&&m.L[m.curA]){const h=Bz.hips.b,r=Bz.hips.p0,c=ANIMMETA._hips,k=r.y/c[1],side=NEWANIM&&/^gk_(dive|block)/.test(m.curA);h.position.set(side?r.x+h.position.x*k:r.x,h.position.y*k,side?r.z+h.position.z*k:r.z);}   // v208: en la estirada el cuerpo sí se va de lado (como en la animación)
   Bz&&Bz.feet.forEach(f=>f.scale.setScalar(NEWANIM?1:m.foot));
@@ -3478,7 +3492,7 @@ function animLib(m,p,dt){
   if(!NEWANIM&&(!m.lockUntil||T>=m.lockUntil)){if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}glbLife(p,m,dt);}
 }
 function crossTo(m,name,t){t=t||.22;const a=m.A[name];if(!a||m.cur===name)return;
-  for(const k in m.A){const o=m.A[k];if(k!==name&&o.isRunning())o.fadeOut(t);}
+  for(const k in m.A){const o=m.A[k];if(k!==name&&o.enabled&&o.getEffectiveWeight()>0)softOut(o,t);}
   a.reset();a.setEffectiveTimeScale(1);a.setEffectiveWeight(1);a.fadeIn(t).play();m.cur=name;}
 function animGLB(m,p,dt){
   if(ANIMLIB){if(m.kitMats)for(const k of m.kitMats)k.userData.U.uTime.value=T;animLib(m,p,dt);return;}
@@ -3492,12 +3506,12 @@ function animGLB(m,p,dt){
     if(A.run)A.run.timeScale=clamp(sp/5.6,.6,1.7);
     if(p.gk)gkGLBActions(p,m);
     const Bz=m.bones;if(Bz){if(Bz.hd)Bz.hd.b.quaternion.copy(Bz.hd.q0);if(Bz.sp2)Bz.sp2.b.quaternion.copy(Bz.sp2.q0);}
-    m.mixer.update(dt);m.bones.feet.forEach(f=>f.scale.setScalar(NEWANIM?1:m.foot));if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}if(!NEWANIM)glbLife(p,m,dt);return; // v17: sin pose procedural del portero (rebote tipo resorte)
+    m.mixer.update(dt);mixForce(m);m.bones.feet.forEach(f=>f.scale.setScalar(NEWANIM?1:m.foot));if(!_gq1){_gq1=new THREE.Quaternion();_gq2=new THREE.Quaternion();}if(!NEWANIM)glbLife(p,m,dt);return; // v17: sin pose procedural del portero (rebote tipo resorte)
   }
   // respaldo: solo patada + movimiento por código
   if(p.kickT>0&&!p._k&&m.kick){m.kick.reset();m.kick.timeScale=1+(1-(p.kickPow||1))*.9;m.kick.play();}p._k=p.kickT>0;
   const B=m.bones;
-  if(m.kick&&m.kick.isRunning()){m.mixer.update(dt);B.feet.forEach(f=>f.scale.setScalar(m.foot));return;}
+  if(m.kick&&m.kick.isRunning()){m.mixer.update(dt);mixForce(m);B.feet.forEach(f=>f.scale.setScalar(m.foot));return;}
   for(const a of B.all){a.b.position.copy(a.p0);a.b.quaternion.copy(a.q0);a.b.scale.copy(a.s0);}
   B.feet.forEach(f=>f.scale.setScalar(m.foot));
 }
@@ -4712,6 +4726,11 @@ function kickYaw(m){const K=m._kick;if(!K)return 0;const u=T-K.T0,E=K.rem+.45;if
 function kickBallPos(p,m,o){const K=m._kick;if(!K||T-K.T0>K.rem)return null;const B=m.bones,hw=(B&&B.hipsWorldH)||1.1,yaw=p.face-K.push,c=Math.cos(yaw),s0=Math.sin(yaw);
   const hx=K.hit[0]*hw,hz=K.hit[2]*hw;   // en el personaje: x = su izquierda, z = adelante
   const px=p.x+hz*s0+hx*c,pz=p.z+hz*c-hx*s0,dir=p.face;o.set(px+Math.sin(dir)*BVIS*.95,BVIS,pz+Math.cos(dir)*BVIS*.95);return o;}
+// v237: seguro de la cabeza: si por cualquier cosa queda girada más de lo que un cuello puede (más de ~130° contra su pose base),
+// se regresa al límite y se anota cuál animación estaba (sale en el medidor de rendimiento) para encontrar la causa.
+const HEADLOG={n:0,last:''},_hgq=new THREE.Quaternion();
+function headGuard(p){const m=p.mesh,B=m&&m.bones;if(!B||!B.hd)return;const q=B.hd.b.quaternion,q0=B.hd.q0,d=Math.min(1,Math.abs(q.dot(q0))),ang=2*Math.acos(d);
+  if(ang>2.3){HEADLOG.n++;HEADLOG.last=((p.card&&p.card.id)||'?')+':'+(m.curA||'?');_hgq.copy(q0);q.copy(_hgq.slerp(q,2.3/ang));}}
 function syncPlayer(p,dt){
   const m=p.mesh,sp=Math.hypot(p.vx,p.vz);
   if(!p._csh&&scene){p._csh=new THREE.Mesh(new THREE.PlaneGeometry(1.9,1.9),new THREE.MeshBasicMaterial({map:cshTex(),transparent:true,opacity:.5,depthWrite:false}));p._csh.rotation.x=-Math.PI/2;p._csh.renderOrder=1;scene.add(p._csh);}
@@ -4778,7 +4797,7 @@ function syncPlayer(p,dt){
   else em.setRGB(0,0,0);
 }
 function render(dt){
-  for(const p of players)syncPlayer(p,dt);
+  for(const p of players){syncPlayer(p,dt);headGuard(p);}
   // v231: efectos estilo Strikers (aros de destino y posesión, flechas de barrida, estelas de jugador, destello, cabeza al balón, rebote y aplastado)
   if(!GZFX&&scene&&window.GZ_STRIKERS){try{GZFX=GZ_STRIKERS({scene,ballR:BVIS,ballTrail:false,getRoot:p=>p.mesh&&p.mesh.glb?p.mesh.root:null,
     getHead:p=>p.mesh&&p.mesh.bones&&p.mesh.bones.hd?p.mesh.bones.hd.b:null,getNeck:p=>{const h=p.mesh&&p.mesh.bones&&p.mesh.bones.hd&&p.mesh.bones.hd.b;return h&&h.parent&&/neck/i.test(h.parent.name)?h.parent:null;}});}catch(e){console.warn('fx',e);GZFX=false;}}
@@ -6252,7 +6271,7 @@ function bgTheme(){const i=save.testArena!=null?save.testArena:leagueIdx(save.tr
 // v236: en el partido también dice cuánto tarda el juego (física y dibujo en el procesador) contra el cuadro completo:
 // si el cuadro tarda mucho más que el procesador, el que no alcanza es la tarjeta gráfica. Más llamadas de dibujo y triángulos.
 function perfExtra(){try{const R=renderer.info.render,cpu=PERF.sim+PERF.ren,fr=PERF.frame||16.7,gpu=fr-cpu>6&&fr>20;
-  return `<br>física ${PERF.sim.toFixed(1)} ms · dibujo ${PERF.ren.toFixed(1)} ms · cuadro ${fr.toFixed(0)} ms${gpu?' <b style="color:#ff9a5c">(tarjeta gráfica)</b>':fr>20?' <b style="color:#ff9a5c">(procesador)</b>':''}<br>llamadas ${R.calls} · triángulos ${(R.triangles/1000).toFixed(0)}k · pasos ${PERF.steps} · ${renderer.domElement.width}×${renderer.domElement.height}`;}catch(e){return '';}}
+  return `<br>física ${PERF.sim.toFixed(1)} ms · dibujo ${PERF.ren.toFixed(1)} ms · cuadro ${fr.toFixed(0)} ms${gpu?' <b style="color:#ff9a5c">(tarjeta gráfica)</b>':fr>20?' <b style="color:#ff9a5c">(procesador)</b>':''}<br>llamadas ${R.calls} · triángulos ${(R.triangles/1000).toFixed(0)}k · pasos ${PERF.steps}${HEADLOG.n?` · <b style="color:#ff9a5c">cabeza ${HEADLOG.n} (${HEADLOG.last})</b>`:''} · ${renderer.domElement.width}×${renderer.domElement.height}`;}catch(e){return '';}}
 // v236: PRUEBAS DE RENDIMIENTO (solo con el medidor prendido y en el partido): apaga UNA cosa a la vez para ver cuánto cuesta en tu teléfono.
 // No es para jugar así: es para saber qué hay que rehacer más ligero sin que se vea peor. Se reinicia al cerrar el juego.
 const DIAG={cine:false,sombras:false,luces:false,res:false};
